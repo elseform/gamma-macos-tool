@@ -1430,8 +1430,8 @@ public final class GAMMASetupEngine {
         }
         let candidates = [
             context.scriptRoot.appendingPathComponent("Anomaly.icns"),
-            context.scriptRoot.appendingPathComponent("assets/Anomaly.icns"),
-            context.scriptRoot.appendingPathComponent("../../assets/Anomaly.icns")
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/Anomaly.icns"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/Anomaly.icns")
         ]
         return candidates.first(where: { fileManager.fileExists(atPath: $0.path) }) ?? candidates[0]
     }
@@ -1439,7 +1439,8 @@ public final class GAMMASetupEngine {
     private func bundledReticleFixArchive(context: SetupContext) -> URL? {
         let dirs = [
             context.scriptRoot.appendingPathComponent("mods"),
-            context.scriptRoot.appendingPathComponent("../../mods")
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/mods"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/mods")
         ]
         for dir in dirs {
             guard let children = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
