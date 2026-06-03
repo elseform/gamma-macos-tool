@@ -9,6 +9,7 @@ APP_DIR="$BUILD_DIR/GAMMA Setup Tool.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+SOURCE_RESOURCES_DIR="$ROOT_DIR/sources/GAMMASetupTool/Resources"
 BINARY="$MACOS_DIR/GAMMA Setup Tool"
 INTERMEDIATE_BINARY="$INTERMEDIATES_DIR/GAMMA Setup Tool"
 ENGINE_BINARY="$RESOURCES_DIR/gamma-setup-engine"
@@ -77,13 +78,13 @@ fi
 cp "$INTERMEDIATE_ENGINE_BINARY" "$ENGINE_BINARY"
 chmod +x "$ENGINE_BINARY"
 
-cp "$ROOT_DIR/assets/Anomaly.icns" "$RESOURCES_DIR/GAMMASetupTool.icns"
+cp "$SOURCE_RESOURCES_DIR/Anomaly.icns" "$RESOURCES_DIR/GAMMASetupTool.icns"
 mkdir -p "$RESOURCES_DIR/mods"
-cp "$ROOT_DIR/assets/Anomaly.icns" "$RESOURCES_DIR/Anomaly.icns"
-cp "$ROOT_DIR/assets/MO2.icns" "$RESOURCES_DIR/MO2.icns"
-cp "$ROOT_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z" "$RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z"
-cp "$ROOT_DIR/assets/github.svg" "$RESOURCES_DIR/github.svg"
-cp "$ROOT_DIR/assets/discord.svg" "$RESOURCES_DIR/discord.svg"
+cp "$SOURCE_RESOURCES_DIR/Anomaly.icns" "$RESOURCES_DIR/Anomaly.icns"
+cp "$SOURCE_RESOURCES_DIR/MO2.icns" "$RESOURCES_DIR/MO2.icns"
+cp "$SOURCE_RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z" "$RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z"
+cp "$SOURCE_RESOURCES_DIR/github.svg" "$RESOURCES_DIR/github.svg"
+cp "$SOURCE_RESOURCES_DIR/discord.svg" "$RESOURCES_DIR/discord.svg"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

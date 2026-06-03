@@ -101,7 +101,7 @@ DXVK is also available as a last-resort fallback for scenarios where D3DMetal an
 The app includes an optional D3DMetal/DXMT reflex reticle fix:
 
 ```text
-mods/D3DMetal DXMT Reflex Reticle Fix v2.7z
+sources/GAMMASetupTool/Resources/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z
 ```
 
 This fixes missing red-dot and holographic sight reticles when running STALKER Anomaly/GAMMA through D3DMetal or DXMT.
@@ -129,10 +129,10 @@ Deleting the whole `appdata/shaders_cache` folder is also fine; the game will re
 
 ## Important Notes
 
-- Existing apps are not silently overwritten. If the target exists and was not created by this tool, the setup engine exits unless `--replace` is used from the CLI.
+- Existing apps are not silently overwritten. If the target exists and was not created by this tool, setup stops before making changes.
 - The wrapper launches ModOrganizer only.
 - The tool reads `stalker-gamma-cli` configuration but does not write it.
-- The tool reads `ModOrganizer.ini` and rewrites it only if it detects reserved `Z:` paths and the user explicitly accepts repair, or if `--assume-rewrite-z` is used from the CLI.
+- The tool reads `ModOrganizer.ini` and rewrites it only if it detects reserved `Z:` paths and the user explicitly accepts repair.
 - GAMMA and Anomaly must already be installed and available at their detected paths.
 
 ## Developer Notes
@@ -141,30 +141,28 @@ Deleting the whole `appdata/shaders_cache` folder is also fine; the game will re
 
 Build the app:
 
-```sh
-./build.sh
+```text
+swift build
 ```
 
-Building from source requires Apple's Command Line Tools or Xcode because `build.sh` uses `swiftc`.
+Building from source requires Apple's Command Line Tools or Xcode.
 
-The built app is created at:
+SwiftPM writes build products under:
 
 ```text
-dist/GAMMA Setup Tool.app
+.build/
 ```
 
-For UI iteration, build and immediately run the app:
+For UI iteration, build and immediately run the app target:
 
-```sh
-./build.sh run
+```text
+swift run GAMMASetupTool
 ```
 
-The `run` mode skips app signing and only rebuilds the setup engine when its sources changed. Use `./build.sh` for a signed app bundle.
+Build artifacts, Swift module cache, and intermediates are kept under `.build/` so repeat builds are faster. To remove them:
 
-Build artifacts, Swift module cache, and intermediates are kept in `dist/` so repeat builds are faster. To remove them:
-
-```sh
-./build.sh clean
+```text
+swift package clean
 ```
 
 ### Source Layout
@@ -182,82 +180,9 @@ The app is split into:
 - `ContentView.swift`: wizard layout and screens.
 - `GAMMASetupToolApp.swift`: app entry point.
 - `sources/GAMMASetupCore/`: shared setup engine models, path helpers, preflight logic, and installation services.
-- `sources/GAMMASetupEngine/`: the command-line backend launched by the GUI.
+- `sources/GAMMASetupEngine/`: the setup backend launched by the GUI.
 
-The build script compiles the GUI and the `gamma-setup-engine` backend, then stores intermediate binaries and the Swift module cache under `dist/`.
-
-### CLI
-
-The GUI wraps the Swift backend:
-
-```text
-dist/GAMMA Setup Tool.app/Contents/Resources/gamma-setup-engine
-```
-
-The backend accepts a JSON request file and returns either a JSON preflight report or newline-delimited JSON events. Build the app first:
-
-```sh
-./build.sh
-```
-
-Create a request file:
-
-```json
-{
-  "appName": "stalker-gamma",
-  "outputApp": "/Users/me/Applications/Sikarugir/stalker-gamma.app",
-  "engine": "WS12WineCX24.0.7_7",
-  "renderer": "d3dmetal",
-  "moltenVKFastMath": false,
-  "metalHUD": false,
-  "dxmtMetalFXSpatial": false,
-  "dxmtMetalFXScaleFactor": "",
-  "dxmtLogLevel": "",
-  "dxvkHUD": "",
-  "mo2Path": "/Users/me/Games/GAMMA/ModOrganizer.exe",
-  "gammaPath": "",
-  "anomalyPath": "",
-  "programBatch": "/mo2.bat",
-  "driveMappingMode": "preserve",
-  "extraWinetricks": [],
-  "commonFixes": ["d3dmetal-reticle"],
-  "writeLog": true,
-  "verbose": true,
-  "dryRun": false,
-  "forceDownload": false,
-  "replace": false,
-  "settingsFile": "/Users/me/Library/Application Support/stalker-gamma/settings.json",
-  "usvfsSource": "/Users/elseform/mods/gamma/5_other/usvfs_v0.5.7.2",
-  "appIconSource": "",
-  "resourceRoot": ""
-}
-```
-
-Run preflight:
-
-```sh
-./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine preflight --request-file request.json
-```
-
-Create or update the wrapper:
-
-```sh
-./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine create --request-file request.json
-```
-
-Install Homebrew-managed dependencies:
-
-```sh
-./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine install-dependencies --request-file request.json
-```
-
-Install one dependency:
-
-```sh
-./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine install-dependency --name winetricks --request-file request.json
-```
-
-For non-mutating checks, set `"dryRun": true` in the request. The `create` command then streams the same event protocol without changing files.
+The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 
 ### Setup Engine Details
 
@@ -283,7 +208,7 @@ For non-mutating checks, set `"dryRun": true` in the request. The `create` comma
 
 ### Logs And Cache
 
-Top-level setup logs are optional. Pass `--log-file` or enable `Save verbose log` in the GUI to create a log in `~/`:
+Top-level setup logs are optional. Enable `Save verbose log` in the GUI to create a log in `~/`:
 
 ```text
 gamma-setup-tool.YYYYMMDD-HHMMSS.log
@@ -303,10 +228,10 @@ Downloaded Sikarugir assets are cached in:
 ~/Library/Caches/stalker-gamma-sikarugir-setup
 ```
 
-If Sikarugir Creator has already downloaded the template or engine, the script reuses those local assets from:
+If Sikarugir Creator has already downloaded the template or engine, the setup engine reuses those local assets from:
 
 ```text
 ~/Library/Application Support/Sikarugir
 ```
 
-Generated app builds, Swift module cache, and intermediate binaries are written to `dist/`, which is ignored by git.
+Generated build products, Swift module cache, and intermediate binaries are written to `.build/`, which is ignored by git.
