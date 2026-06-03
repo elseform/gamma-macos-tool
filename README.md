@@ -4,8 +4,19 @@ Native macOS tool for creating a Sikarugir `.app` wrapper around an existing S.T
 
 GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to already be installed with [`stalker-gamma-cli`](https://github.com/FaithBeam/stalker-gamma-cli/wiki/MacOS-Install).
 
+## Flow Demonstration
+
 ![GAMMA Setup Tool workflow](assets/demo/gamma-setup-tool-flow.gif)
 
+## Description
+
+The tool auto-detects a `stalker-gamma-cli` installation and creates an `.app` wrapper that is ready to run. If you installed G.A.M.M.A. another way, you will be asked to select a folder that contains `ModOrganizer.exe`. Keep in mind that the tool does not perform any validation of the G.A.M.M.A. installation itself.
+
+There are several options to tweak, but changing them is not required. You can just go through the flow with the defaults; that was the goal.
+
+I have also tried to provide tips and additional info if you choose to change any default settings. Most of those notes are based on my personal experience running different X-Ray engine games on macOS, so your experience may vary. Feel free to correct anything that looks extremely stupid or plain wrong.
+
+You can re-run setup for an already-created wrapper as many times as you want. It is idempotent and will adjust the prefix according to your selected options. If you encounter problems or need help, ping me in the support thread. I am on and off Discord due to life stuff, but I will get back to you as soon as I can.
 
 ## What It Does
 
@@ -14,7 +25,7 @@ The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creat
 The guided flow handles:
 
 - Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
-- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, Metal HUD, documented DXMT settings, and Wine drive mapping.
+- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, documented DXMT settings, and Wine drive mapping.
 - Required winetricks dependencies.
 - Optional extra winetricks verbs.
 - Optional D3DMetal/DXMT reflex reticle fix.
@@ -36,10 +47,13 @@ After those base requirements are present, the app can install or prepare the wr
 - Sikarugir Wine engine
 - Required Wine dependencies:
   - `corefonts`
+  - `d3dcompiler_42`
   - `d3dcompiler_43`
+  - `d3dcompiler_46`
   - `d3dcompiler_47`
   - `d3dx9`
   - `d3dx10`
+  - `d3dx11_42`
   - `d3dx11_43`
   - `vcrun2022`
 
@@ -47,10 +61,10 @@ The app does not install Homebrew, `stalker-gamma-cli`, or G.A.M.M.A.
 
 ## Download
 
-Use the latest GitHub release and download:
+Use the latest GitHub release and download the app archive:
 
 ```text
-GAMMA.Setup.Tool.0.6.app.zip
+GAMMA.Setup.Tool.<version>.app.zip
 ```
 
 Unzip it, then run:
@@ -61,7 +75,11 @@ GAMMA Setup Tool.app
 
 macOS may require approving the app in System Settings because the release is not notarized.
 
-The release also includes `D3DMetal DXMT Reflex Reticle Fix v2.7z` as a standalone MO2 mod archive for users who want the reticle fix without using the setup tool.
+The release also includes `D3DMetal DXMT Reflex Reticle Fix v2.7z`, a standalone MO2 mod archive for users who want the reticle fix without using the setup tool.
+
+## Wiki
+
+Additional macOS GAMMA field notes live in [wiki/Home.md](wiki/Home.md). Start there for technical fixes, Wine engine notes, and optimization advice that does not belong in the main setup flow.
 
 ## How to use
 
@@ -69,13 +87,14 @@ The release also includes `D3DMetal DXMT Reflex Reticle Fix v2.7z` as a standalo
 2. Let the Environment screen verify required tools and detected paths.
 3. Configure wrapper name, output directory, prefix options, and optional fixes.
 4. Create the wrapper.
-5. Start the app.
+5. Launch the created wrapper from the final screen.
 
 The recommended renderer is D3DMetal. DXMT is available as an alternative and exposes documented DXMT options:
 
 - MetalFX spatial swapchain
-- Preferred max frame rate through `DXMT_CONFIG`
 - `DXMT_LOG_LEVEL`
+
+DXVK is also available as a last-resort fallback for scenarios where D3DMetal and DXMT crash, for example Rostok crashing on load. It is not recommended for general use because overall performance is poor.
 
 ## Additional Fixes
 
@@ -87,13 +106,13 @@ mods/D3DMetal DXMT Reflex Reticle Fix v2.7z
 
 This fixes missing red-dot and holographic sight reticles when running STALKER Anomaly/GAMMA through D3DMetal or DXMT.
 
-When enabled, the tool downloads the latest matching GitHub release asset, extracts it into the detected MO2 `mods` directory as:
+When enabled, the app uses its bundled archive and extracts it into the detected MO2 `mods` directory as:
 
 ```text
 D3DMetal DXMT Reflex Reticle Fix
 ```
 
-It does not modify ModOrganizer profile files. Enable the mod manually in ModOrganizer after wrapper creation.
+It does not modify ModOrganizer profile files. Enable the mod manually in ModOrganizer after wrapper creation. Applying this fix requires `7zz` or `7z` to be available.
 
 Manual install is also possible: install the archive as a normal MO2 mod, or copy the `gamedata` folder into the game directory so it overrides the original shader files.
 
@@ -140,6 +159,8 @@ For UI iteration, build and immediately run the app:
 ./build.sh run
 ```
 
+The `run` mode skips app signing and only rebuilds the setup engine when its sources changed. Use `./build.sh` for a signed app bundle.
+
 Build artifacts, Swift module cache, and intermediates are kept in `dist/` so repeat builds are faster. To remove them:
 
 ```sh
@@ -160,118 +181,87 @@ The app is split into:
 - `Components.swift`: reusable SwiftUI rows, tips, icons, and wizard step metadata.
 - `ContentView.swift`: wizard layout and screens.
 - `GAMMASetupToolApp.swift`: app entry point.
+- `sources/GAMMASetupCore/`: shared setup engine models, path helpers, preflight logic, and installation services.
+- `sources/GAMMASetupEngine/`: the command-line backend launched by the GUI.
 
-The build script compiles all `*.swift` files in that folder and stores intermediate binaries and the Swift module cache under `dist/`.
+The build script compiles the GUI and the `gamma-setup-engine` backend, then stores intermediate binaries and the Swift module cache under `dist/`.
 
 ### CLI
 
-The GUI wraps this script:
+The GUI wraps the Swift backend:
 
 ```text
-sources/scripts/gamma-setup-tool.sh
+dist/GAMMA Setup Tool.app/Contents/Resources/gamma-setup-engine
 ```
 
-Run the setup directly:
+The backend accepts a JSON request file and returns either a JSON preflight report or newline-delimited JSON events. Build the app first:
 
 ```sh
-./sources/scripts/gamma-setup-tool.sh
+./build.sh
 ```
 
-Preview planned work without changing files:
+Create a request file:
+
+```json
+{
+  "appName": "stalker-gamma",
+  "outputApp": "/Users/me/Applications/Sikarugir/stalker-gamma.app",
+  "engine": "WS12WineCX24.0.7_7",
+  "renderer": "d3dmetal",
+  "moltenVKFastMath": false,
+  "metalHUD": false,
+  "dxmtMetalFXSpatial": false,
+  "dxmtMetalFXScaleFactor": "",
+  "dxmtLogLevel": "",
+  "dxvkHUD": "",
+  "mo2Path": "/Users/me/Games/GAMMA/ModOrganizer.exe",
+  "gammaPath": "",
+  "anomalyPath": "",
+  "programBatch": "/mo2.bat",
+  "driveMappingMode": "preserve",
+  "extraWinetricks": [],
+  "commonFixes": ["d3dmetal-reticle"],
+  "writeLog": true,
+  "verbose": true,
+  "dryRun": false,
+  "forceDownload": false,
+  "replace": false,
+  "settingsFile": "/Users/me/Library/Application Support/stalker-gamma/settings.json",
+  "usvfsSource": "/Users/elseform/mods/gamma/5_other/usvfs_v0.5.7.2",
+  "appIconSource": "",
+  "resourceRoot": ""
+}
+```
+
+Run preflight:
 
 ```sh
-./sources/scripts/gamma-setup-tool.sh --preview
+./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine preflight --request-file request.json
 ```
 
-Dry run:
+Create or update the wrapper:
 
 ```sh
-./sources/scripts/gamma-setup-tool.sh --dry-run
+./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine create --request-file request.json
 ```
 
-Verbose dry run:
+Install Homebrew-managed dependencies:
 
 ```sh
-./sources/scripts/gamma-setup-tool.sh --dry-run --verbose
+./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine install-dependencies --request-file request.json
 ```
 
-Custom wrapper path:
+Install one dependency:
 
 ```sh
-./sources/scripts/gamma-setup-tool.sh --output-app /private/tmp/stalker-gamma-test.app
+./dist/GAMMA\ Setup\ Tool.app/Contents/Resources/gamma-setup-engine install-dependency --name winetricks --request-file request.json
 ```
 
-Use DXMT instead of the default D3DMetal renderer:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --renderer dxmt
-```
-
-Enable MoltenVK fast math:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --moltenvk-fast-math
-```
-
-Enable Apple's Metal HUD:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --metal-hud
-```
-
-Enable documented DXMT options:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --renderer dxmt --dxmt-metalfx-spatial --dxmt-max-frame-rate 60 --dxmt-log-level info
-```
-
-Install extra winetricks verbs:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --extra-winetricks "quartz lavfilters"
-```
-
-Apply the optional D3DMetal/DXMT reticle fix:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --common-fix d3dmetal-reticle
-```
-
-Write a timestamped top-level log:
-
-```sh
-./sources/scripts/gamma-setup-tool.sh --log-file
-```
-
-### CLI Options
-
-- `--output-app PATH`: target `.app` path. Default: `~/Applications/Sikarugir/stalker-gamma.app`.
-- `--engine NAME`: Sikarugir engine name. Default: `WS12WineCX24.0.7_7`.
-- `--renderer NAME`: graphics renderer, either `d3dmetal` or `dxmt`. Default: `d3dmetal`.
-- `--moltenvk-fast-math`: sets `MVK_CONFIG_FAST_MATH_ENABLED=1` in the wrapper environment.
-- `--metal-hud`: sets `MTL_HUD_ENABLED=1` in the wrapper environment.
-- `--dxmt-metalfx-spatial`: sets `DXMT_METALFX_SPATIAL_SWAPCHAIN=1` when DXMT is selected.
-- `--dxmt-max-frame-rate N`: appends `d3d11.preferredMaxFrameRate=N;` to `DXMT_CONFIG` when DXMT is selected.
-- `--dxmt-log-level L`: sets `DXMT_LOG_LEVEL`. Supported values: `none`, `error`, `warn`, `info`, `debug`.
-- `--mo2 PATH`: full path to `ModOrganizer.exe`.
-- `--gamma PATH`: full path to the GAMMA folder.
-- `--anomaly PATH`: full path to the Anomaly folder.
-- `--program-bat PATH`: Windows launch batch inside `drive_c`. Default: `/mo2.bat`.
-- `--replace`: rebuild an existing non-managed target app.
-- `--force-download`: re-download cached Sikarugir template and engine archives.
-- `--extra-winetricks V`: additional winetricks verbs, separated by spaces or commas.
-- `--common-fix NAME`: optional fix to apply. Supported: `d3dmetal-reticle`.
-- `--assume-rewrite-z`: non-interactively accept the `ModOrganizer.ini` `Z:` to `G:` repair.
-- `--preflight-json`: print detected setup state as JSON and exit.
-- `--install-components-only`: install Homebrew-managed setup dependencies and exit.
-- `--log-file`: write a timestamped setup log next to the script.
-- `--preview`: print the planned action list without changing files.
-- `--dry-run`: print planned work without changing files.
-- `--verbose`: print more command detail.
+For non-mutating checks, set `"dryRun": true` in the request. The `create` command then streams the same event protocol without changing files.
 
 ### Setup Engine Details
 
-`sources/scripts/gamma-setup-tool.sh` performs these operations:
+`gamma-setup-engine` performs these operations:
 
 - Installs or verifies Homebrew tap `sikarugir-app/sikarugir`, Sikarugir Creator, and `winetricks`.
 - Reads `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json`.
@@ -281,19 +271,19 @@ Write a timestamped top-level log:
 - Downloads or reuses cached Sikarugir template and engine archives.
 - Extracts the engine into the wrapper.
 - Initializes the Sikarugir Wine prefix inside the wrapper.
-- Enables D3DMetal by default, or DXMT when selected.
+- Enables D3DMetal by default, or DXMT/DXVK when selected.
 - Keeps MoltenVK-CX, MSync, and ESync enabled.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a short Wine drive mapping for the detected macOS install location.
-- Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dcompiler_43`, `d3dcompiler_47`, `d3dx9`, `d3dx10`, `d3dx11_43`, and `vcrun2022`.
+- Installs required Wine dependencies with `winetricks`: `corefonts`, `vcrun2022`, `d3dcompiler_42`, `d3dcompiler_43`, `d3dcompiler_46`, `d3dcompiler_47`, `d3dx9`, `d3dx10`, `d3dx11_42`, and `d3dx11_43`.
 - Installs any extra winetricks verbs requested by the user.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs as `native,builtin`.
-- Creates `drive_c/mo2.bat`, which starts `ModOrganizer.exe`.
+- Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
 - Marks the wrapper as managed by this tool.
 
 ### Logs And Cache
 
-Top-level setup logs are optional. Pass `--log-file` or enable `Save log` in the GUI to create:
+Top-level setup logs are optional. Pass `--log-file` or enable `Save verbose log` in the GUI to create a log in `~/`:
 
 ```text
 gamma-setup-tool.YYYYMMDD-HHMMSS.log

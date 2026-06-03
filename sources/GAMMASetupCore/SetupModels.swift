@@ -1,0 +1,254 @@
+import Foundation
+
+public enum SetupEngineStage: String, Codable, CaseIterable {
+    case wrapper
+    case engine
+    case prefix
+    case driveMapping
+    case winetricks
+    case finalize
+}
+
+public enum SetupEngineEventType: String, Codable {
+    case log
+    case stageStarted
+    case stageFinished
+    case stageFailed
+    case artifact
+    case completed
+}
+
+public struct SetupEngineEvent: Codable {
+    public var type: SetupEngineEventType
+    public var stage: SetupEngineStage?
+    public var message: String?
+    public var severity: String?
+    public var path: String?
+    public var success: Bool?
+
+    public init(
+        type: SetupEngineEventType,
+        stage: SetupEngineStage? = nil,
+        message: String? = nil,
+        severity: String? = nil,
+        path: String? = nil,
+        success: Bool? = nil
+    ) {
+        self.type = type
+        self.stage = stage
+        self.message = message
+        self.severity = severity
+        self.path = path
+        self.success = success
+    }
+}
+
+public struct Preflight: Codable {
+    public var targetApp: String
+    public var engine: String
+    public var renderer: String
+    public var moltenVKFastMath: Bool
+    public var programBatch: String
+    public var stalkerGammaPath: String
+    public var stalkerGammaFound: Bool
+    public var settingsFile: String
+    public var settingsFound: Bool
+    public var gammaPath: String
+    public var gammaFound: Bool
+    public var mo2Path: String
+    public var mo2Found: Bool
+    public var anomalyPath: String
+    public var anomalyFound: Bool
+    public var mo2Profile: String
+    public var modlistPath: String
+    public var modlistFound: Bool
+    public var modOrganizerIni: String
+    public var modOrganizerIniFound: Bool
+    public var modOrganizerGamePath: String
+    public var wineDriveLetter: String
+    public var wineDriveRoot: String
+    public var zRewriteRequired: Bool
+    public var zShortenAvailable: Bool
+    public var shortWineDriveLetter: String
+    public var shortWineDriveRoot: String
+    public var homebrewPath: String
+    public var homebrewFound: Bool
+    public var sikarugirTapInstalled: Bool
+    public var sikarugirInstalled: Bool
+    public var winetricksPath: String
+    public var winetricksFound: Bool
+
+    public init(
+        targetApp: String,
+        engine: String,
+        renderer: String,
+        moltenVKFastMath: Bool,
+        programBatch: String,
+        stalkerGammaPath: String,
+        stalkerGammaFound: Bool,
+        settingsFile: String,
+        settingsFound: Bool,
+        gammaPath: String,
+        gammaFound: Bool,
+        mo2Path: String,
+        mo2Found: Bool,
+        anomalyPath: String,
+        anomalyFound: Bool,
+        mo2Profile: String,
+        modlistPath: String,
+        modlistFound: Bool,
+        modOrganizerIni: String,
+        modOrganizerIniFound: Bool,
+        modOrganizerGamePath: String,
+        wineDriveLetter: String,
+        wineDriveRoot: String,
+        zRewriteRequired: Bool,
+        zShortenAvailable: Bool,
+        shortWineDriveLetter: String,
+        shortWineDriveRoot: String,
+        homebrewPath: String,
+        homebrewFound: Bool,
+        sikarugirTapInstalled: Bool,
+        sikarugirInstalled: Bool,
+        winetricksPath: String,
+        winetricksFound: Bool
+    ) {
+        self.targetApp = targetApp
+        self.engine = engine
+        self.renderer = renderer
+        self.moltenVKFastMath = moltenVKFastMath
+        self.programBatch = programBatch
+        self.stalkerGammaPath = stalkerGammaPath
+        self.stalkerGammaFound = stalkerGammaFound
+        self.settingsFile = settingsFile
+        self.settingsFound = settingsFound
+        self.gammaPath = gammaPath
+        self.gammaFound = gammaFound
+        self.mo2Path = mo2Path
+        self.mo2Found = mo2Found
+        self.anomalyPath = anomalyPath
+        self.anomalyFound = anomalyFound
+        self.mo2Profile = mo2Profile
+        self.modlistPath = modlistPath
+        self.modlistFound = modlistFound
+        self.modOrganizerIni = modOrganizerIni
+        self.modOrganizerIniFound = modOrganizerIniFound
+        self.modOrganizerGamePath = modOrganizerGamePath
+        self.wineDriveLetter = wineDriveLetter
+        self.wineDriveRoot = wineDriveRoot
+        self.zRewriteRequired = zRewriteRequired
+        self.zShortenAvailable = zShortenAvailable
+        self.shortWineDriveLetter = shortWineDriveLetter
+        self.shortWineDriveRoot = shortWineDriveRoot
+        self.homebrewPath = homebrewPath
+        self.homebrewFound = homebrewFound
+        self.sikarugirTapInstalled = sikarugirTapInstalled
+        self.sikarugirInstalled = sikarugirInstalled
+        self.winetricksPath = winetricksPath
+        self.winetricksFound = winetricksFound
+    }
+}
+
+public struct SetupRequest: Codable {
+    public var appName: String
+    public var outputApp: String
+    public var engine: String
+    public var renderer: String
+    public var wineESync: Bool
+    public var wineMSync: Bool
+    public var updateUSVFS: Bool
+    public var moltenVKFastMath: Bool
+    public var metalHUD: Bool
+    public var dxmtMetalFXSpatial: Bool
+    public var dxmtMetalFXScaleFactor: String
+    public var dxmtLogLevel: String
+    public var dxvkHUD: String
+    public var mo2Path: String
+    public var gammaPath: String
+    public var anomalyPath: String
+    public var programBatch: String
+    public var driveMappingMode: String
+    public var extraWinetricks: [String]
+    public var commonFixes: [String]
+    public var writeLog: Bool
+    public var verbose: Bool
+    public var dryRun: Bool
+    public var forceDownload: Bool
+    public var replace: Bool
+    public var settingsFile: String
+    public var usvfsSource: String
+    public var appIconSource: String
+    public var resourceRoot: String
+
+    public init(
+        appName: String = "stalker-gamma",
+        outputApp: String,
+        engine: String = SetupDefaults.defaultEngine,
+        renderer: String = "d3dmetal",
+        wineESync: Bool = true,
+        wineMSync: Bool = true,
+        updateUSVFS: Bool = false,
+        moltenVKFastMath: Bool = false,
+        metalHUD: Bool = false,
+        dxmtMetalFXSpatial: Bool = false,
+        dxmtMetalFXScaleFactor: String = "",
+        dxmtLogLevel: String = "",
+        dxvkHUD: String = "",
+        mo2Path: String = "",
+        gammaPath: String = "",
+        anomalyPath: String = "",
+        programBatch: String = "/mo2.bat",
+        driveMappingMode: String = "preserve",
+        extraWinetricks: [String] = [],
+        commonFixes: [String] = [],
+        writeLog: Bool = false,
+        verbose: Bool = false,
+        dryRun: Bool = false,
+        forceDownload: Bool = false,
+        replace: Bool = false,
+        settingsFile: String = SetupDefaults.defaultSettingsFile,
+        usvfsSource: String = SetupDefaults.defaultUSVFSSource,
+        appIconSource: String = "",
+        resourceRoot: String = ""
+    ) {
+        self.appName = appName
+        self.outputApp = outputApp
+        self.engine = engine
+        self.renderer = renderer
+        self.wineESync = wineESync
+        self.wineMSync = wineMSync
+        self.updateUSVFS = updateUSVFS
+        self.moltenVKFastMath = moltenVKFastMath
+        self.metalHUD = metalHUD
+        self.dxmtMetalFXSpatial = dxmtMetalFXSpatial
+        self.dxmtMetalFXScaleFactor = dxmtMetalFXScaleFactor
+        self.dxmtLogLevel = dxmtLogLevel
+        self.dxvkHUD = dxvkHUD
+        self.mo2Path = mo2Path
+        self.gammaPath = gammaPath
+        self.anomalyPath = anomalyPath
+        self.programBatch = programBatch
+        self.driveMappingMode = driveMappingMode
+        self.extraWinetricks = extraWinetricks
+        self.commonFixes = commonFixes
+        self.writeLog = writeLog
+        self.verbose = verbose
+        self.dryRun = dryRun
+        self.forceDownload = forceDownload
+        self.replace = replace
+        self.settingsFile = settingsFile
+        self.usvfsSource = usvfsSource
+        self.appIconSource = appIconSource
+        self.resourceRoot = resourceRoot
+    }
+}
+
+public enum SetupDefaults {
+    public static let defaultEngine = "WS12WineCX24.0.7_7"
+    public static let sikarugir10Engine = "WS12WineSikarugir10.0_6"
+    public static let supportedEngines = [defaultEngine, sikarugir10Engine]
+    public static let defaultUSVFSSource = "/Users/elseform/mods/gamma/5_other/usvfs_v0.5.7.2"
+    public static let defaultSettingsFile = NSString(
+        string: "~/Library/Application Support/stalker-gamma/settings.json"
+    ).expandingTildeInPath
+}

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_VERSION="0.67"
 BUILD_DIR="$ROOT_DIR/dist"
 INTERMEDIATES_DIR="$BUILD_DIR/intermediates"
 APP_DIR="$BUILD_DIR/GAMMA Setup Tool.app"
@@ -10,6 +11,8 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 BINARY="$MACOS_DIR/GAMMA Setup Tool"
 INTERMEDIATE_BINARY="$INTERMEDIATES_DIR/GAMMA Setup Tool"
+ENGINE_BINARY="$RESOURCES_DIR/gamma-setup-engine"
+INTERMEDIATE_ENGINE_BINARY="$INTERMEDIATES_DIR/gamma-setup-engine"
 MODULE_CACHE_DIR="$BUILD_DIR/module-cache"
 MODE="${1:-build}"
 
@@ -28,6 +31,24 @@ if [[ "$MODE" == "clean" ]]; then
   exit 0
 fi
 
+is_stale() {
+  local output="$1"
+  shift
+
+  if [[ ! -e "$output" ]]; then
+    return 0
+  fi
+
+  local input
+  for input in "$@"; do
+    if [[ "$input" -nt "$output" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$MODULE_CACHE_DIR" "$INTERMEDIATES_DIR"
 
 swiftc \
@@ -37,13 +58,24 @@ swiftc \
   -module-cache-path "$MODULE_CACHE_DIR" \
   -framework SwiftUI \
   -framework AppKit \
+  "$ROOT_DIR"/sources/GAMMASetupCore/*.swift \
   "$ROOT_DIR"/sources/GAMMASetupTool/*.swift \
   -o "$INTERMEDIATE_BINARY"
 
 cp "$INTERMEDIATE_BINARY" "$BINARY"
 
-cp "$ROOT_DIR/sources/scripts/gamma-setup-tool.sh" "$RESOURCES_DIR/gamma-setup-tool.sh"
-chmod +x "$RESOURCES_DIR/gamma-setup-tool.sh"
+if [[ "$MODE" == "build" ]] || is_stale "$INTERMEDIATE_ENGINE_BINARY" "$ROOT_DIR"/sources/GAMMASetupCore/*.swift "$ROOT_DIR"/sources/GAMMASetupEngine/main.swift; then
+  swiftc \
+    -O \
+    -target arm64-apple-macosx13.0 \
+    -module-cache-path "$MODULE_CACHE_DIR" \
+    "$ROOT_DIR"/sources/GAMMASetupCore/*.swift \
+    "$ROOT_DIR"/sources/GAMMASetupEngine/main.swift \
+    -o "$INTERMEDIATE_ENGINE_BINARY"
+fi
+
+cp "$INTERMEDIATE_ENGINE_BINARY" "$ENGINE_BINARY"
+chmod +x "$ENGINE_BINARY"
 
 cp "$ROOT_DIR/assets/Anomaly.icns" "$RESOURCES_DIR/GAMMASetupTool.icns"
 mkdir -p "$RESOURCES_DIR/mods"
@@ -73,9 +105,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.6</string>
+  <string>APP_VERSION_PLACEHOLDER</string>
   <key>CFBundleVersion</key>
-  <string>0.6</string>
+  <string>APP_VERSION_PLACEHOLDER</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>NSHighResolutionCapable</key>
@@ -84,7 +116,11 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --deep --sign - "$APP_DIR"
+perl -0pi -e "s/APP_VERSION_PLACEHOLDER/$APP_VERSION/g" "$CONTENTS_DIR/Info.plist"
+
+if [[ "$MODE" == "build" ]]; then
+  codesign --force --deep --sign - "$APP_DIR"
+fi
 
 echo "$APP_DIR"
 

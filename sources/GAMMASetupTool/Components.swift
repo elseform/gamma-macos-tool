@@ -20,7 +20,7 @@ struct StatusRow: View {
             }
             Text(value.isEmpty ? "Not detected" : value)
                 .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(ok ? .green : (warning ? .yellow : .red))
+                .foregroundStyle(SetupStatusTone.statusRow(ok: ok, warning: warning).color)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -94,7 +94,13 @@ struct BrandIcon: View {
     let fallbackSystemName: String
 
     var body: some View {
-        if let url = Bundle.main.url(forResource: resourceName, withExtension: "svg"),
+        if let url = AppResources.bundle.url(forResource: resourceName, withExtension: "svg"),
+           let image = NSImage(contentsOf: url) {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 16, height: 16)
+        } else if let url = Bundle.main.url(forResource: resourceName, withExtension: "svg"),
            let image = NSImage(contentsOf: url) {
             Image(nsImage: image)
                 .resizable()
@@ -104,6 +110,15 @@ struct BrandIcon: View {
             Image(systemName: fallbackSystemName)
                 .frame(width: 16, height: 16)
         }
+    }
+}
+
+struct HazardIcon: View {
+    var body: some View {
+        Text("☢")
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(.primary)
+            .frame(width: 16, height: 16)
     }
 }
 
@@ -142,23 +157,43 @@ enum WizardStep: Int, CaseIterable, Identifiable {
     }
 }
 
-struct CheckRow: View {
+struct CheckRow<Action: View>: View {
     let label: String
     let status: String
     let ok: Bool
     var warning = false
     var detail: String?
+    var prominent = false
+    @ViewBuilder var action: () -> Action
+
+    init(
+        label: String,
+        status: String,
+        ok: Bool,
+        warning: Bool = false,
+        detail: String? = nil,
+        prominent: Bool = false,
+        @ViewBuilder action: @escaping () -> Action
+    ) {
+        self.label = label
+        self.status = status
+        self.ok = ok
+        self.warning = warning
+        self.detail = detail
+        self.prominent = prominent
+        self.action = action
+    }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: ok ? "checkmark.circle.fill" : (warning ? "exclamationmark.triangle.fill" : "xmark.circle.fill"))
-                .font(.body.weight(.semibold))
-                .foregroundStyle(ok ? .green : (warning ? .yellow : .red))
-                .frame(width: 19)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
+                .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
-                    .font(.body.weight(.semibold))
+                    .font(.title3.weight(.semibold))
                 if let detail, !detail.isEmpty {
                     Text(detail)
                         .font(.caption)
@@ -172,12 +207,30 @@ struct CheckRow: View {
             Spacer(minLength: 12)
 
             Text(status)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(ok ? .green : (warning ? .yellow : .red))
-                .frame(minWidth: 72, alignment: .trailing)
-                .padding(.trailing, 10)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
+                .frame(width: 96, alignment: .trailing)
+
+            action()
+                .frame(width: 150, height: 28, alignment: .trailing)
         }
-        .padding(.vertical, 5)
+        .padding(.vertical, 11)
+        .frame(minHeight: 50)
+    }
+}
+
+extension CheckRow where Action == EmptyView {
+    init(
+        label: String,
+        status: String,
+        ok: Bool,
+        warning: Bool = false,
+        detail: String? = nil,
+        prominent: Bool = false
+    ) {
+        self.init(label: label, status: status, ok: ok, warning: warning, detail: detail, prominent: prominent) {
+            EmptyView()
+        }
     }
 }
 
@@ -192,6 +245,32 @@ struct SummaryRow: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.body)
+                .textSelection(.enabled)
+                .lineLimit(2)
+                .truncationMode(.middle)
+        }
+    }
+}
+
+struct SetupSummaryRow: View {
+    let item: SetupSummaryItem
+
+    var body: some View {
+        GridRow {
+            HStack(spacing: 5) {
+                Text(item.label)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                if item.changed {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.yellow)
+                        .help("This value will be updated.")
+                }
+            }
+            Text(item.displayValue)
+                .font(.body)
+                .foregroundStyle(item.changed ? .yellow : .primary)
                 .textSelection(.enabled)
                 .lineLimit(2)
                 .truncationMode(.middle)
