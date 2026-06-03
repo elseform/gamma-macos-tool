@@ -12,12 +12,12 @@ struct ContentView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .center, spacing: 0) {
                 currentStepView
                     .id(step)
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
-            .frame(maxWidth: Layout.contentMaxWidth, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: Layout.contentMaxWidth, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, Layout.contentHorizontalPadding)
             .padding(.vertical, Layout.contentVerticalPadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

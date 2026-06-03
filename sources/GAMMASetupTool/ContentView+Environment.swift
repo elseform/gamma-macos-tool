@@ -7,9 +7,12 @@ private enum InstallButtonRow {
 
 extension ContentView {
     var environmentStep: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             if let preflight = model.preflight {
-                GroupBox {
+                WizardCard(
+                    horizontalPadding: Layout.environmentPanelHorizontalPadding,
+                    verticalPadding: Layout.environmentPanelVerticalPadding
+                ) {
                     VStack(alignment: .leading, spacing: 8) {
                         CheckRow(label: "Homebrew", status: preflight.homebrewFound ? "" : "Required", ok: preflight.homebrewFound)
                         Divider()
@@ -32,23 +35,19 @@ extension ContentView {
                         }
                         if preflight.zRewriteRequired {
                             Divider()
-                            CheckRow(label: "ModOrganizer drive repair", status: "Needed", ok: false, warning: true, detail: "Z: paths need repair before non-interactive setup.")
-                        }
-                        if shouldShowEnvironmentGate && !environmentGateMessage.isEmpty {
-                            Divider()
-                            environmentGate
+                            CheckRow(label: "ModOrganizer drive repair", status: "Needed", ok: false, warning: true, detail: "Z: paths need repair before setup can continue.")
                         }
                     }
-                    .padding(.horizontal, Layout.environmentPanelHorizontalPadding)
-                    .padding(.vertical, Layout.environmentPanelVerticalPadding)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: Layout.environmentPanelWidth, alignment: .topLeading)
-                if !shouldShowEnvironmentGate {
-                    environmentNextPanel
+                .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+                if shouldShowEnvironmentGate {
+                    environmentGate
                 }
             } else if let gammaFolderSelectionError = model.gammaFolderSelectionError {
-                GroupBox {
+                WizardCard(
+                    horizontalPadding: Layout.environmentPanelHorizontalPadding,
+                    verticalPadding: Layout.environmentPanelVerticalPadding
+                ) {
                     VStack(alignment: .leading, spacing: 8) {
                         CheckRow(
                             label: "GAMMA installation",
@@ -63,17 +62,15 @@ extension ContentView {
                             }
                         }
                     }
-                    .padding(.horizontal, Layout.environmentPanelHorizontalPadding)
-                    .padding(.vertical, Layout.environmentPanelVerticalPadding)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: Layout.environmentPanelWidth, alignment: .topLeading)
+                .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
             } else {
                 Text(model.preflightError.isEmpty ? "Detecting setup state..." : model.preflightError)
                     .foregroundStyle(model.preflightError.isEmpty ? Color.secondary : Color.red)
                     .textSelection(.enabled)
             }
         }
+        .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
     }
 
     func continueFromEnvironment() {
@@ -142,26 +139,6 @@ extension ContentView {
         }
     }
 
-    var environmentNextPanel: some View {
-        // GroupBox {
-            // HStack {
-                // Spacer()
-                Button {
-                    continueFromEnvironment()
-                } label: {
-                    Label("Wrapper creation", systemImage: "arrow.right.circle")
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(!model.environmentOK || model.isRunning)
-                // Spacer()
-            // }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .center)
-        // }
-        .frame(maxWidth: Layout.environmentPanelWidth, alignment: .topLeading)
-    }
-
     var environmentGate: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
@@ -199,7 +176,7 @@ extension ContentView {
                     DisclosureGroup("Output", isExpanded: $model.showOutput) {
                         TextEditor(text: $model.logText)
                             .font(.system(.body, design: .monospaced))
-                            .frame(height: 140)
+                            .frame(height: 130)
                             .border(Color(nsColor: .separatorColor))
                     }
                 }

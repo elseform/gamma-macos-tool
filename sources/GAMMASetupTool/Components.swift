@@ -122,6 +122,31 @@ struct HazardIcon: View {
     }
 }
 
+struct CardHeading: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+    }
+}
+
+struct WizardCard<Content: View>: View {
+    var horizontalPadding = Layout.setupPanelHorizontalPadding
+    var verticalPadding = Layout.setupPanelVerticalPadding
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        GroupBox {
+            content()
+                .padding(.horizontal, horizontalPadding)
+                .padding(.vertical, verticalPadding)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
 enum WizardStep: Int, CaseIterable, Identifiable {
     case environment
     case setup
@@ -264,13 +289,13 @@ struct SetupSummaryRow: View {
                 if item.changed {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.caption)
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(SetupStatusTone.accent.color)
                         .help("This value will be updated.")
                 }
             }
             Text(item.displayValue)
                 .font(.body)
-                .foregroundStyle(item.changed ? .yellow : .primary)
+                .foregroundStyle(item.changed ? SetupStatusTone.accent.color : .primary)
                 .textSelection(.enabled)
                 .lineLimit(2)
                 .truncationMode(.middle)

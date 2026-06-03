@@ -2,7 +2,7 @@ import SwiftUI
 
 extension ContentView {
     var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // VStack(alignment: .leading, spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(headerTitle)
@@ -32,10 +32,11 @@ extension ContentView {
                 }
                 Spacer()
             }
-        }
+        // }
         .frame(minHeight: Layout.headerContentMinHeight, alignment: .topLeading)
         .padding(.horizontal, Layout.headerHorizontalPadding)
-        .padding(.vertical, Layout.headerVerticalPadding)
+        .padding(.top, Layout.headerTopPadding)
+        .padding(.bottom, Layout.headerBottomPadding)
         .background(Color(nsColor: .underPageBackgroundColor))
         .transaction { transaction in
             transaction.animation = nil
@@ -88,21 +89,16 @@ extension ContentView {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
-            if step != .environment && step != .setup && step != .complete {
-                Button("Back") {
-                    if let previous = previousStep {
-                        step = previous
-                    }
-                }
-                .disabled(previousStep == nil || model.isRunning)
-            }
+            footerLinks
 
             Spacer()
 
-            footerLinks
+            footerBackButton
+            footerPrimaryButton
         }
         .padding(.horizontal, Layout.footerHorizontalPadding)
         .padding(.vertical, Layout.footerVerticalPadding)
+        .background(Color(nsColor: .underPageBackgroundColor))
     }
 
     var footerLinks: some View {
@@ -126,6 +122,61 @@ extension ContentView {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help("Discord thread")
+        }
+    }
+
+    @ViewBuilder
+    var footerBackButton: some View {
+        if step == .create && !model.isRunning && !createButtonSubmitted {
+            Button("Back") {
+                if let previous = previousStep {
+                    step = previous
+                }
+            }
+            .disabled(previousStep == nil)
+        }
+    }
+
+    @ViewBuilder
+    var footerPrimaryButton: some View {
+        switch step {
+        case .environment:
+            Button {
+                continueFromEnvironment()
+            } label: {
+                Label("Continue", systemImage: "arrow.right.circle")
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .disabled(!model.environmentOK || model.isRunning)
+        case .setup:
+            Button {
+                continueToNextStep()
+            } label: {
+                Label("Confirm settings", systemImage: "arrow.right.circle")
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .disabled(!canContinue)
+        case .create:
+            if !model.isRunning && !createButtonSubmitted {
+                Button {
+                    startCreate()
+                } label: {
+                    Label(model.primaryButtonTitle, systemImage: "play.circle")
+                }
+                .keyboardShortcut(.return, modifiers: [.command])
+                .disabled(model.isRunning || !model.environmentOK || !model.driveMappingReady)
+            }
+        case .complete:
+            Button {
+                model.showCreatedAppAndQuit()
+            } label: {
+                HStack(spacing: 6) {
+                    HazardIcon()
+                    Text("Show .app")
+                }
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .help("Show wrapper in Finder")
         }
     }
 
@@ -171,5 +222,16 @@ extension ContentView {
         guard let next = nextStep else { return }
         furthestUnlockedStep = next.rawValue > furthestUnlockedStep.rawValue ? next : furthestUnlockedStep
         step = next
+    }
+
+    func startCreate() {
+        createButtonSubmitted = true
+        Task {
+            let created = await model.create()
+            createButtonSubmitted = false
+            if created {
+                step = .complete
+            }
+        }
     }
 }
