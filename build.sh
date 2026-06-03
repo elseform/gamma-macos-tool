@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="$ROOT_DIR/dist"
+INTERMEDIATES_DIR="$BUILD_DIR/intermediates"
+APP_DIR="$BUILD_DIR/GAMMA Setup Tool.app"
+CONTENTS_DIR="$APP_DIR/Contents"
+MACOS_DIR="$CONTENTS_DIR/MacOS"
+RESOURCES_DIR="$CONTENTS_DIR/Resources"
+BINARY="$MACOS_DIR/GAMMA Setup Tool"
+INTERMEDIATE_BINARY="$INTERMEDIATES_DIR/GAMMA Setup Tool"
+MODULE_CACHE_DIR="$BUILD_DIR/module-cache"
+MODE="${1:-build}"
+
+case "$MODE" in
+  build|run|clean)
+    ;;
+  *)
+    printf 'Usage: %s [build|run|clean]\n' "$(basename "$0")" >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$MODE" == "clean" ]]; then
+  rm -rf "$BUILD_DIR"
+  printf 'Removed %s\n' "$BUILD_DIR"
+  exit 0
+fi
+
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$MODULE_CACHE_DIR" "$INTERMEDIATES_DIR"
+
+swiftc \
+  -parse-as-library \
+  -Onone \
+  -target arm64-apple-macosx13.0 \
+  -module-cache-path "$MODULE_CACHE_DIR" \
+  -framework SwiftUI \
+  -framework AppKit \
+  "$ROOT_DIR"/sources/GAMMASetupTool/*.swift \
+  -o "$INTERMEDIATE_BINARY"
+
+cp "$INTERMEDIATE_BINARY" "$BINARY"
+
+cp "$ROOT_DIR/sources/scripts/gamma-setup-tool.sh" "$RESOURCES_DIR/gamma-setup-tool.sh"
+chmod +x "$RESOURCES_DIR/gamma-setup-tool.sh"
+
+cp "$ROOT_DIR/assets/Anomaly.icns" "$RESOURCES_DIR/GAMMASetupTool.icns"
+mkdir -p "$RESOURCES_DIR/mods"
+cp "$ROOT_DIR/assets/Anomaly.icns" "$RESOURCES_DIR/Anomaly.icns"
+cp "$ROOT_DIR/assets/MO2.icns" "$RESOURCES_DIR/MO2.icns"
+cp "$ROOT_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z" "$RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z"
+cp "$ROOT_DIR/assets/github.svg" "$RESOURCES_DIR/github.svg"
+cp "$ROOT_DIR/assets/discord.svg" "$RESOURCES_DIR/discord.svg"
+
+cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleExecutable</key>
+  <string>GAMMA Setup Tool</string>
+  <key>CFBundleIconFile</key>
+  <string>GAMMASetupTool</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.elseform.gamma-setup-tool</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>GAMMA Setup Tool</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.6</string>
+  <key>CFBundleVersion</key>
+  <string>0.6</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+</dict>
+</plist>
+PLIST
+
+codesign --force --deep --sign - "$APP_DIR"
+
+echo "$APP_DIR"
+
+if [[ "$MODE" == "run" ]]; then
+  "$BINARY"
+fi
