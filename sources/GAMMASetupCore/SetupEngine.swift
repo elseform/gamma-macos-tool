@@ -97,6 +97,11 @@ struct ProcessRunner {
             process.environment = merged
         }
 
+        let command = ([executable] + arguments).map(shellQuote).joined(separator: " ")
+        if verbose {
+            reporter?.log("run: \(command)")
+        }
+
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
@@ -105,9 +110,14 @@ struct ProcessRunner {
         process.waitUntilExit()
         let output = String(data: data, encoding: .utf8) ?? ""
         if process.terminationStatus != 0 {
-            let command = ([executable] + arguments).map(shellQuote).joined(separator: " ")
             let detail = output.trimmingCharacters(in: .whitespacesAndNewlines)
             throw SetupEngineError.message("\(label ?? command) failed\(detail.isEmpty ? "" : ": \(detail)")")
+        }
+        if verbose {
+            let detail = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !detail.isEmpty {
+                reporter?.log("\(label ?? executable) output:\n\(detail)")
+            }
         }
         return CommandResult(output: output, exitCode: process.terminationStatus)
     }

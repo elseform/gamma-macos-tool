@@ -4,30 +4,31 @@ import AppKit
 extension ContentView {
     var createStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            GroupBox {
-                Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 9) {
-                    ForEach(model.setupSummaryItems) { item in
-                        SetupSummaryRow(item: item)
-                    }
+            if model.isRunning || createButtonSubmitted || model.installFailed {
+                runStatus
+            } else {
+                setupReviewCard
+            }
+        }
+        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+    }
+
+    var setupReviewCard: some View {
+        WizardCard {
+            Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 9) {
+                ForEach(model.setupSummaryItems) { item in
+                    SetupSummaryRow(item: item)
                 }
-                .font(.system(size: 15))
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: Layout.setupContentWidth, alignment: .topLeading)
-
-            if !model.isRunning && !createButtonSubmitted {
-                createActionPanel
-            }
-
-            runStatus
+            .font(.system(size: 15))
+            .padding(.vertical, 4)
         }
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
     }
 
     var completeStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            GroupBox {
+            WizardCard {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
                         Image(systemName: "checkmark.circle.fill")
@@ -70,74 +71,22 @@ extension ContentView {
                     .font(.callout)
 
                 }
-                .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-                .padding(.vertical, Layout.setupPanelVerticalPadding)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
-
-            completeActionPanel
         }
-        .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
-    }
-
-    var createActionPanel: some View {
-        // GroupBox {
-        //     HStack {
-        //         Spacer()
-                Button {
-                    createButtonSubmitted = true
-                    Task {
-                        let created = await model.create()
-                        createButtonSubmitted = false
-                        if created {
-                            step = .complete
-                        }
-                    }
-                } label: {
-                    Label(model.primaryButtonTitle, systemImage: "play.circle")
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(model.isRunning || !model.environmentOK || !model.driveMappingReady)
-            //     Spacer()
-            // }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .center)
-        // }
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
-    }
-
-    var completeActionPanel: some View {
-        // GroupBox {
-        //     HStack {
-        //         Spacer()
-                Button {
-                    model.showCreatedAppAndQuit()
-                } label: {
-                    HStack(spacing: 6) {
-                        HazardIcon()
-                        Text("Show .app")
-                    }
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .help("Show wrapper in Finder")
-                // Spacer()
-            // }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .center)
-        // }
         .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
     }
 
     var runStatus: some View {
         VStack(alignment: .leading, spacing: 12) {
             if model.isRunning || model.installFailed {
-                installStages
-                if model.isRunning {
-                    ProgressView(value: model.progress)
+                WizardCard {
+                    installStages
                 }
+                .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+
+                ProgressView(value: model.progress)
+
                 if model.installFailed {
                     installFailureView
                 }
@@ -147,7 +96,7 @@ extension ContentView {
                 DisclosureGroup("Output", isExpanded: $model.showOutput) {
                     TextEditor(text: $model.logText)
                         .font(.system(.body, design: .monospaced))
-                        .frame(height: 160)
+                        .frame(height: 130)
                         .border(Color(nsColor: .separatorColor))
                 }
             }
@@ -194,7 +143,7 @@ extension ContentView {
     }
 
     var installStages: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(installStageRows.enumerated()), id: \.offset) { index, row in
                 installStageRow(index: index, row: row)
             }
@@ -229,7 +178,7 @@ extension ContentView {
             }
             Spacer()
         }
-        .frame(height: 18)
+        .frame(height: 16)
     }
 
     func stageIcon(for index: Int) -> some View {

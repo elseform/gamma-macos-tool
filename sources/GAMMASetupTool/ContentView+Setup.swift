@@ -15,28 +15,10 @@ extension ContentView {
                 .frame(width: Layout.setupRightColumnWidth, alignment: .topLeading)
             }
             .frame(width: Layout.setupContentWidth, alignment: .topLeading)
-
-            setupNextPanel
         }
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
         .disabled(!model.environmentOK || model.isRunning)
         .opacity((model.environmentOK && !model.isRunning) ? 1 : 0.45)
-    }
-
-    var setupNextPanel: some View {
-        // GroupBox {
-        //     HStack {
-                Button {
-                    continueToNextStep()
-                } label: {
-                    Label("Confirm settings", systemImage: "arrow.right.circle")
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(!canContinue)
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .center)
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
     }
 
     var setupOptionsCard: some View {
@@ -49,10 +31,9 @@ extension ContentView {
     }
 
     var appPanel: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("App")
-                    .font(.headline)
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                CardHeading(title: "App")
 
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("Name")
@@ -74,27 +55,17 @@ extension ContentView {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     var prefixPanel: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 7) {
-                // Text("Wrapper")
-                //     .font(.headline)
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 engineControls
                 Divider()
                 driveMappingControls
             }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     var engineControls: some View {
@@ -123,8 +94,9 @@ extension ContentView {
     }
 
     var rendererCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 6) {
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                CardHeading(title: "Renderer")
                 Picker("Translation layer", selection: $model.renderer) {
                     Text("D3DMetal")
                         .help(rendererHelp(for: "d3dmetal"))
@@ -141,32 +113,27 @@ extension ContentView {
                 metalFXControls
                 performanceHUDToggle
             }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     var rendererOptionsCard: some View {
-        GroupBox {
-            HStack(alignment: .top, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle("MoltenVK-CX", isOn: .constant(true))
-                        .disabled(true)
-                    Toggle("MoltenVK fast math", isOn: $model.moltenVKFastMath)
-                }
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                CardHeading(title: "Runtime")
+                HStack(alignment: .top, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("MoltenVK-CX", isOn: .constant(true))
+                            .disabled(true)
+                        Toggle("MoltenVK fast math", isOn: $model.moltenVKFastMath)
+                    }
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle("ESync", isOn: $model.wineESync)
-                    Toggle("MSync", isOn: $model.wineMSync)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("ESync", isOn: $model.wineESync)
+                        Toggle("MSync", isOn: $model.wineMSync)
+                    }
                 }
             }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     func rendererHelp(for renderer: String) -> String {
@@ -289,19 +256,14 @@ extension ContentView {
     }
 
     var winetricksCard: some View {
-        GroupBox {
+        WizardCard(verticalPadding: Layout.winetricksPanelVerticalPadding) {
             winetricksCardContent
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.winetricksPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     var winetricksCardContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Winetricks")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+            CardHeading(title: "Winetricks")
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: winetricksStatusIcon)
@@ -335,10 +297,9 @@ extension ContentView {
     }
 
     var modsCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Fixes")
-                    .font(.headline)
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                CardHeading(title: "Fixes")
 
                 Toggle("Update usvfs binaries", isOn: updateUSVFSBinding)
                     .disabled(model.engine == SetupConfiguration.sikarugir10Engine)
@@ -360,10 +321,6 @@ extension ContentView {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, Layout.setupPanelHorizontalPadding)
-            .padding(.vertical, Layout.setupPanelVerticalPadding)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

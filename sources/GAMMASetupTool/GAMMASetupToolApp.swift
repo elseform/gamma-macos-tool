@@ -15,6 +15,6 @@ struct GAMMASetupToolApp: App {
         WindowGroup("GAMMA Setup Tool") {
             ContentView()
         }
-        .defaultSize(width: 820, height: 520)
+        .defaultSize(width: Layout.windowWidth, height: Layout.windowHeight)
     }
 }
