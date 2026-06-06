@@ -157,6 +157,7 @@ public struct SetupRequest: Codable {
     public var wineESync: Bool
     public var wineMSync: Bool
     public var updateUSVFS: Bool
+    public var configureHIDDefaults: Bool?
     public var moltenVKFastMath: Bool
     public var metalHUD: Bool
     public var dxmtMetalFXSpatial: Bool
@@ -188,6 +189,7 @@ public struct SetupRequest: Codable {
         wineESync: Bool = true,
         wineMSync: Bool = true,
         updateUSVFS: Bool = false,
+        configureHIDDefaults: Bool = true,
         moltenVKFastMath: Bool = false,
         metalHUD: Bool = false,
         dxmtMetalFXSpatial: Bool = false,
@@ -218,6 +220,7 @@ public struct SetupRequest: Codable {
         self.wineESync = wineESync
         self.wineMSync = wineMSync
         self.updateUSVFS = updateUSVFS
+        self.configureHIDDefaults = configureHIDDefaults
         self.moltenVKFastMath = moltenVKFastMath
         self.metalHUD = metalHUD
         self.dxmtMetalFXSpatial = dxmtMetalFXSpatial

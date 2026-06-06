@@ -74,6 +74,11 @@ final class SetupConfigurationTests {
         XCTAssertFalse(config.setupRequest.wineMSync)
     }
 
+    func testSetupRequestIncludesHIDDefaultsOption() {
+        XCTAssertEqual(SetupConfiguration().setupRequest.configureHIDDefaults, true)
+        XCTAssertEqual(SetupConfiguration(configureHIDDefaults: false).setupRequest.configureHIDDefaults, false)
+    }
+
     func testSetupRequestIncludesUSVFSUpdateOption() {
         XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.defaultEngine).setupRequest.updateUSVFS)
         XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.defaultEngine, updateUSVFS: true).setupRequest.updateUSVFS)

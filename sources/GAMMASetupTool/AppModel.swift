@@ -61,6 +61,7 @@ final class AppModel: ObservableObject {
     @Published var wineESync = true
     @Published var wineMSync = true
     @Published var updateUSVFS = false
+    @Published var configureHIDDefaults = true
     @Published var moltenVKFastMath = false
     @Published var metalHUD = false
     @Published var dxmtMetalFXSpatial = false
@@ -185,6 +186,7 @@ final class AppModel: ObservableObject {
             wineESync: wineESync,
             wineMSync: wineMSync,
             updateUSVFS: updateUSVFS,
+            configureHIDDefaults: configureHIDDefaults,
             moltenVKFastMath: moltenVKFastMath,
             metalHUD: metalHUD,
             dxmtMetalFXSpatial: dxmtMetalFXSpatial,
@@ -327,6 +329,7 @@ final class AppModel: ObservableObject {
         if wineMSync {
             add("MSync", "Enabled", currentKey: "msync")
         }
+        add("HID device defaults", configureHIDDefaults ? "Enabled" : "Disabled", currentKey: "hidDefaults")
         add("Renderer", rendererLabel, currentKey: "renderer")
         if moltenVKFastMath {
             add("MoltenVK fast math", "Enabled", currentKey: "fastMath")
@@ -643,6 +646,7 @@ final class AppModel: ObservableObject {
         let mo2Bat = readText(driveC.appendingPathComponent("mo2.bat"))
         let dxvkConf = readText(driveC.appendingPathComponent("dxvk.conf"))
         let dxmtConf = readText(driveC.appendingPathComponent("dxmt.conf"))
+        let systemReg = readText(prefix.appendingPathComponent("system.reg"))
         let marker = readText(sharedSupport.appendingPathComponent(".stalker-gamma-sikarugir-setup"))
 
         var values: [String: String] = [:]
@@ -650,6 +654,9 @@ final class AppModel: ObservableObject {
         values["renderer"] = rendererName(from: plist)
         values["esync"] = enabledValue(plist["WINEESYNC"])
         values["msync"] = enabledValue(plist["WINEMSYNC"])
+        if !systemReg.isEmpty {
+            values["hidDefaults"] = winebusDefaultsEnabled(in: systemReg) ? "Enabled" : "Disabled"
+        }
         values["fastMath"] = enabledValue(plist["FASTMATH"])
         values["hud"] = enabledValue(plist["METAL_HUD"])
         values["dxmtSpatial"] = mo2Bat.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
@@ -718,6 +725,9 @@ final class AppModel: ObservableObject {
         moltenVKFastMath = settings["fastMath"] == "Enabled"
         wineESync = settings["esync"] != "Disabled"
         wineMSync = settings["msync"] != "Disabled"
+        if let hidDefaults = settings["hidDefaults"] {
+            configureHIDDefaults = hidDefaults != "Disabled"
+        }
         metalHUD = settings["hud"] == "Enabled"
         dxmtMetalFXSpatial = settings["dxmtSpatial"] == "Enabled"
         if let scale = settings["dxmtScale"], !scale.hasPrefix("Default") {
@@ -784,6 +794,29 @@ final class AppModel: ObservableObject {
         }
 
         return values
+    }
+
+    private func winebusDefaultsEnabled(in registry: String) -> Bool {
+        var inSection = false
+        var values: [String: String] = [:]
+
+        for line in registry.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("[") {
+                inSection = trimmed.localizedCaseInsensitiveContains(#"System\\CurrentControlSet\\Services\\winebus"#)
+                continue
+            }
+            guard inSection else { continue }
+            let parts = trimmed.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            values[key] = String(parts[1]).lowercased()
+        }
+
+        return values["DisableHidraw"] == "dword:00000001"
+            && values["DisableInput"] == "dword:00000001"
+            && values["Enable SDL"] == "dword:00000001"
+            && values["Map Controllers"] == "dword:00000001"
     }
 
     private func readText(_ url: URL) -> String {

@@ -1,7 +1,10 @@
 import SwiftUI
 
-extension ContentView {
-    var setupStep: some View {
+struct SetupPage: View {
+    @ObservedObject var model: AppModel
+    @Binding var showWinetricksList: Bool
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: Layout.setupColumnSpacing) {
                 setupOptionsCard
@@ -130,6 +133,8 @@ extension ContentView {
                     VStack(alignment: .leading, spacing: 6) {
                         Toggle("ESync", isOn: $model.wineESync)
                         Toggle("MSync", isOn: $model.wineMSync)
+                        Toggle("HID device defaults", isOn: $model.configureHIDDefaults)
+                            .help("Apply Wine winebus defaults for HID input and controller mapping.")
                     }
                 }
             }

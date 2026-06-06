@@ -2,41 +2,21 @@ import SwiftUI
 
 extension ContentView {
     var header: some View {
-        // VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(headerTitle)
-                        .font(.title2.weight(.semibold))
-                    Text(headerSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if step == .environment {
-                        HStack(spacing: 4) {
-                            Text("Visit")
-                                .foregroundStyle(.secondary)
-                            Link(destination: URL(string: "https://github.com/FaithBeam/stalker-gamma-cli")!) {
-                                HStack(spacing: 4) {
-                                    BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
-                                        .frame(width: 13, height: 13)
-                                    Text("stalker-gamma-cli")
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.primary)
-                            .help("Visit stalker-gamma-cli on GitHub")
-                            Text("for installation details.")
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.subheadline)
-                    }
-                }
-                Spacer()
+        HStack {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(headerTitle)
+                    .font(.title2.weight(.semibold))
+                Text(headerSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-        // }
-        .frame(minHeight: Layout.headerContentMinHeight, alignment: .topLeading)
+            Spacer()
+        }
+        .frame(height: Layout.headerContentHeight, alignment: .topLeading)
         .padding(.horizontal, Layout.headerHorizontalPadding)
         .padding(.top, Layout.headerTopPadding)
         .padding(.bottom, Layout.headerBottomPadding)
+        .frame(height: Layout.headerHeight, alignment: .topLeading)
         .background(Color(nsColor: .underPageBackgroundColor))
         .transaction { transaction in
             transaction.animation = nil
@@ -73,13 +53,13 @@ extension ContentView {
     var currentStepView: some View {
         switch step {
         case .environment:
-            environmentStep
+            EnvironmentPage(model: model)
         case .setup:
-            setupStep
+            SetupPage(model: model, showWinetricksList: $showWinetricksList)
         case .create:
-            createStep
+            CreatePage(model: model, createButtonSubmitted: $createButtonSubmitted)
         case .complete:
-            completeStep
+            CompletePage(model: model)
         }
     }
 
@@ -98,6 +78,7 @@ extension ContentView {
         }
         .padding(.horizontal, Layout.footerHorizontalPadding)
         .padding(.vertical, Layout.footerVerticalPadding)
+        .frame(height: Layout.footerHeight, alignment: .center)
         .background(Color(nsColor: .underPageBackgroundColor))
     }
 
@@ -222,6 +203,13 @@ extension ContentView {
         guard let next = nextStep else { return }
         furthestUnlockedStep = next.rawValue > furthestUnlockedStep.rawValue ? next : furthestUnlockedStep
         step = next
+    }
+
+    func continueFromEnvironment() {
+        guard model.environmentOK else { return }
+        environmentCompleted = true
+        furthestUnlockedStep = .setup
+        step = .setup
     }
 
     func startCreate() {

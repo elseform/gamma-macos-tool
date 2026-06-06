@@ -5,8 +5,10 @@ private enum InstallButtonRow {
     case winetricks
 }
 
-extension ContentView {
-    var environmentStep: some View {
+struct EnvironmentPage: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let preflight = model.preflight {
                 WizardCard(
@@ -43,6 +45,7 @@ extension ContentView {
                 if shouldShowEnvironmentGate {
                     environmentGate
                 }
+                installDetailsLink
             } else if let gammaFolderSelectionError = model.gammaFolderSelectionError {
                 WizardCard(
                     horizontalPadding: Layout.environmentPanelHorizontalPadding,
@@ -73,11 +76,25 @@ extension ContentView {
         .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
     }
 
-    func continueFromEnvironment() {
-        guard model.environmentOK else { return }
-        environmentCompleted = true
-        furthestUnlockedStep = .setup
-        step = .setup
+    var installDetailsLink: some View {
+        HStack(spacing: 4) {
+            Text("Visit")
+                .foregroundStyle(.secondary)
+            Link(destination: URL(string: "https://github.com/FaithBeam/stalker-gamma-cli")!) {
+                HStack(spacing: 4) {
+                    BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
+                        .frame(width: 13, height: 13)
+                    Text("stalker-gamma-cli")
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .help("Visit stalker-gamma-cli on GitHub")
+            Text("for installation details.")
+                .foregroundStyle(.secondary)
+        }
+        .font(.caption)
+        .padding(.leading, 2)
     }
 
     func sikarugirFound(_ preflight: Preflight) -> Bool {
