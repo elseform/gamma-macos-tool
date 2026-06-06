@@ -288,7 +288,14 @@ final class AppModel: ObservableObject {
     }
 
     var primaryButtonTitle: String {
-        "Create GAMMA wrapper"
+        switch createModeLabel {
+        case "Update existing wrapper":
+            return "Update GAMMA wrapper"
+        case "Recreate wrapper":
+            return "Recreate GAMMA wrapper"
+        default:
+            return "Create GAMMA wrapper"
+        }
     }
 
     var createHeaderTitle: String {
