@@ -41,6 +41,7 @@ write_request() {
   "extraWinetricks" : [],
   "forceDownload" : false,
   "gammaPath" : "",
+  "configureHIDDefaults" : true,
   "metalHUD" : false,
   "mo2Path" : "",
   "moltenVKFastMath" : false,

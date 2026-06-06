@@ -1,8 +1,11 @@
 import SwiftUI
 import AppKit
 
-extension ContentView {
-    var createStep: some View {
+struct CreatePage: View {
+    @ObservedObject var model: AppModel
+    @Binding var createButtonSubmitted: Bool
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if model.isRunning || createButtonSubmitted || model.installFailed {
                 runStatus
@@ -24,57 +27,6 @@ extension ContentView {
             .padding(.vertical, 4)
         }
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
-    }
-
-    var completeStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            WizardCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(.green)
-                        Text("Wrapper created successfully")
-                            .font(.headline)
-                    }
-
-                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
-                        GridRow {
-                            Text("App location")
-                                .foregroundStyle(.secondary)
-                            Text(model.outputAppPath)
-                                .lineLimit(2)
-                                .truncationMode(.middle)
-                                .textSelection(.enabled)
-                        }
-                        if model.saveVerboseLog {
-                            GridRow {
-                                Text("Log saved to")
-                                    .foregroundStyle(.secondary)
-                                if model.savedLogPath.isEmpty {
-                                    Text("Log path was not reported.")
-                                        .foregroundStyle(.secondary)
-                                } else {
-                                    Button {
-                                        model.openSavedLog()
-                                    } label: {
-                                        Text(model.savedLogPath)
-                                            .lineLimit(1)
-                                            .truncationMode(.middle)
-                                    }
-                                    .buttonStyle(.link)
-                                    .help("Open log")
-                                }
-                            }
-                        }
-                    }
-                    .font(.callout)
-
-                }
-            }
-            .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
-        }
-        .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
     }
 
     var runStatus: some View {
@@ -198,5 +150,59 @@ extension ContentView {
             }
         }
         .frame(width: 16)
+    }
+}
+
+struct CompletePage: View {
+    @ObservedObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            WizardCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.green)
+                        Text("Wrapper created successfully")
+                            .font(.headline)
+                    }
+
+                    Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+                        GridRow {
+                            Text("App location")
+                                .foregroundStyle(.secondary)
+                            Text(model.outputAppPath)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
+                        }
+                        if model.saveVerboseLog {
+                            GridRow {
+                                Text("Log saved to")
+                                    .foregroundStyle(.secondary)
+                                if model.savedLogPath.isEmpty {
+                                    Text("Log path was not reported.")
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Button {
+                                        model.openSavedLog()
+                                    } label: {
+                                        Text(model.savedLogPath)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                    }
+                                    .buttonStyle(.link)
+                                    .help("Open log")
+                                }
+                            }
+                        }
+                    }
+                    .font(.callout)
+                }
+            }
+            .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
+        }
+        .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
     }
 }

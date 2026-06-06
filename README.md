@@ -25,7 +25,7 @@ The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creat
 The guided flow handles:
 
 - Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
-- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, documented DXMT settings, and Wine drive mapping.
+- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, Wine HID device defaults, documented DXMT settings, and Wine drive mapping.
 - Required winetricks dependencies.
 - Optional extra winetricks verbs.
 - Optional D3DMetal/DXMT reflex reticle fix.
@@ -95,6 +95,8 @@ The recommended renderer is D3DMetal. DXMT is available as an alternative and ex
 - `DXMT_LOG_LEVEL`
 
 DXVK is also available as a last-resort fallback for scenarios where D3DMetal and DXMT crash, for example Rostok crashing on load. It is not recommended for general use because overall performance is poor.
+
+The Runtime section includes a Wine HID device defaults checkbox. When enabled, the setup tool writes the managed `winebus` HID/controller mapping defaults into the wrapper prefix. When disabled, those managed keys are removed during wrapper update.
 
 ## Additional Fixes
 
@@ -198,6 +200,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Initializes the Sikarugir Wine prefix inside the wrapper.
 - Enables D3DMetal by default, or DXMT/DXVK when selected.
 - Keeps MoltenVK-CX, MSync, and ESync enabled.
+- Applies Wine HID device defaults when selected.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a short Wine drive mapping for the detected macOS install location.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `vcrun2022`, `d3dcompiler_42`, `d3dcompiler_43`, `d3dcompiler_46`, `d3dcompiler_47`, `d3dx9`, `d3dx10`, `d3dx11_42`, and `d3dx11_43`.

@@ -732,16 +732,25 @@ public final class GAMMASetupEngine {
     }
 
     private func configureWinebusDefaults(context: SetupContext) throws {
+        let section = #"System\\CurrentControlSet\\Services\\winebus"#
+        let lines = [
+            #""DisableHidraw"=dword:00000001"#,
+            #""DisableInput"=dword:00000001"#,
+            #""Enable SDL"=dword:00000001"#,
+            #""Map Controllers"=dword:00000001"#
+        ]
+
+        guard context.request.configureHIDDefaults ?? true else {
+            reporter.log("Removing Wine HID bus defaults")
+            try removeRegistryRawLineKeys(file: context.systemReg, section: section, keys: lines.map(rawLineKey), context: context)
+            return
+        }
+
         reporter.log("Configuring Wine HID bus defaults")
         try ensureSectionRawLines(
             file: context.systemReg,
-            section: #"System\\CurrentControlSet\\Services\\winebus"#,
-            lines: [
-                #""DisableHidraw"=dword:00000001"#,
-                #""DisableInput"=dword:00000001"#,
-                #""Enable SDL"=dword:00000001"#,
-                #""Map Controllers"=dword:00000001"#
-            ],
+            section: section,
+            lines: lines,
             context: context
         )
     }
@@ -1219,6 +1228,16 @@ public final class GAMMASetupEngine {
             }
         }
         try output.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+    }
+
+    private func removeRegistryRawLineKeys(file: URL, section: String, keys: [String], context: SetupContext) throws {
+        guard !context.request.dryRun, fileManager.fileExists(atPath: file.path) else { return }
+        var lines = try String(contentsOf: file).components(separatedBy: .newlines)
+        let keySet = Set(keys)
+        editSection(lines: &lines, section: section) { body in
+            body.filter { !keySet.contains(rawLineKey($0)) }
+        }
+        try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
     }
 
     private func editSection(lines: inout [String], section: String, bodyEdit: ([String]) -> [String]) {
