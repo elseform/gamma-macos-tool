@@ -133,8 +133,8 @@ struct SetupPage: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Toggle("ESync", isOn: $model.wineESync)
                         Toggle("MSync", isOn: $model.wineMSync)
-                        Toggle("HID device defaults", isOn: $model.configureHIDDefaults)
-                            .help("Apply Wine winebus defaults for HID input and controller mapping.")
+                        Toggle("Enable HID devices", isOn: $model.enableHIDDevices)
+                            .help("Write winebus HID/controller mapping overrides. Unchecked restores Wine default values.")
                     }
                 }
             }

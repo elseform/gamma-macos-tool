@@ -61,7 +61,7 @@ final class AppModel: ObservableObject {
     @Published var wineESync = true
     @Published var wineMSync = true
     @Published var updateUSVFS = false
-    @Published var configureHIDDefaults = true
+    @Published var enableHIDDevices = false
     @Published var moltenVKFastMath = false
     @Published var metalHUD = false
     @Published var dxmtMetalFXSpatial = false
@@ -186,7 +186,7 @@ final class AppModel: ObservableObject {
             wineESync: wineESync,
             wineMSync: wineMSync,
             updateUSVFS: updateUSVFS,
-            configureHIDDefaults: configureHIDDefaults,
+            enableHIDDevices: enableHIDDevices,
             moltenVKFastMath: moltenVKFastMath,
             metalHUD: metalHUD,
             dxmtMetalFXSpatial: dxmtMetalFXSpatial,
@@ -329,7 +329,7 @@ final class AppModel: ObservableObject {
         if wineMSync {
             add("MSync", "Enabled", currentKey: "msync")
         }
-        add("HID device defaults", configureHIDDefaults ? "Enabled" : "Disabled", currentKey: "hidDefaults")
+        add("HID devices", enableHIDDevices ? "Enabled" : "Disabled", currentKey: "hidDevices")
         add("Renderer", rendererLabel, currentKey: "renderer")
         if moltenVKFastMath {
             add("MoltenVK fast math", "Enabled", currentKey: "fastMath")
@@ -655,7 +655,7 @@ final class AppModel: ObservableObject {
         values["esync"] = enabledValue(plist["WINEESYNC"])
         values["msync"] = enabledValue(plist["WINEMSYNC"])
         if !systemReg.isEmpty {
-            values["hidDefaults"] = winebusDefaultsEnabled(in: systemReg) ? "Enabled" : "Disabled"
+            values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Enabled" : "Disabled"
         }
         values["fastMath"] = enabledValue(plist["FASTMATH"])
         values["hud"] = enabledValue(plist["METAL_HUD"])
@@ -725,8 +725,8 @@ final class AppModel: ObservableObject {
         moltenVKFastMath = settings["fastMath"] == "Enabled"
         wineESync = settings["esync"] != "Disabled"
         wineMSync = settings["msync"] != "Disabled"
-        if let hidDefaults = settings["hidDefaults"] {
-            configureHIDDefaults = hidDefaults != "Disabled"
+        if let hidDevices = settings["hidDevices"] {
+            enableHIDDevices = hidDevices != "Disabled"
         }
         metalHUD = settings["hud"] == "Enabled"
         dxmtMetalFXSpatial = settings["dxmtSpatial"] == "Enabled"
@@ -796,7 +796,7 @@ final class AppModel: ObservableObject {
         return values
     }
 
-    private func winebusDefaultsEnabled(in registry: String) -> Bool {
+    private func hidDeviceOverridesEnabled(in registry: String) -> Bool {
         var inSection = false
         var values: [String: String] = [:]
 
@@ -813,10 +813,10 @@ final class AppModel: ObservableObject {
             values[key] = String(parts[1]).lowercased()
         }
 
-        return values["DisableHidraw"] == "dword:00000001"
-            && values["DisableInput"] == "dword:00000001"
-            && values["Enable SDL"] == "dword:00000001"
-            && values["Map Controllers"] == "dword:00000001"
+        return values["DisableHidraw"] == "dword:00000000"
+            && values["DisableInput"] == "dword:00000000"
+            && values["Enable SDL"] == "dword:00000000"
+            && values["Map Controllers"] == "dword:00000000"
     }
 
     private func readText(_ url: URL) -> String {
