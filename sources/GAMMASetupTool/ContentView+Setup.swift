@@ -87,6 +87,11 @@ struct SetupPage: View {
                 .labelsHidden()
                 .pickerStyle(.segmented)
             }
+
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Toggle("ESync", isOn: $model.wineESync)
+                Toggle("MSync", isOn: $model.wineMSync)
+            }
         }
     }
 
@@ -118,8 +123,18 @@ struct SetupPage: View {
                 }
                 .pickerStyle(.segmented)
 
-                metalFXControls
-                performanceHUDToggle
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        performanceHUDToggle
+                        metalFXControls
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("MoltenVK-CX", isOn: .constant(true))
+                            .disabled(true)
+                        Toggle("MoltenVK fast math", isOn: $model.moltenVKFastMath)
+                    }
+                }
             }
         }
     }
@@ -127,20 +142,12 @@ struct SetupPage: View {
     var rendererOptionsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "Runtime")
-                HStack(alignment: .top, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Toggle("MoltenVK-CX", isOn: .constant(true))
-                            .disabled(true)
-                        Toggle("MoltenVK fast math", isOn: $model.moltenVKFastMath)
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Toggle("ESync", isOn: $model.wineESync)
-                        Toggle("MSync", isOn: $model.wineMSync)
-                        Toggle("Mouse input compatibility", isOn: $model.enableHIDDevices)
-                            .help("Use when mouse capture, aiming, or extra mouse buttons behave incorrectly. Enables Wine winebus HID/raw-input overrides; off restores Wine defaults.")
-                    }
+                CardHeading(title: "Controls")
+                HStack(alignment: .firstTextBaseline, spacing: 18) {
+                    Toggle("Switch media keys", isOn: $model.enableFnToggle)
+                        .help("Switches the wrapper's media/function key mode through Sikarugir's IsFnToggleEnabled setting.")
+                    Toggle("HID Fix", isOn: $model.enableHIDDevices)
+                        .help("Use when mouse capture, aiming, or extra mouse buttons behave incorrectly. Enables Wine winebus HID/raw-input overrides; off restores Wine defaults.")
                 }
             }
         }
@@ -396,7 +403,7 @@ struct SetupPage: View {
     var modsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "Fixes")
+                CardHeading(title: "GAMMA Fixes")
 
                 Toggle("Update usvfs binaries", isOn: updateUSVFSBinding)
                     .disabled(model.engine == SetupConfiguration.sikarugir10Engine)

@@ -79,6 +79,11 @@ final class SetupConfigurationTests {
         XCTAssertEqual(SetupConfiguration(enableHIDDevices: true).setupRequest.enableHIDDevices, true)
     }
 
+    func testSetupRequestIncludesFnToggleOption() {
+        XCTAssertEqual(SetupConfiguration().setupRequest.enableFnToggle, false)
+        XCTAssertEqual(SetupConfiguration(enableFnToggle: true).setupRequest.enableFnToggle, true)
+    }
+
     func testSetupRequestIncludesUSVFSUpdateOption() {
         XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.defaultEngine).setupRequest.updateUSVFS)
         XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.defaultEngine, updateUSVFS: true).setupRequest.updateUSVFS)

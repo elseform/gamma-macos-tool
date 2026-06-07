@@ -572,6 +572,7 @@ public final class GAMMASetupEngine {
         plist["CNC_DDRAW"] = "0"
         plist["FASTMATH"] = context.request.moltenVKFastMath ? "1" : "0"
         plist["METAL_HUD"] = context.request.metalHUD ? 1 : 0
+        plist["IsFnToggleEnabled"] = (context.request.enableFnToggle ?? false) ? 1 : 0
         plist["Winetricks silent"] = "1"
         plist["Winetricks disable logging"] = "1"
         plist["WINEDEBUG"] = "-all"
@@ -1016,6 +1017,7 @@ public final class GAMMASetupEngine {
         wine_esync=\(managedEnabled(context.request.wineESync))
         wine_msync=\(managedEnabled(context.request.wineMSync))
         mouse_input=\((context.request.enableHIDDevices ?? false) ? "compatibility" : "default")
+        fn_toggle=\(managedEnabled(context.request.enableFnToggle ?? false))
         update_usvfs=\(managedEnabled(context.request.updateUSVFS))
         moltenvk_fast_math=\(managedEnabled(context.request.moltenVKFastMath))
         metal_hud=\(managedEnabled(context.request.metalHUD))
