@@ -161,6 +161,9 @@ struct SetupContext {
     var mo2IniGamePathWin = ""
     var mo2IniDriveLetter = ""
     var mo2IniDriveRoot = ""
+    var userLtxPath = ""
+    var gameResolutionWidth: Int?
+    var gameResolutionHeight: Int?
     var zRewriteRequired = false
     var driveLetter = "g"
     var driveRoot = ""
@@ -221,6 +224,7 @@ public final class GAMMASetupEngine {
 
         let shortRoot = zShortRoot(context: context)
         let modlist = activeModlistPath(context: context)
+        loadUserLtxResolution(context: &context)
         return Preflight(
             targetApp: request.outputApp,
             engine: request.engine,
@@ -243,6 +247,10 @@ public final class GAMMASetupEngine {
             modOrganizerIni: context.mo2IniPath,
             modOrganizerIniFound: fileManager.fileExists(atPath: context.mo2IniPath),
             modOrganizerGamePath: context.mo2IniGamePathWin,
+            userLtxPath: context.userLtxPath,
+            userLtxFound: fileManager.fileExists(atPath: context.userLtxPath),
+            gameResolutionWidth: context.gameResolutionWidth,
+            gameResolutionHeight: context.gameResolutionHeight,
             wineDriveLetter: context.driveLetter.uppercased(),
             wineDriveRoot: context.driveRoot,
             zRewriteRequired: context.zRewriteRequired,
@@ -303,6 +311,7 @@ public final class GAMMASetupEngine {
         try runStage(.prefix) {
             try initializePrefix(context: context)
             try configureWineGraphicsDriver(context: context)
+            try configureDisplayGeometry(context: context)
         }
         try runStage(.driveMapping) {
             try configureDriveMapping(context: &context)
@@ -721,6 +730,85 @@ public final class GAMMASetupEngine {
         try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\Drivers"#, entries: ["Graphics": "mac"], context: context)
     }
 
+    private func configureDisplayGeometry(context: SetupContext) throws {
+        if context.request.resetWineDisplay == true {
+            reporter.log("Restoring default Wine display behavior")
+            try resetDisplayGeometry(context: context)
+            return
+        }
+
+        guard let width = context.request.displayResolutionWidth,
+              let height = context.request.displayResolutionHeight,
+              width > 0,
+              height > 0 else {
+            return
+        }
+
+        reporter.log("Configuring Wine display compatibility: \(width)x\(height)")
+        try ensureSectionKeyValues(
+            file: context.userReg,
+            section: #"Software\\Wine\\Mac Driver"#,
+            entries: ["RetinaMode": "n"],
+            context: context
+        )
+        try ensureSectionRawLines(
+            file: context.userReg,
+            section: #"Control Panel\\Desktop"#,
+            lines: [
+                #""LogPixels"=dword:00000060"#,
+                #""Win8DpiScaling"=dword:00000000"#
+            ],
+            context: context
+        )
+
+        if context.request.useWineVirtualDesktop == true {
+            reporter.log("Enabling Wine virtual desktop: \(width)x\(height)")
+            try ensureSectionKeyValues(
+                file: context.userReg,
+                section: #"Software\\Wine\\Explorer"#,
+                entries: ["Desktop": "Default"],
+                context: context
+            )
+            try ensureSectionKeyValues(
+                file: context.userReg,
+                section: #"Software\\Wine\\Explorer\\Desktops"#,
+                entries: ["Default": "\(width)x\(height)"],
+                context: context
+            )
+        } else {
+            reporter.log("Disabling Wine virtual desktop")
+            try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer"#, keys: ["Desktop"], context: context)
+            try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer\\Desktops"#, keys: ["Default"], context: context)
+        }
+    }
+
+    private func resetDisplayGeometry(context: SetupContext) throws {
+        try removeSectionKeys(
+            file: context.userReg,
+            section: #"Software\\Wine\\Mac Driver"#,
+            keys: ["RetinaMode"],
+            context: context
+        )
+        try removeSectionKeys(
+            file: context.userReg,
+            section: #"Control Panel\\Desktop"#,
+            keys: ["LogPixels", "Win8DpiScaling"],
+            context: context
+        )
+        try removeSectionKeys(
+            file: context.userReg,
+            section: #"Software\\Wine\\Explorer"#,
+            keys: ["Desktop"],
+            context: context
+        )
+        try removeSectionKeys(
+            file: context.userReg,
+            section: #"Software\\Wine\\Explorer\\Desktops"#,
+            keys: ["Default"],
+            context: context
+        )
+    }
+
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
@@ -747,7 +835,7 @@ public final class GAMMASetupEngine {
         ]
         let lines = (context.request.enableHIDDevices ?? false) ? hidDeviceLines : wineDefaultLines
 
-        reporter.log((context.request.enableHIDDevices ?? false) ? "Enabling Wine HID devices" : "Restoring Wine HID bus defaults")
+        reporter.log((context.request.enableHIDDevices ?? false) ? "Enabling mouse input compatibility" : "Restoring Wine mouse input defaults")
         try ensureSectionRawLines(
             file: context.systemReg,
             section: section,
@@ -925,12 +1013,51 @@ public final class GAMMASetupEngine {
         managed_by=gamma-setup-engine
         engine=\(context.request.engine)
         renderer=\(context.request.renderer)
+        wine_esync=\(managedEnabled(context.request.wineESync))
+        wine_msync=\(managedEnabled(context.request.wineMSync))
+        mouse_input=\((context.request.enableHIDDevices ?? false) ? "compatibility" : "default")
+        update_usvfs=\(managedEnabled(context.request.updateUSVFS))
+        moltenvk_fast_math=\(managedEnabled(context.request.moltenVKFastMath))
+        metal_hud=\(managedEnabled(context.request.metalHUD))
+        dxmt_metalfx_spatial=\(managedEnabled(context.request.dxmtMetalFXSpatial))
+        dxmt_scale=\(context.request.dxmtMetalFXScaleFactor)
+        dxmt_log=\(context.request.dxmtLogLevel.isEmpty ? "default" : context.request.dxmtLogLevel)
+        dxvk_hud=\(context.request.dxvkHUD.isEmpty ? "default" : context.request.dxvkHUD)
+        reticle_fix=\(managedEnabled(context.request.commonFixes.contains("d3dmetal-reticle")))
+        extra_winetricks=\(context.request.extraWinetricks.joined(separator: " "))
+        display_mode=\(managedDisplayMode(context: context))
+        display_resolution=\(managedDisplayResolution(context: context))
+        wine_virtual_desktop=\((context.request.useWineVirtualDesktop == true) ? "enabled" : "disabled")
         template=\(context.templateName)
         status=\(status)
         created_or_updated=\(isoTimestamp())
 
         """
         try text.write(to: context.appMarker, atomically: true, encoding: .utf8)
+    }
+
+    private func managedEnabled(_ enabled: Bool) -> String {
+        enabled ? "enabled" : "disabled"
+    }
+
+    private func managedDisplayMode(context: SetupContext) -> String {
+        if context.request.resetWineDisplay == true {
+            return "defaultWine"
+        }
+        if context.request.displayResolutionWidth != nil, context.request.displayResolutionHeight != nil {
+            return "forced"
+        }
+        return "defaultWine"
+    }
+
+    private func managedDisplayResolution(context: SetupContext) -> String {
+        guard let width = context.request.displayResolutionWidth,
+              let height = context.request.displayResolutionHeight,
+              width > 0,
+              height > 0 else {
+            return ""
+        }
+        return "\(width)x\(height)"
     }
 
     private func rendererChangedForExistingManagedApp(context: SetupContext) -> Bool {
@@ -1217,11 +1344,11 @@ public final class GAMMASetupEngine {
         var output: [String] = []
         var skipping = false
         for line in lines {
-            if line == "[\(section)]" {
+            if registrySectionName(line) == section {
                 skipping = true
                 continue
             }
-            if skipping, line.hasPrefix("[") {
+            if skipping, registrySectionName(line) != nil {
                 skipping = false
             }
             if !skipping {
@@ -1231,15 +1358,27 @@ public final class GAMMASetupEngine {
         try output.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
     }
 
+    private func removeSectionKeys(file: URL, section: String, keys: Set<String>, context: SetupContext) throws {
+        guard !context.request.dryRun, fileManager.fileExists(atPath: file.path) else { return }
+        var lines = try String(contentsOf: file).components(separatedBy: .newlines)
+        editSection(lines: &lines, section: section) { body in
+            body.filter { line in
+                guard let key = quotedRegistryKey(line) else { return true }
+                return !keys.contains(key)
+            }
+        }
+        try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+    }
+
     private func editSection(lines: inout [String], section: String, bodyEdit: ([String]) -> [String]) {
         var start: Int?
         var end = lines.count
         for index in lines.indices {
-            if lines[index] == "[\(section)]" {
+            if registrySectionName(lines[index]) == section {
                 start = index
                 continue
             }
-            if let start, index > start, lines[index].hasPrefix("[") {
+            if let start, index > start, registrySectionName(lines[index]) != nil {
                 end = index
                 break
             }
@@ -1444,6 +1583,18 @@ public final class GAMMASetupEngine {
         return ""
     }
 
+    private func loadUserLtxResolution(context: inout SetupContext) {
+        guard !context.anomalyPath.isEmpty else { return }
+        let userLtx = URL(fileURLWithPath: context.anomalyPath).appendingPathComponent("appdata/user.ltx")
+        context.userLtxPath = userLtx.path
+        guard let text = try? String(contentsOf: userLtx),
+              let resolution = userLtxResolution(text: text) else {
+            return
+        }
+        context.gameResolutionWidth = resolution.width
+        context.gameResolutionHeight = resolution.height
+    }
+
     private func appIconSource(context: SetupContext) -> URL {
         if !context.request.appIconSource.isEmpty {
             return URL(fileURLWithPath: context.request.appIconSource)
@@ -1518,9 +1669,34 @@ public final class GAMMASetupEngine {
         return nil
     }
 
+    private func userLtxResolution(text: String) -> (width: Int, height: Int)? {
+        for line in text.split(whereSeparator: \.isNewline).map(String.init) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let parts = trimmed.split(whereSeparator: \.isWhitespace)
+            guard parts.count >= 2, parts[0] == "vid_mode" else { continue }
+            let dimensions = parts[1].split(separator: "x", maxSplits: 1)
+            guard dimensions.count == 2,
+                  let width = Int(dimensions[0]),
+                  let height = Int(dimensions[1]) else {
+                continue
+            }
+            return (width, height)
+        }
+        return nil
+    }
+
     private func quotedRegistryKey(_ line: String) -> String? {
         guard line.hasPrefix("\""), let end = line.dropFirst().firstIndex(of: "\"") else { return nil }
         return String(line[line.index(after: line.startIndex)..<end])
+    }
+
+    private func registrySectionName(_ line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("["),
+              let end = trimmed.firstIndex(of: "]") else {
+            return nil
+        }
+        return String(trimmed[trimmed.index(after: trimmed.startIndex)..<end])
     }
 
     private func rawLineKey(_ line: String) -> String {

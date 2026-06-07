@@ -72,6 +72,11 @@ final class AppModel: ObservableObject {
     @Published var applyReticleFix = true
     @Published var saveVerboseLog = true
     @Published var driveMappingMode = "preserve"
+    @Published var displayMode = "forced"
+    @Published var displayResolutionMode = "detected"
+    @Published var customDisplayResolutionWidth = ""
+    @Published var customDisplayResolutionHeight = ""
+    @Published var detectedDisplay: MacDisplaySettings?
     @Published var manualModOrganizerPath = ""
     @Published var preflight: Preflight?
     @Published var preflightError = ""
@@ -197,6 +202,10 @@ final class AppModel: ObservableObject {
             applyReticleFix: applyReticleFix,
             saveVerboseLog: saveVerboseLog,
             driveMappingMode: driveMappingMode,
+            displayMode: displayMode,
+            displayResolutionMode: displayResolutionMode,
+            customDisplayResolutionWidth: customDisplayResolutionWidth,
+            customDisplayResolutionHeight: customDisplayResolutionHeight,
             manualModOrganizerPath: manualModOrganizerPath,
             preflight: preflight,
             outputAppExists: outputAppExists
@@ -336,7 +345,7 @@ final class AppModel: ObservableObject {
         if wineMSync {
             add("MSync", "Enabled", currentKey: "msync")
         }
-        add("HID devices", enableHIDDevices ? "Enabled" : "Disabled", currentKey: "hidDevices")
+        add("Mouse input", enableHIDDevices ? "Compatibility mode" : "Wine default", currentKey: "hidDevices")
         add("Renderer", rendererLabel, currentKey: "renderer")
         if moltenVKFastMath {
             add("MoltenVK fast math", "Enabled", currentKey: "fastMath")
@@ -350,6 +359,10 @@ final class AppModel: ObservableObject {
             if willRewriteModOrganizerIni {
                 add("ModOrganizer.ini", "Rewrite Z: paths to short mapping")
             }
+        }
+
+        if selectedDisplayResolution != nil {
+            add("Wine display", displayResolutionLabel, currentKey: "wineDisplay")
         }
 
         if renderer == "dxmt" {
@@ -369,10 +382,10 @@ final class AppModel: ObservableObject {
         }
 
         if !extraWinetricks.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            add("Extra winetricks", extraWinetricks)
+            add("Extra winetricks", extraWinetricks, currentKey: "extraWinetricks")
         }
         if renderer != "dxvk" && applyReticleFix {
-            add("Fixes", "Fix missing reticles")
+            add("Fixes", "Enabled", currentKey: "reticleFix")
         }
 
         return rows
@@ -388,6 +401,14 @@ final class AppModel: ObservableObject {
 
     var driveMappingReady: Bool {
         configuration.driveMappingReady
+    }
+
+    var selectedDisplayResolution: (width: Int, height: Int)? {
+        configuration.selectedDisplayResolution
+    }
+
+    var displayResolutionLabel: String {
+        configuration.displayResolutionLabel
     }
 
     var gammaFolderSelectionError: String? {
@@ -451,6 +472,7 @@ final class AppModel: ObservableObject {
                 return
             }
             preflight = try JSONDecoder().decode(Preflight.self, from: Data(result.output.utf8))
+            updateDetectedDisplayDefaults()
             applyExistingWrapperSettingsIfNeeded()
         } catch {
             preflight = nil
@@ -654,22 +676,87 @@ final class AppModel: ObservableObject {
         let dxvkConf = readText(driveC.appendingPathComponent("dxvk.conf"))
         let dxmtConf = readText(driveC.appendingPathComponent("dxmt.conf"))
         let systemReg = readText(prefix.appendingPathComponent("system.reg"))
+        let userReg = readText(prefix.appendingPathComponent("user.reg"))
         let marker = readText(sharedSupport.appendingPathComponent(".stalker-gamma-sikarugir-setup"))
 
         var values: [String: String] = [:]
         values["engine"] = engineLabel(from: marker)
-        values["renderer"] = rendererName(from: plist)
-        values["esync"] = enabledValue(plist["WINEESYNC"])
-        values["msync"] = enabledValue(plist["WINEMSYNC"])
-        if !systemReg.isEmpty {
-            values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Enabled" : "Disabled"
+        let detectedRenderer = rendererName(from: plist, marker: marker)
+        values["renderer"] = detectedRenderer
+        if let markerESync = markerEnabledValue("wine_esync", in: marker) {
+            values["esync"] = markerESync
+        } else if let esync = enabledValue(plist["WINEESYNC"]) {
+            values["esync"] = esync
         }
-        values["fastMath"] = enabledValue(plist["FASTMATH"])
-        values["hud"] = enabledValue(plist["METAL_HUD"])
-        values["dxmtSpatial"] = mo2Bat.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
-        values["dxmtScale"] = configValue(dxmtConf, key: "d3d11.metalSpatialUpscaleFactor") ?? "Default (2.0)"
-        values["dxmtLog"] = batchValue(mo2Bat, key: "DXMT_LOG_LEVEL") ?? "Default"
-        values["dxvkHud"] = configValue(dxvkConf, key: "dxvk.hud") ?? "Default"
+        if let markerMSync = markerEnabledValue("wine_msync", in: marker) {
+            values["msync"] = markerMSync
+        } else if let msync = enabledValue(plist["WINEMSYNC"]) {
+            values["msync"] = msync
+        }
+        if let mouseInput = markerValue("mouse_input", in: marker) ?? markerValue("controller_input", in: marker) {
+            values["hidDevices"] = mouseInput == "compatibility" ? "Compatibility mode" : "Wine default"
+        } else if !systemReg.isEmpty {
+            values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Compatibility mode" : "Wine default"
+        }
+        if let markerFastMath = markerEnabledValue("moltenvk_fast_math", in: marker) {
+            values["fastMath"] = markerFastMath
+        } else if let fastMath = enabledValue(plist["FASTMATH"]) {
+            values["fastMath"] = fastMath
+        }
+        if let markerHUD = markerEnabledValue("metal_hud", in: marker) {
+            values["hud"] = markerHUD
+        } else if let hud = enabledValue(plist["METAL_HUD"]) {
+            values["hud"] = hud
+        }
+        if let markerSpatial = markerEnabledValue("dxmt_metalfx_spatial", in: marker) {
+            values["dxmtSpatial"] = markerSpatial
+        } else if !mo2Bat.isEmpty {
+            values["dxmtSpatial"] = mo2Bat.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
+        }
+        if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
+            values["dxmtLog"] = markerLog == "default" ? "Default" : markerLog
+        } else if !mo2Bat.isEmpty {
+            values["dxmtLog"] = batchValue(mo2Bat, key: "DXMT_LOG_LEVEL") ?? "Default"
+        }
+        if let markerScale = markerValue("dxmt_scale", in: marker), !markerScale.isEmpty {
+            values["dxmtScale"] = markerScale
+        } else if !dxmtConf.isEmpty {
+            values["dxmtScale"] = configValue(dxmtConf, key: "d3d11.metalSpatialUpscaleFactor") ?? "Default (2.0)"
+        } else if detectedRenderer == "DXMT" {
+            values["dxmtScale"] = "Default (2.0)"
+        }
+        if let markerDXVKHud = markerValue("dxvk_hud", in: marker), !markerDXVKHud.isEmpty {
+            values["dxvkHud"] = markerDXVKHud == "default" ? "Default" : markerDXVKHud
+        } else if !dxvkConf.isEmpty {
+            values["dxvkHud"] = configValue(dxvkConf, key: "dxvk.hud") ?? "Default"
+        } else if detectedRenderer == "DXVK" {
+            values["dxvkHud"] = "Default"
+        }
+        if let reticleFix = markerEnabledValue("reticle_fix", in: marker) {
+            values["reticleFix"] = reticleFix
+        }
+        if let extraWinetricks = markerValue("extra_winetricks", in: marker) {
+            values["extraWinetricks"] = extraWinetricks
+        }
+        if !userReg.isEmpty {
+            values["wineVirtualDesktop"] = wineVirtualDesktopEnabled(in: userReg) ? "Enabled" : "Disabled"
+            if let displayMode = markerValue("display_mode", in: marker), !displayMode.isEmpty {
+                values["displayMode"] = displayMode
+            } else if managedWineDisplayEnabled(in: userReg) {
+                values["displayMode"] = "forced"
+            }
+
+            if let displayResolution = markerValue("display_resolution", in: marker), !displayResolution.isEmpty {
+                values["displayResolution"] = displayResolution
+                values["wineDisplay"] = displayResolutionLabel(from: displayResolution)
+            } else if let virtualDesktopResolution = wineVirtualDesktopResolution(in: userReg) {
+                values["displayResolution"] = virtualDesktopResolution
+                values["wineDisplay"] = displayResolutionLabel(from: virtualDesktopResolution)
+            } else if managedWineDisplayEnabled(in: userReg), let preflightResolution = preflightGameResolution {
+                values["displayResolution"] = preflightResolution
+                values["wineDisplay"] = displayResolutionLabel(from: preflightResolution)
+            }
+        }
         if let preflight {
             let currentLetter = driveLetter(from: preflight.wineDriveLetter)
             let driveLink = prefix.appendingPathComponent("dosdevices/\(currentLetter.lowercased()):")
@@ -704,6 +791,12 @@ final class AppModel: ObservableObject {
         if let renderer = settings["renderer"], renderer != "Unknown" {
             return true
         }
+        if settings["hidDevices"] != nil {
+            return true
+        }
+        if settings["reticleFix"] != nil || settings["extraWinetricks"] != nil {
+            return true
+        }
         return false
     }
 
@@ -729,22 +822,50 @@ final class AppModel: ObservableObject {
             break
         }
 
-        moltenVKFastMath = settings["fastMath"] == "Enabled"
-        wineESync = settings["esync"] != "Disabled"
-        wineMSync = settings["msync"] != "Disabled"
-        if let hidDevices = settings["hidDevices"] {
-            enableHIDDevices = hidDevices != "Disabled"
+        if let fastMath = settings["fastMath"] {
+            moltenVKFastMath = fastMath == "Enabled"
         }
-        metalHUD = settings["hud"] == "Enabled"
-        dxmtMetalFXSpatial = settings["dxmtSpatial"] == "Enabled"
+        if let esync = settings["esync"] {
+            wineESync = esync == "Enabled"
+        }
+        if let msync = settings["msync"] {
+            wineMSync = msync == "Enabled"
+        }
+        if let hidDevices = settings["hidDevices"] {
+            enableHIDDevices = hidDevices == "Compatibility mode" || hidDevices == "Enabled"
+        }
+        if let hud = settings["hud"] {
+            metalHUD = hud == "Enabled"
+        }
+        if let spatial = settings["dxmtSpatial"] {
+            dxmtMetalFXSpatial = spatial == "Enabled"
+        }
         if let scale = settings["dxmtScale"], !scale.hasPrefix("Default") {
             dxmtMetalFXScaleFactor = scale
+        } else if settings["dxmtScale"] != nil {
+            dxmtMetalFXScaleFactor = ""
         }
         if let logLevel = settings["dxmtLog"], logLevel != "Default" {
             dxmtLogLevel = logLevel.lowercased()
+        } else if settings["dxmtLog"] != nil {
+            dxmtLogLevel = "default"
         }
         if let hud = settings["dxvkHud"], hud != "Default" {
             dxvkHUD = hud
+        } else if settings["dxvkHud"] != nil {
+            dxvkHUD = "default"
+        }
+        if let mode = settings["displayMode"] {
+            displayMode = (mode == "forced" || mode == "setCustom") ? "forced" : "defaultWine"
+        }
+        if let resolution = settings["displayResolution"] {
+            applyDisplayResolution(resolution)
+        }
+        if let reticleFix = settings["reticleFix"] {
+            applyReticleFix = reticleFix == "Enabled"
+        }
+        if let detectedExtraWinetricks = settings["extraWinetricks"] {
+            extraWinetricks = detectedExtraWinetricks
         }
     }
 
@@ -783,8 +904,8 @@ final class AppModel: ObservableObject {
 
         for line in registry.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("[") {
-                inSection = trimmed.localizedCaseInsensitiveContains("DllOverrides")
+            if let section = registrySectionName(trimmed) {
+                inSection = section == #"Software\\Wine\\DllOverrides"#
                 continue
             }
             guard inSection else { continue }
@@ -809,8 +930,8 @@ final class AppModel: ObservableObject {
 
         for line in registry.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("[") {
-                inSection = trimmed.localizedCaseInsensitiveContains(#"System\\CurrentControlSet\\Services\\winebus"#)
+            if let section = registrySectionName(trimmed) {
+                inSection = section == #"System\\CurrentControlSet\\Services\\winebus"#
                 continue
             }
             guard inSection else { continue }
@@ -826,6 +947,109 @@ final class AppModel: ObservableObject {
             && values["Map Controllers"] == "dword:00000000"
     }
 
+    private func wineVirtualDesktopEnabled(in registry: String) -> Bool {
+        registryValue(in: registry, section: #"Software\\Wine\\Explorer"#, key: "Desktop") == "Default"
+    }
+
+    private func wineVirtualDesktopResolution(in registry: String) -> String? {
+        registryValue(in: registry, section: #"Software\\Wine\\Explorer\\Desktops"#, key: "Default")
+    }
+
+    private func managedWineDisplayEnabled(in registry: String) -> Bool {
+        registryValue(in: registry, section: #"Software\\Wine\\Mac Driver"#, key: "RetinaMode") == "n"
+            && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "LogPixels") == "dword:00000060"
+            && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "Win8DpiScaling") == "dword:00000000"
+    }
+
+    private var preflightGameResolution: String? {
+        guard let width = preflight?.gameResolutionWidth,
+              let height = preflight?.gameResolutionHeight else {
+            return nil
+        }
+        return "\(width)x\(height)"
+    }
+
+    private func applyDisplayResolution(_ resolution: String) {
+        let normalized = resolution
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+        switch normalized {
+        case "1920x1080", "2560x1440", "3840x2160":
+            displayResolutionMode = normalized
+        default:
+            let parts = normalized.split(separator: "x", maxSplits: 1)
+            guard parts.count == 2,
+                  Int(parts[0]) != nil,
+                  Int(parts[1]) != nil else {
+                return
+            }
+            if normalized == preflightGameResolution {
+                displayResolutionMode = "detected"
+            } else {
+                displayResolutionMode = "custom"
+                customDisplayResolutionWidth = String(parts[0])
+                customDisplayResolutionHeight = String(parts[1])
+            }
+        }
+    }
+
+    private func displayResolutionLabel(from resolution: String) -> String {
+        let normalized = resolution
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+        let parts = normalized.split(separator: "x", maxSplits: 1)
+        guard parts.count == 2 else { return resolution }
+        return "\(parts[0]) x \(parts[1])"
+    }
+
+    private func registryValue(in registry: String, section: String, key: String) -> String? {
+        var inSection = false
+
+        for line in registry.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if registrySectionName(trimmed) == section {
+                inSection = true
+                continue
+            }
+            if registrySectionName(trimmed) != nil {
+                inSection = false
+                continue
+            }
+            guard inSection else { continue }
+            let parts = trimmed.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let currentKey = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            guard currentKey == key else { continue }
+            return parts[1].trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+        }
+
+        return nil
+    }
+
+    private func registrySectionName(_ line: String) -> String? {
+        guard line.hasPrefix("["),
+              let end = line.firstIndex(of: "]") else {
+            return nil
+        }
+        return String(line[line.index(after: line.startIndex)..<end])
+    }
+
+    private func updateDetectedDisplayDefaults() {
+        detectedDisplay = MacDisplaySettings.detectMainDisplay()
+        if displayResolutionMode == "detected",
+           preflight?.gameResolutionWidth == nil || preflight?.gameResolutionHeight == nil {
+            displayResolutionMode = "1920x1080"
+            return
+        }
+        guard displayMode == "forced",
+              displayResolutionMode == "1920x1080",
+              preflight?.gameResolutionWidth != nil,
+              preflight?.gameResolutionHeight != nil else {
+            return
+        }
+        displayResolutionMode = "detected"
+    }
+
     private func readText(_ url: URL) -> String {
         (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
@@ -837,14 +1061,27 @@ final class AppModel: ObservableObject {
         return false
     }
 
-    private func enabledValue(_ value: Any?) -> String {
-        boolLike(value) ? "Enabled" : "Disabled"
+    private func enabledValue(_ value: Any?) -> String? {
+        guard value != nil else { return nil }
+        return boolLike(value) ? "Enabled" : "Disabled"
     }
 
-    private func rendererName(from plist: [String: Any]) -> String {
+    private func rendererName(from plist: [String: Any], marker: String) -> String {
         if boolLike(plist["DXVK"]) { return "DXVK" }
         if boolLike(plist["DXMT"]) { return "DXMT" }
         if boolLike(plist["D3DMETAL"]) { return "D3DMetal" }
+        switch markerValue("renderer", in: marker) {
+        case "dxvk":
+            return "DXVK"
+        case "dxmt":
+            return "DXMT"
+        case "d3dmetal":
+            return "D3DMetal"
+        case let value? where !value.isEmpty:
+            return value
+        default:
+            break
+        }
         return "Unknown"
     }
 
@@ -864,6 +1101,26 @@ final class AppModel: ObservableObject {
         return "Unknown"
     }
 
+    private func markerValue(_ key: String, in marker: String) -> String? {
+        let prefix = "\(key)="
+        return marker
+            .split(whereSeparator: \.isNewline)
+            .first { $0.hasPrefix(prefix) }
+            .map { String($0.dropFirst(prefix.count)) }
+    }
+
+    private func markerEnabledValue(_ key: String, in marker: String) -> String? {
+        guard let value = markerValue(key, in: marker) else { return nil }
+        switch value.lowercased() {
+        case "enabled", "true", "1":
+            return "Enabled"
+        case "disabled", "false", "0":
+            return "Disabled"
+        default:
+            return nil
+        }
+    }
+
     private func configValue(_ text: String, key: String) -> String? {
         for line in text.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -877,11 +1134,16 @@ final class AppModel: ObservableObject {
     }
 
     private func batchValue(_ text: String, key: String) -> String? {
+        let trimSet = CharacterSet.whitespaces.union(CharacterSet(charactersIn: "\""))
         for line in text.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let prefix = "set \(key)="
-            if trimmed.lowercased().hasPrefix(prefix.lowercased()) {
-                return String(trimmed.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+            let plainPrefix = "set \(key)="
+            if trimmed.lowercased().hasPrefix(plainPrefix.lowercased()) {
+                return String(trimmed.dropFirst(plainPrefix.count)).trimmingCharacters(in: trimSet)
+            }
+            let quotedPrefix = #"set "\#(key)="#
+            if trimmed.lowercased().hasPrefix(quotedPrefix.lowercased()) {
+                return String(trimmed.dropFirst(quotedPrefix.count)).trimmingCharacters(in: trimSet)
             }
         }
         return nil

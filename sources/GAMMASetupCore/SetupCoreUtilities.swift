@@ -120,11 +120,11 @@ public enum SetupTextEditor {
         var start: Int?
         var end = lines.count
         for index in lines.indices {
-            if lines[index] == "[\(section)]" {
+            if sectionName(lines[index]) == section {
                 start = index
                 continue
             }
-            if let start, index > start, lines[index].hasPrefix("[") {
+            if let start, index > start, sectionName(lines[index]) != nil {
                 end = index
                 break
             }
@@ -150,5 +150,13 @@ public enum SetupTextEditor {
 
     private static func rawLineKey(_ line: String) -> String {
         String(line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+    }
+
+    private static func sectionName(_ line: String) -> String? {
+        guard line.hasPrefix("["),
+              let end = line.firstIndex(of: "]") else {
+            return nil
+        }
+        return String(line[line.index(after: line.startIndex)..<end])
     }
 }

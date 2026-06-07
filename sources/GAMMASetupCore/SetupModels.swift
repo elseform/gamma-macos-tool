@@ -65,6 +65,10 @@ public struct Preflight: Codable {
     public var modOrganizerIni: String
     public var modOrganizerIniFound: Bool
     public var modOrganizerGamePath: String
+    public var userLtxPath: String
+    public var userLtxFound: Bool
+    public var gameResolutionWidth: Int?
+    public var gameResolutionHeight: Int?
     public var wineDriveLetter: String
     public var wineDriveRoot: String
     public var zRewriteRequired: Bool
@@ -100,6 +104,10 @@ public struct Preflight: Codable {
         modOrganizerIni: String,
         modOrganizerIniFound: Bool,
         modOrganizerGamePath: String,
+        userLtxPath: String = "",
+        userLtxFound: Bool = false,
+        gameResolutionWidth: Int? = nil,
+        gameResolutionHeight: Int? = nil,
         wineDriveLetter: String,
         wineDriveRoot: String,
         zRewriteRequired: Bool,
@@ -134,6 +142,10 @@ public struct Preflight: Codable {
         self.modOrganizerIni = modOrganizerIni
         self.modOrganizerIniFound = modOrganizerIniFound
         self.modOrganizerGamePath = modOrganizerGamePath
+        self.userLtxPath = userLtxPath
+        self.userLtxFound = userLtxFound
+        self.gameResolutionWidth = gameResolutionWidth
+        self.gameResolutionHeight = gameResolutionHeight
         self.wineDriveLetter = wineDriveLetter
         self.wineDriveRoot = wineDriveRoot
         self.zRewriteRequired = zRewriteRequired
@@ -171,6 +183,10 @@ public struct SetupRequest: Codable {
     public var driveMappingMode: String
     public var extraWinetricks: [String]
     public var commonFixes: [String]
+    public var displayResolutionWidth: Int?
+    public var displayResolutionHeight: Int?
+    public var useWineVirtualDesktop: Bool?
+    public var resetWineDisplay: Bool?
     public var writeLog: Bool
     public var verbose: Bool
     public var dryRun: Bool
@@ -203,6 +219,10 @@ public struct SetupRequest: Codable {
         driveMappingMode: String = "preserve",
         extraWinetricks: [String] = [],
         commonFixes: [String] = [],
+        displayResolutionWidth: Int? = nil,
+        displayResolutionHeight: Int? = nil,
+        useWineVirtualDesktop: Bool? = false,
+        resetWineDisplay: Bool? = false,
         writeLog: Bool = false,
         verbose: Bool = false,
         dryRun: Bool = false,
@@ -234,6 +254,10 @@ public struct SetupRequest: Codable {
         self.driveMappingMode = driveMappingMode
         self.extraWinetricks = extraWinetricks
         self.commonFixes = commonFixes
+        self.displayResolutionWidth = displayResolutionWidth
+        self.displayResolutionHeight = displayResolutionHeight
+        self.useWineVirtualDesktop = useWineVirtualDesktop
+        self.resetWineDisplay = resetWineDisplay
         self.writeLog = writeLog
         self.verbose = verbose
         self.dryRun = dryRun

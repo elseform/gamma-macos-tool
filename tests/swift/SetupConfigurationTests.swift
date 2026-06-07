@@ -92,6 +92,25 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
     }
 
+    func testSetupRequestIncludesDisplayResolutionOptions() {
+        let defaultWine = SetupConfiguration(displayMode: "defaultWine")
+        XCTAssertEqual(defaultWine.displayResolutionLabel, "Default Wine")
+        XCTAssertNil(defaultWine.setupRequest.displayResolutionWidth)
+        XCTAssertNil(defaultWine.setupRequest.displayResolutionHeight)
+        XCTAssertEqual(defaultWine.setupRequest.resetWineDisplay, true)
+
+        let config = SetupConfiguration(
+            displayMode: "forced",
+            displayResolutionMode: "1920x1080"
+        )
+
+        XCTAssertEqual(config.displayResolutionLabel, "1920 x 1080")
+        XCTAssertEqual(config.setupRequest.displayResolutionWidth, 1920)
+        XCTAssertEqual(config.setupRequest.displayResolutionHeight, 1080)
+        XCTAssertEqual(config.setupRequest.useWineVirtualDesktop, false)
+        XCTAssertEqual(config.setupRequest.resetWineDisplay, false)
+    }
+
     func testEngineLabels() {
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.defaultEngine).engineLabel, "Wine CX 24.0.7")
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")

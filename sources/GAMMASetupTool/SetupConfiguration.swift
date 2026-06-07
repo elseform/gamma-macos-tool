@@ -27,6 +27,10 @@ struct SetupConfiguration {
     var applyReticleFix = true
     var saveVerboseLog = true
     var driveMappingMode = "preserve"
+    var displayMode = "forced"
+    var displayResolutionMode = "detected"
+    var customDisplayResolutionWidth = ""
+    var customDisplayResolutionHeight = ""
     var manualModOrganizerPath = ""
     var preflight: Preflight?
     var outputAppExists = false
@@ -116,6 +120,41 @@ struct SetupConfiguration {
         return !preflight.zRewriteRequired || willRewriteModOrganizerIni
     }
 
+    var selectedDisplayResolution: (width: Int, height: Int)? {
+        guard displayMode == "forced" else { return nil }
+        switch displayResolutionMode {
+        case "detected":
+            guard let width = preflight?.gameResolutionWidth,
+                  let height = preflight?.gameResolutionHeight else {
+                return nil
+            }
+            return (width, height)
+        case "1920x1080":
+            return (1920, 1080)
+        case "2560x1440":
+            return (2560, 1440)
+        case "3840x2160":
+            return (3840, 2160)
+        case "custom":
+            guard let width = Int(customDisplayResolutionWidth.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  let height = Int(customDisplayResolutionHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  width > 0,
+                  height > 0 else {
+                return nil
+            }
+            return (width, height)
+        default:
+            return nil
+        }
+    }
+
+    var displayResolutionLabel: String {
+        guard let resolution = selectedDisplayResolution else {
+            return "Default Wine"
+        }
+        return "\(resolution.width) x \(resolution.height)"
+    }
+
     var setupRequest: SetupRequest {
         let modOrganizerPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
         let metalFXScaleFactor = dxmtMetalFXScaleFactor.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -124,6 +163,7 @@ struct SetupConfiguration {
             .split(whereSeparator: \.isWhitespace)
             .map(String.init)
         let fixes = renderer != "dxvk" && applyReticleFix ? ["d3dmetal-reticle"] : []
+        let resolution = selectedDisplayResolution
 
         return SetupRequest(
             appName: appName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -144,6 +184,10 @@ struct SetupConfiguration {
             driveMappingMode: willRewriteModOrganizerIni ? "shorten" : driveMappingMode,
             extraWinetricks: extra,
             commonFixes: fixes,
+            displayResolutionWidth: resolution?.width,
+            displayResolutionHeight: resolution?.height,
+            useWineVirtualDesktop: false,
+            resetWineDisplay: displayMode == "defaultWine",
             writeLog: saveVerboseLog,
             verbose: saveVerboseLog
         )
