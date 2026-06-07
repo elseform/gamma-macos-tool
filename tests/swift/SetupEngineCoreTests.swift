@@ -229,6 +229,10 @@ final class SetupEngineCoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
+    func testUSVFSDefaultSourceIsNotUserSpecific() {
+        XCTAssertEqual(SetupDefaults.defaultUSVFSSource, "")
+    }
+
     private func makeGammaFixture(gamePath: String) throws -> (temp: URL, gamma: URL, anomaly: URL) {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("gamma-setup-engine-fixture-\(UUID().uuidString)")

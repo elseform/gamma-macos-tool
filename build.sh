@@ -83,6 +83,10 @@ mkdir -p "$RESOURCES_DIR/mods"
 cp "$SOURCE_RESOURCES_DIR/Anomaly.icns" "$RESOURCES_DIR/Anomaly.icns"
 cp "$SOURCE_RESOURCES_DIR/MO2.icns" "$RESOURCES_DIR/MO2.icns"
 cp "$SOURCE_RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z" "$RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z"
+if [[ -d "$SOURCE_RESOURCES_DIR/usvfs" ]]; then
+  rm -rf "$RESOURCES_DIR/usvfs"
+  cp -R "$SOURCE_RESOURCES_DIR/usvfs" "$RESOURCES_DIR/usvfs"
+fi
 cp "$SOURCE_RESOURCES_DIR/github.svg" "$RESOURCES_DIR/github.svg"
 cp "$SOURCE_RESOURCES_DIR/discord.svg" "$RESOURCES_DIR/discord.svg"
 
