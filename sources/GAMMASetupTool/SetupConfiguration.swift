@@ -17,6 +17,7 @@ struct SetupConfiguration {
     var wineMSync = true
     var updateUSVFS = false
     var enableHIDDevices = false
+    var enableFnToggle = false
     var moltenVKFastMath = false
     var metalHUD = false
     var dxmtMetalFXSpatial = false
@@ -174,6 +175,7 @@ struct SetupConfiguration {
             wineMSync: wineMSync,
             updateUSVFS: updateUSVFS || engine == Self.sikarugir10Engine,
             enableHIDDevices: enableHIDDevices,
+            enableFnToggle: enableFnToggle,
             moltenVKFastMath: moltenVKFastMath,
             metalHUD: metalHUD,
             dxmtMetalFXSpatial: renderer == "dxmt" && dxmtMetalFXSpatial,

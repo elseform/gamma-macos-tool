@@ -62,6 +62,7 @@ final class AppModel: ObservableObject {
     @Published var wineMSync = true
     @Published var updateUSVFS = false
     @Published var enableHIDDevices = false
+    @Published var enableFnToggle = false
     @Published var moltenVKFastMath = false
     @Published var metalHUD = false
     @Published var dxmtMetalFXSpatial = false
@@ -192,6 +193,7 @@ final class AppModel: ObservableObject {
             wineMSync: wineMSync,
             updateUSVFS: updateUSVFS,
             enableHIDDevices: enableHIDDevices,
+            enableFnToggle: enableFnToggle,
             moltenVKFastMath: moltenVKFastMath,
             metalHUD: metalHUD,
             dxmtMetalFXSpatial: dxmtMetalFXSpatial,
@@ -345,7 +347,8 @@ final class AppModel: ObservableObject {
         if wineMSync {
             add("MSync", "Enabled", currentKey: "msync")
         }
-        add("Mouse input", enableHIDDevices ? "Compatibility mode" : "Wine default", currentKey: "hidDevices")
+        add("Switch media keys", enableFnToggle ? "Enabled" : "Disabled", currentKey: "fnToggle")
+        add("HID Fix", enableHIDDevices ? "Compatibility mode" : "Wine default", currentKey: "hidDevices")
         add("Renderer", rendererLabel, currentKey: "renderer")
         if moltenVKFastMath {
             add("MoltenVK fast math", "Enabled", currentKey: "fastMath")
@@ -698,6 +701,11 @@ final class AppModel: ObservableObject {
         } else if !systemReg.isEmpty {
             values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Compatibility mode" : "Wine default"
         }
+        if let markerFnToggle = markerEnabledValue("fn_toggle", in: marker) {
+            values["fnToggle"] = markerFnToggle
+        } else if let fnToggle = enabledValue(plist["IsFnToggleEnabled"]) {
+            values["fnToggle"] = fnToggle
+        }
         if let markerFastMath = markerEnabledValue("moltenvk_fast_math", in: marker) {
             values["fastMath"] = markerFastMath
         } else if let fastMath = enabledValue(plist["FASTMATH"]) {
@@ -794,6 +802,9 @@ final class AppModel: ObservableObject {
         if settings["hidDevices"] != nil {
             return true
         }
+        if settings["fnToggle"] != nil {
+            return true
+        }
         if settings["reticleFix"] != nil || settings["extraWinetricks"] != nil {
             return true
         }
@@ -833,6 +844,9 @@ final class AppModel: ObservableObject {
         }
         if let hidDevices = settings["hidDevices"] {
             enableHIDDevices = hidDevices == "Compatibility mode" || hidDevices == "Enabled"
+        }
+        if let fnToggle = settings["fnToggle"] {
+            enableFnToggle = fnToggle == "Enabled"
         }
         if let hud = settings["hud"] {
             metalHUD = hud == "Enabled"
