@@ -71,6 +71,7 @@ run("testSetupRequestIncludesWineSyncOptions", config.testSetupRequestIncludesWi
 run("testSetupRequestIncludesHIDDevicesOption", config.testSetupRequestIncludesHIDDevicesOption)
 run("testSetupRequestIncludesUSVFSUpdateOption", config.testSetupRequestIncludesUSVFSUpdateOption)
 run("testSetupRequestIncludesManualModOrganizerWhenProvided", config.testSetupRequestIncludesManualModOrganizerWhenProvided)
+run("testSetupRequestIncludesDisplayResolutionOptions", config.testSetupRequestIncludesDisplayResolutionOptions)
 run("testEngineLabels", config.testEngineLabels)
 run("testD3DMetalSetupRequestOptions", config.testD3DMetalSetupRequestOptions)
 run("testDXMTSetupRequestOptions", config.testDXMTSetupRequestOptions)

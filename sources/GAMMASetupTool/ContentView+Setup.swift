@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if SWIFT_PACKAGE
+import GAMMASetupCore
+#endif
+
 struct SetupPage: View {
     @ObservedObject var model: AppModel
     @Binding var showWinetricksList: Bool
@@ -29,6 +33,7 @@ struct SetupPage: View {
             appPanel
             prefixPanel
             winetricksCard
+            displayCard
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -133,9 +138,80 @@ struct SetupPage: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Toggle("ESync", isOn: $model.wineESync)
                         Toggle("MSync", isOn: $model.wineMSync)
-                        Toggle("Enable HID devices", isOn: $model.enableHIDDevices)
-                            .help("Write winebus HID/controller mapping overrides. Unchecked restores Wine default values.")
+                        Toggle("Mouse input compatibility", isOn: $model.enableHIDDevices)
+                            .help("Use when mouse capture, aiming, or extra mouse buttons behave incorrectly. Enables Wine winebus HID/raw-input overrides; off restores Wine defaults.")
                     }
+                }
+            }
+        }
+    }
+
+    var displayCard: some View {
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                CardHeading(title: "Display")
+
+                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 7) {
+                    GridRow {
+                        Text("Resolution")
+                        Picker("Resolution", selection: $model.displayMode) {
+                            Text("Default Wine").tag("defaultWine")
+                            Text("Forced").tag("forced")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                    }
+
+                    if model.displayMode == "forced" {
+                        GridRow {
+                            Text("Value")
+                            Picker("Value", selection: $model.displayResolutionMode) {
+                                if let detectedResolutionLabel {
+                                    Text(detectedResolutionLabel).tag("detected")
+                                }
+                                Text("1920 x 1080").tag("1920x1080")
+                                Text("2560 x 1440").tag("2560x1440")
+                                Text("3840 x 2160").tag("3840x2160")
+                                Text("Custom").tag("custom")
+                            }
+                            .labelsHidden()
+                        }
+
+                        if model.displayResolutionMode == "custom" {
+                            GridRow {
+                                Text("Custom")
+                                HStack(spacing: 6) {
+                                    TextField("Width", text: $model.customDisplayResolutionWidth)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 72)
+                                    Text("x")
+                                        .foregroundStyle(.secondary)
+                                    TextField("Height", text: $model.customDisplayResolutionHeight)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(width: 72)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let display = model.detectedDisplay {
+                    Text("macOS: \(display.summary)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let preflight = model.preflight, preflight.userLtxFound {
+                    Text("Game config: \(gameResolutionText(preflight))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(preflight.userLtxPath)
+                } else if model.preflight?.anomalyFound == true {
+                    Text("Game resolution not detected.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -150,6 +226,22 @@ struct SetupPage: View {
         default:
             return "Best first choice for compatibility."
         }
+    }
+
+    var detectedResolutionLabel: String? {
+        guard let width = model.preflight?.gameResolutionWidth,
+              let height = model.preflight?.gameResolutionHeight else {
+            return nil
+        }
+        return "Use detected: \(width) x \(height)"
+    }
+
+    func gameResolutionText(_ preflight: Preflight) -> String {
+        if let width = preflight.gameResolutionWidth,
+           let height = preflight.gameResolutionHeight {
+            return "\(width) x \(height)"
+        }
+        return "Not detected"
     }
 
     @ViewBuilder

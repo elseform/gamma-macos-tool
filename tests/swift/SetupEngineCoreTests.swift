@@ -21,7 +21,7 @@ final class SetupEngineCoreTests {
         [Existing]
         "Keep"="1"
 
-        [Software\\Wine\\DllOverrides]
+        [Software\\Wine\\DllOverrides] 1780780400
         "*old"="builtin"
         """#
 
@@ -36,12 +36,13 @@ final class SetupEngineCoreTests {
 
         XCTAssertTrue(output.contains(#""*d3dcompiler_47"="native,builtin""#))
         XCTAssertTrue(output.contains(#""*vcruntime140"="native,builtin""#))
+        XCTAssertFalse(output.contains(#"[Software\\Wine\\DllOverrides]"# + "\n" + #""*d3dcompiler_47""#))
         XCTAssertTrue(output.contains("[Existing]"))
     }
 
     func testRegistryRawLineEditorUpdatesSection() {
         let input = #"""
-        [System\\CurrentControlSet\\Services\\winebus]
+        [System\\CurrentControlSet\\Services\\winebus] 1780780400
         "DisableInput"=dword:00000000
         """#
 
@@ -135,6 +136,10 @@ final class SetupEngineCoreTests {
         XCTAssertEqual(report.mo2Profile, "Default")
         XCTAssertEqual(report.modlistPath, fixture.gamma.appendingPathComponent("profiles/Default/modlist.txt").path)
         XCTAssertTrue(report.modlistFound)
+        XCTAssertEqual(report.userLtxPath, fixture.anomaly.appendingPathComponent("appdata/user.ltx").path)
+        XCTAssertTrue(report.userLtxFound)
+        XCTAssertEqual(report.gameResolutionWidth, 1920)
+        XCTAssertEqual(report.gameResolutionHeight, 1080)
         try? FileManager.default.removeItem(at: fixture.temp)
     }
 
@@ -239,9 +244,11 @@ final class SetupEngineCoreTests {
         let gamma = temp.appendingPathComponent("GAMMA")
         let anomaly = temp.appendingPathComponent("Anomaly")
         try FileManager.default.createDirectory(at: gamma.appendingPathComponent("profiles/Default"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: anomaly.appendingPathComponent("appdata"), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: anomaly, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
         FileManager.default.createFile(atPath: gamma.appendingPathComponent("profiles/Default/modlist.txt").path, contents: Data())
+        try "vid_mode 1920x1080\n".write(to: anomaly.appendingPathComponent("appdata/user.ltx"), atomically: true, encoding: .utf8)
         try """
         [General]
         gamePath=\(gamePath)

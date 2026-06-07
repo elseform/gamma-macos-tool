@@ -25,7 +25,8 @@ The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creat
 The guided flow handles:
 
 - Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
-- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, optional Wine HID device overrides, documented DXMT settings, and Wine drive mapping.
+- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, optional mouse/raw-input compatibility overrides, documented DXMT settings, and Wine drive mapping.
+- Wine display resolution matching for BetterDisplay/HiDPI setups.
 - Required winetricks dependencies.
 - Optional extra winetricks verbs.
 - Optional D3DMetal/DXMT reflex reticle fix.
@@ -77,10 +78,6 @@ macOS may require approving the app in System Settings because the release is no
 
 The release also includes `D3DMetal DXMT Reflex Reticle Fix v2.7z`, a standalone MO2 mod archive for users who want the reticle fix without using the setup tool.
 
-## Wiki
-
-Additional macOS GAMMA field notes live in [wiki/Home.md](wiki/Home.md). Start there for technical fixes, Wine engine notes, and optimization advice that does not belong in the main setup flow.
-
 ## How to use
 
 1. Open `GAMMA Setup Tool.app`.
@@ -96,7 +93,34 @@ The recommended renderer is D3DMetal. DXMT is available as an alternative and ex
 
 DXVK is also available as a last-resort fallback for scenarios where D3DMetal and DXMT crash, for example Rostok crashing on load. It is not recommended for general use because overall performance is poor.
 
-The Runtime section includes an Enable HID devices checkbox. When checked, the setup tool writes the managed `winebus` HID/controller mapping keys to `dword:00000000`. When unchecked, wrapper updates restore Wine's default `dword:00000001` values.
+For notes on newer Wine 10 engines and recent CrossOver builds, see [Running GAMMA on newer Wine 10 engines and Latest Crossover](https://github.com/elseform/gamma-setup-tool/wiki/Running-GAMMA-on-newer-Wine-10-engines-and-Latest-Crossover).
+
+The Runtime section includes a Mouse input compatibility checkbox. Use it when mouse capture, aiming, or extra mouse buttons behave incorrectly. When checked, the setup tool writes the managed `winebus` HID/raw-input keys to `dword:00000000`. When unchecked, wrapper updates restore Wine's default `dword:00000001` values.
+
+### Wine Display Resolution
+
+The Display section is for choosing whether Wine should use its default display behavior or expose a specific resolution to Windows apps. This is mainly useful when using BetterDisplay or another HiDPI display mode where macOS may show a 1080p desktop while the backing pixel mode is larger.
+
+The tool detects:
+
+- the current macOS display mode, including HiDPI/backing resolution when available
+- the current game resolution, read only for context, from the detected Anomaly path:
+
+```text
+<anomalyPath>/appdata/user.ltx
+```
+
+`anomalyPath` is resolved from `ModOrganizer.ini`.
+
+`Forced` is the default for new wrappers. It writes Wine's Retina mode and DPI settings so Wine presents the selected resolution as a plain Windows display.
+
+`Default Wine` keeps the same Wine display behavior the wrapper used before this setting existed. If setup is re-run after using `Forced`, choosing `Default Wine` removes the Wine display keys managed by the setup tool.
+
+For a BetterDisplay `1080p HiDPI` desktop with the game also set to `1920 x 1080`, use `Forced` with the detected `1920 x 1080` option.
+
+The setup tool never writes `user.ltx`; change in-game resolution from the game itself.
+
+For deeper technical notes on macOS scaling, Wine DPI behavior, and monitor geometry, see [DPI awareness, monitor geometry](https://github.com/elseform/gamma-setup-tool/wiki/DPI-awareness,-monitor-geometry).
 
 ## Additional Fixes
 
@@ -200,7 +224,9 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Initializes the Sikarugir Wine prefix inside the wrapper.
 - Enables D3DMetal by default, or DXMT/DXVK when selected.
 - Keeps MoltenVK-CX, MSync, and ESync enabled.
-- Applies Wine HID device overrides when selected, or restores Wine defaults when unchecked.
+- Applies mouse/raw-input compatibility overrides when selected, or restores Wine defaults when unchecked.
+- Detects game resolution from `<anomalyPath>/appdata/user.ltx` for display context only.
+- When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a short Wine drive mapping for the detected macOS install location.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `vcrun2022`, `d3dcompiler_42`, `d3dcompiler_43`, `d3dcompiler_46`, `d3dcompiler_47`, `d3dx9`, `d3dx10`, `d3dx11_42`, and `d3dx11_43`.

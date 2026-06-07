@@ -65,7 +65,7 @@ extension ContentView {
 
     var footer: some View {
         HStack(spacing: 12) {
-            Text("0.67")
+            Text("0.69")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 

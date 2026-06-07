@@ -39,7 +39,7 @@ struct WindowMinimumSize: NSViewRepresentable {
 
 enum Layout {
     static let windowWidth: CGFloat = 820
-    static let windowHeight: CGFloat = 500
+    static let windowHeight: CGFloat = 640
     static let contentMaxWidth: CGFloat = 1000
     static let contentHorizontalPadding: CGFloat = 30
     static let contentVerticalPadding: CGFloat = 16
