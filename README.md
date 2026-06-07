@@ -2,11 +2,11 @@
 
 Native macOS tool for creating a Sikarugir `.app` wrapper around an existing S.T.A.L.K.E.R. G.A.M.M.A. installation.
 
-GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to already be installed with [`stalker-gamma-cli`](https://github.com/FaithBeam/stalker-gamma-cli/wiki/MacOS-Install).
+GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to already be installed.
 
 ## Flow Demonstration
 
-![GAMMA Setup Tool workflow](assets/demo/gamma-setup-tool-flow.gif)
+![GAMMA Setup Tool workflow](gamma-setup-tool-flow.gif)
 
 ## Description
 
@@ -16,7 +16,7 @@ There are several options to tweak, but changing them is not required. You can j
 
 I have also tried to provide tips and additional info if you choose to change any default settings. Most of those notes are based on my personal experience running different X-Ray engine games on macOS, so your experience may vary. Feel free to correct anything that looks extremely stupid or plain wrong.
 
-You can re-run setup for an already-created wrapper as many times as you want. It is idempotent and will adjust the prefix according to your selected options. If you encounter problems or need help, ping me in the support thread. I am on and off Discord due to life stuff, but I will get back to you as soon as I can.
+You can re-run the setup for an already-created wrapper as many times as you want. It is idempotent and will adjust the prefix according to your selected options. If you encounter problems or need help, ping me in the support thread. I am on and off Discord due to life stuff, but I will get back to you as soon as I can.
 
 ## What It Does
 
@@ -25,42 +25,12 @@ The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creat
 The guided flow handles:
 
 - Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
-- Wine prefix options, including D3DMetal or DXMT, MoltenVK-CX, MoltenVK fast math, performance HUD, optional mouse/raw-input compatibility overrides, documented DXMT settings, and Wine drive mapping.
-- Wine display resolution matching for BetterDisplay/HiDPI setups.
 - Required winetricks dependencies.
-- Optional extra winetricks verbs.
-- Optional D3DMetal/DXMT reflex reticle fix.
+- Wine prefix options + Optional fixes
 
-Default wrapper name: `stalker-gamma`. The `.app` extension is added automatically.
+## How to Use
 
-## Requirements
-
-- macOS 13 or newer.
-- G.A.M.M.A. installed through `stalker-gamma-cli`.
-- Homebrew.
-
-After those base requirements are present, the app can install or prepare the wrapper dependencies it needs:
-
-- Sikarugir tap
-- Sikarugir Creator
-- `winetricks`
-- Sikarugir wrapper template
-- Sikarugir Wine engine
-- Required Wine dependencies:
-  - `corefonts`
-  - `d3dcompiler_42`
-  - `d3dcompiler_43`
-  - `d3dcompiler_46`
-  - `d3dcompiler_47`
-  - `d3dx9`
-  - `d3dx10`
-  - `d3dx11_42`
-  - `d3dx11_43`
-  - `vcrun2022`
-
-The app does not install Homebrew, `stalker-gamma-cli`, or G.A.M.M.A.
-
-## Download
+## How to use
 
 Use the latest GitHub release and download the app archive:
 
@@ -75,27 +45,6 @@ GAMMA Setup Tool.app
 ```
 
 macOS may require approving the app in System Settings because the release is not notarized.
-
-The release also includes `D3DMetal DXMT Reflex Reticle Fix v2.7z`, a standalone MO2 mod archive for users who want the reticle fix without using the setup tool.
-
-## How to use
-
-1. Open `GAMMA Setup Tool.app`.
-2. Let the Environment screen verify required tools and detected paths.
-3. Configure wrapper name, output directory, prefix options, and optional fixes.
-4. Create the wrapper.
-5. Launch the created wrapper from the final screen.
-
-The recommended renderer is D3DMetal. DXMT is available as an alternative and exposes documented DXMT options:
-
-- MetalFX spatial swapchain
-- `DXMT_LOG_LEVEL`
-
-DXVK is also available as a last-resort fallback for scenarios where D3DMetal and DXMT crash, for example Rostok crashing on load. It is not recommended for general use because overall performance is poor.
-
-For notes on newer Wine 10 engines and recent CrossOver builds, see [Running GAMMA on newer Wine 10 engines and Latest Crossover](https://github.com/elseform/gamma-setup-tool/wiki/Running-GAMMA-on-newer-Wine-10-engines-and-Latest-Crossover).
-
-The Runtime section includes a Mouse input compatibility checkbox. Use it when mouse capture, aiming, or extra mouse buttons behave incorrectly. When checked, the setup tool writes the managed `winebus` HID/raw-input keys to `dword:00000000`. When unchecked, wrapper updates restore Wine's default `dword:00000001` values.
 
 ### Wine Display Resolution
 
@@ -121,45 +70,6 @@ For a BetterDisplay `1080p HiDPI` desktop with the game also set to `1920 x 1080
 The setup tool never writes `user.ltx`; change in-game resolution from the game itself.
 
 For deeper technical notes on macOS scaling, Wine DPI behavior, and monitor geometry, see [DPI awareness, monitor geometry](https://github.com/elseform/gamma-setup-tool/wiki/DPI-awareness,-monitor-geometry).
-
-## Additional Fixes
-
-The app includes an optional D3DMetal/DXMT reflex reticle fix:
-
-```text
-sources/GAMMASetupTool/Resources/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z
-```
-
-This fixes missing red-dot and holographic sight reticles when running STALKER Anomaly/GAMMA through D3DMetal or DXMT.
-
-When enabled, the app uses its bundled archive and extracts it into the detected MO2 `mods` directory as:
-
-```text
-D3DMetal DXMT Reflex Reticle Fix
-```
-
-It does not modify ModOrganizer profile files. Enable the mod manually in ModOrganizer after wrapper creation. Applying this fix requires `7zz` or `7z` to be available.
-
-Manual install is also possible: install the archive as a normal MO2 mod, or copy the `gamedata` folder into the game directory so it overrides the original shader files.
-
-After installing or updating this fix, clear the affected shader cache so the game recompiles the patched shaders:
-
-- `appdata/shaders_cache/r4/models_reflex_reticle_3db.ps`
-- `appdata/shaders_cache/r4/models_reflex_reticle_simple.ps`
-- `appdata/shaders_cache/r4/models_reflex_reticle.ps`
-- `appdata/shaders_cache/r4/models_reflex_reticle_simple_3db.ps`
-- `appdata/shaders_cache/r4/models_lfo_light_dot_weapons.ps`
-- `appdata/shaders_cache/r4/models_reflex_reticle.vs`
-
-Deleting the whole `appdata/shaders_cache` folder is also fine; the game will rebuild it.
-
-## Important Notes
-
-- Existing apps are not silently overwritten. If the target exists and was not created by this tool, setup stops before making changes.
-- The wrapper launches ModOrganizer only.
-- The tool reads `stalker-gamma-cli` configuration but does not write it.
-- The tool reads `ModOrganizer.ini` and rewrites it only if it detects reserved `Z:` paths and the user explicitly accepts repair.
-- GAMMA and Anomaly must already be installed and available at their detected paths.
 
 ## Developer Notes
 
