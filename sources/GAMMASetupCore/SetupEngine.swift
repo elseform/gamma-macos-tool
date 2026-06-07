@@ -612,7 +612,7 @@ public final class GAMMASetupEngine {
             return
         }
         reporter.log("Installing updated usvfs binaries for \(context.request.engine)")
-        let source = URL(fileURLWithPath: context.request.usvfsSource)
+        let source = try usvfsSource(context: context)
         let mo2Dir = URL(fileURLWithPath: context.mo2Path).deletingLastPathComponent()
         let files = ["usvfs_x64.dll", "usvfs_proxy_x64.exe", "usvfs_x86.dll", "usvfs_proxy_x86.exe"]
         for file in files where !fileManager.fileExists(atPath: source.appendingPathComponent(file).path) {
@@ -1469,6 +1469,26 @@ public final class GAMMASetupEngine {
             }
         }
         return nil
+    }
+
+    private func usvfsSource(context: SetupContext) throws -> URL {
+        if !context.request.usvfsSource.isEmpty {
+            return URL(fileURLWithPath: context.request.usvfsSource)
+        }
+
+        let dirs = [
+            context.scriptRoot.appendingPathComponent("usvfs/\(context.request.engine)"),
+            context.scriptRoot.appendingPathComponent("usvfs"),
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/usvfs/\(context.request.engine)"),
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/usvfs"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/usvfs/\(context.request.engine)"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/usvfs")
+        ]
+        if let match = dirs.first(where: { directoryExists($0.path) }) {
+            return match
+        }
+
+        throw SetupEngineError.message("updated usvfs binaries were requested but no source was provided or bundled at Resources/usvfs")
     }
 
     private func findFirstApp(named name: String, under root: URL) -> URL? {

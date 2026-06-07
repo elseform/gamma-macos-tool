@@ -250,7 +250,7 @@ public enum SetupDefaults {
     public static let defaultEngine = "WS12WineCX24.0.7_7"
     public static let sikarugir10Engine = "WS12WineSikarugir10.0_6"
     public static let supportedEngines = [defaultEngine, sikarugir10Engine]
-    public static let defaultUSVFSSource = "/Users/elseform/mods/gamma/5_other/usvfs_v0.5.7.2"
+    public static let defaultUSVFSSource = ""
     public static let defaultSettingsFile = NSString(
         string: "~/Library/Application Support/stalker-gamma/settings.json"
     ).expandingTildeInPath

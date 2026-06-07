@@ -89,6 +89,7 @@ run("testEnginePreflightLoadsStalkerGammaSettingsJSON", engine.testEnginePreflig
 run("testEnginePreflightReportsMissingSettingsWithoutFailing", engine.testEnginePreflightReportsMissingSettingsWithoutFailing)
 run("testEnginePreflightDetectsZRewriteRequirement", engine.testEnginePreflightDetectsZRewriteRequirement)
 run("testDryRunCreateAcceptsTemplateDriveCSymlink", engine.testDryRunCreateAcceptsTemplateDriveCSymlink)
+run("testUSVFSDefaultSourceIsNotUserSpecific", engine.testUSVFSDefaultSourceIsNotUserSpecific)
 
 let appSettings = AppSettingsStoreTests()
 run("testManualGammaSelectionFindsDirectModOrganizer", appSettings.testManualGammaSelectionFindsDirectModOrganizer)
