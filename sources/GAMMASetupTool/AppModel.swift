@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 #if SWIFT_PACKAGE
 import GAMMASetupCore
@@ -69,6 +70,8 @@ final class AppModel: ObservableObject {
     @Published var dxmtMetalFXScaleFactor = ""
     @Published var dxmtLogLevel = "default"
     @Published var dxvkHUD = "default"
+    @Published var programBatch = "/mo2.bat"
+    @Published var launchBatches: [LaunchBatch] = []
     @Published var extraWinetricks = ""
     @Published var applyReticleFix = true
     @Published var saveVerboseLog = true
@@ -200,6 +203,8 @@ final class AppModel: ObservableObject {
             dxmtMetalFXScaleFactor: dxmtMetalFXScaleFactor,
             dxmtLogLevel: dxmtLogLevel,
             dxvkHUD: dxvkHUD,
+            programBatch: programBatch,
+            launchBatches: launchBatches,
             extraWinetricks: extraWinetricks,
             applyReticleFix: applyReticleFix,
             saveVerboseLog: saveVerboseLog,
@@ -337,6 +342,7 @@ final class AppModel: ObservableObject {
         }
 
         add("App", outputAppPath)
+        add("Launch batch", programBatch, currentKey: "programBatch")
         if let engineRecreateWarning {
             add("Warning", engineRecreateWarning)
         }
@@ -463,6 +469,50 @@ final class AppModel: ObservableObject {
             saveSettings(gammaPath: URL(fileURLWithPath: modOrganizerPath).deletingLastPathComponent().path)
             Task { await refreshPreflight() }
         }
+    }
+
+    func chooseLaunchExecutable() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Windows Executable"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+        if let exeType = UTType(filenameExtension: "exe") {
+            panel.allowedContentTypes = [exeType]
+        }
+        if let preflight, !preflight.anomalyPath.isEmpty {
+            panel.directoryURL = URL(fileURLWithPath: preflight.anomalyPath)
+        } else if let preflight, !preflight.gammaPath.isEmpty {
+            panel.directoryURL = URL(fileURLWithPath: preflight.gammaPath)
+        }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        addLaunchBatch(forExecutable: url.path)
+    }
+
+    func selectLaunchBatch(_ batchPath: String) {
+        programBatch = normalizedBatchPath(batchPath)
+    }
+
+    func removeLaunchBatch(_ batch: LaunchBatch) {
+        launchBatches.removeAll { $0.batchPath == batch.batchPath }
+        if programBatch == batch.batchPath {
+            programBatch = "/mo2.bat"
+        }
+    }
+
+    private func addLaunchBatch(forExecutable executablePath: String) {
+        let executable = URL(fileURLWithPath: executablePath)
+        let batchPath = uniqueBatchPath(for: executable)
+        let batch = LaunchBatch(
+            batchPath: batchPath,
+            executablePath: executablePath,
+            workingDirectory: executable.deletingLastPathComponent().path
+        )
+        if !launchBatches.contains(where: { $0.batchPath == batch.batchPath }) {
+            launchBatches.append(batch)
+        }
+        programBatch = batch.batchPath
     }
 
     func refreshPreflight() async {
@@ -675,7 +725,8 @@ final class AppModel: ObservableObject {
         let driveC = prefix.appendingPathComponent("drive_c")
         let info = contents.appendingPathComponent("Info.plist")
         let plist = NSDictionary(contentsOf: info) as? [String: Any] ?? [:]
-        let mo2Bat = readText(driveC.appendingPathComponent("mo2.bat"))
+        let plistProgramBatch = (plist["Program Name and Path"] as? String).map(normalizedBatchPath) ?? "/mo2.bat"
+        let activeBatch = readText(driveC.appendingPathComponent(plistProgramBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/"))))
         let dxvkConf = readText(driveC.appendingPathComponent("dxvk.conf"))
         let dxmtConf = readText(driveC.appendingPathComponent("dxmt.conf"))
         let systemReg = readText(prefix.appendingPathComponent("system.reg"))
@@ -684,47 +735,48 @@ final class AppModel: ObservableObject {
 
         var values: [String: String] = [:]
         values["engine"] = engineLabel(from: marker)
+        values["programBatch"] = plistProgramBatch
         let detectedRenderer = rendererName(from: plist, marker: marker)
         values["renderer"] = detectedRenderer
-        if let markerESync = markerEnabledValue("wine_esync", in: marker) {
-            values["esync"] = markerESync
-        } else if let esync = enabledValue(plist["WINEESYNC"]) {
+        if let esync = enabledValue(plist["WINEESYNC"]) {
             values["esync"] = esync
+        } else if let markerESync = markerEnabledValue("wine_esync", in: marker) {
+            values["esync"] = markerESync
         }
-        if let markerMSync = markerEnabledValue("wine_msync", in: marker) {
-            values["msync"] = markerMSync
-        } else if let msync = enabledValue(plist["WINEMSYNC"]) {
+        if let msync = enabledValue(plist["WINEMSYNC"]) {
             values["msync"] = msync
+        } else if let markerMSync = markerEnabledValue("wine_msync", in: marker) {
+            values["msync"] = markerMSync
         }
-        if let mouseInput = markerValue("mouse_input", in: marker) ?? markerValue("controller_input", in: marker) {
-            values["hidDevices"] = mouseInput == "compatibility" ? "Compatibility mode" : "Wine default"
-        } else if !systemReg.isEmpty {
+        if !systemReg.isEmpty {
             values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Compatibility mode" : "Wine default"
+        } else if let mouseInput = markerValue("mouse_input", in: marker) ?? markerValue("controller_input", in: marker) {
+            values["hidDevices"] = mouseInput == "compatibility" ? "Compatibility mode" : "Wine default"
         }
-        if let markerFnToggle = markerEnabledValue("fn_toggle", in: marker) {
-            values["fnToggle"] = markerFnToggle
-        } else if let fnToggle = enabledValue(plist["IsFnToggleEnabled"]) {
+        if let fnToggle = enabledValue(plist["IsFnToggleEnabled"]) {
             values["fnToggle"] = fnToggle
+        } else if let markerFnToggle = markerEnabledValue("fn_toggle", in: marker) {
+            values["fnToggle"] = markerFnToggle
         }
-        if let markerFastMath = markerEnabledValue("moltenvk_fast_math", in: marker) {
-            values["fastMath"] = markerFastMath
-        } else if let fastMath = enabledValue(plist["FASTMATH"]) {
+        if let fastMath = enabledValue(plist["FASTMATH"]) {
             values["fastMath"] = fastMath
+        } else if let markerFastMath = markerEnabledValue("moltenvk_fast_math", in: marker) {
+            values["fastMath"] = markerFastMath
         }
-        if let markerHUD = markerEnabledValue("metal_hud", in: marker) {
-            values["hud"] = markerHUD
-        } else if let hud = enabledValue(plist["METAL_HUD"]) {
+        if let hud = enabledValue(plist["METAL_HUD"]) {
             values["hud"] = hud
+        } else if let markerHUD = markerEnabledValue("metal_hud", in: marker) {
+            values["hud"] = markerHUD
         }
-        if let markerSpatial = markerEnabledValue("dxmt_metalfx_spatial", in: marker) {
+        if !activeBatch.isEmpty {
+            values["dxmtSpatial"] = activeBatch.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
+        } else if let markerSpatial = markerEnabledValue("dxmt_metalfx_spatial", in: marker) {
             values["dxmtSpatial"] = markerSpatial
-        } else if !mo2Bat.isEmpty {
-            values["dxmtSpatial"] = mo2Bat.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
         }
-        if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
+        if !activeBatch.isEmpty {
+            values["dxmtLog"] = batchValue(activeBatch, key: "DXMT_LOG_LEVEL") ?? "Default"
+        } else if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
             values["dxmtLog"] = markerLog == "default" ? "Default" : markerLog
-        } else if !mo2Bat.isEmpty {
-            values["dxmtLog"] = batchValue(mo2Bat, key: "DXMT_LOG_LEVEL") ?? "Default"
         }
         if let markerScale = markerValue("dxmt_scale", in: marker), !markerScale.isEmpty {
             values["dxmtScale"] = markerScale
@@ -748,21 +800,21 @@ final class AppModel: ObservableObject {
         }
         if !userReg.isEmpty {
             values["wineVirtualDesktop"] = wineVirtualDesktopEnabled(in: userReg) ? "Enabled" : "Disabled"
-            if let displayMode = markerValue("display_mode", in: marker), !displayMode.isEmpty {
-                values["displayMode"] = displayMode
-            } else if managedWineDisplayEnabled(in: userReg) {
+            if managedWineDisplayEnabled(in: userReg) {
                 values["displayMode"] = "forced"
+            } else if let displayMode = markerValue("display_mode", in: marker), !displayMode.isEmpty {
+                values["displayMode"] = displayMode
             }
 
-            if let displayResolution = markerValue("display_resolution", in: marker), !displayResolution.isEmpty {
-                values["displayResolution"] = displayResolution
-                values["wineDisplay"] = displayResolutionLabel(from: displayResolution)
-            } else if let virtualDesktopResolution = wineVirtualDesktopResolution(in: userReg) {
+            if let virtualDesktopResolution = wineVirtualDesktopResolution(in: userReg) {
                 values["displayResolution"] = virtualDesktopResolution
                 values["wineDisplay"] = displayResolutionLabel(from: virtualDesktopResolution)
             } else if managedWineDisplayEnabled(in: userReg), let preflightResolution = preflightGameResolution {
                 values["displayResolution"] = preflightResolution
                 values["wineDisplay"] = displayResolutionLabel(from: preflightResolution)
+            } else if let displayResolution = markerValue("display_resolution", in: marker), !displayResolution.isEmpty {
+                values["displayResolution"] = displayResolution
+                values["wineDisplay"] = displayResolutionLabel(from: displayResolution)
             }
         }
         if let preflight {
@@ -881,6 +933,36 @@ final class AppModel: ObservableObject {
         if let detectedExtraWinetricks = settings["extraWinetricks"] {
             extraWinetricks = detectedExtraWinetricks
         }
+        if let detectedProgramBatch = settings["programBatch"] {
+            programBatch = normalizedBatchPath(detectedProgramBatch)
+        }
+    }
+
+    private func normalizedBatchPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/mo2.bat" }
+        return trimmed.hasPrefix("/") ? trimmed : "/" + trimmed
+    }
+
+    private func uniqueBatchPath(for executable: URL) -> String {
+        let folderName = executable
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .lastPathComponent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let executableName = executable.deletingPathExtension().lastPathComponent.lowercased()
+        var name = folderName.isEmpty ? executable.deletingPathExtension().lastPathComponent : folderName
+        if executableName.contains("avx") {
+            name += " - AVX"
+        }
+        var candidate = normalizedBatchPath("\(name).bat")
+        var index = 2
+        let existing = Set(["/mo2.bat"] + launchBatches.map(\.batchPath))
+        while existing.contains(candidate) {
+            candidate = normalizedBatchPath("\(name) \(index).bat")
+            index += 1
+        }
+        return candidate
     }
 
     private var winetricksMarkersInstalled: Bool {

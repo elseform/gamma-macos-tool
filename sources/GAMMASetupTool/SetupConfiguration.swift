@@ -24,6 +24,8 @@ struct SetupConfiguration {
     var dxmtMetalFXScaleFactor = ""
     var dxmtLogLevel = "default"
     var dxvkHUD = "default"
+    var programBatch = "/mo2.bat"
+    var launchBatches: [LaunchBatch] = []
     var extraWinetricks = ""
     var applyReticleFix = true
     var saveVerboseLog = true
@@ -173,7 +175,7 @@ struct SetupConfiguration {
             renderer: renderer,
             wineESync: wineESync,
             wineMSync: wineMSync,
-            updateUSVFS: updateUSVFS || engine == Self.sikarugir10Engine,
+            updateUSVFS: updateUSVFS,
             enableHIDDevices: enableHIDDevices,
             enableFnToggle: enableFnToggle,
             moltenVKFastMath: moltenVKFastMath,
@@ -183,6 +185,8 @@ struct SetupConfiguration {
             dxmtLogLevel: renderer == "dxmt" && dxmtLogLevel != "default" ? dxmtLogLevel : "",
             dxvkHUD: renderer == "dxvk" && metalHUD && dxvkHUD != "default" ? dxvkHUD : "",
             mo2Path: modOrganizerPath,
+            programBatch: programBatch,
+            launchBatches: launchBatches,
             driveMappingMode: willRewriteModOrganizerIni ? "shorten" : driveMappingMode,
             extraWinetricks: extra,
             commonFixes: fixes,

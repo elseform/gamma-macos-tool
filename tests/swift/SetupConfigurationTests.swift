@@ -87,7 +87,8 @@ final class SetupConfigurationTests {
     func testSetupRequestIncludesUSVFSUpdateOption() {
         XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.defaultEngine).setupRequest.updateUSVFS)
         XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.defaultEngine, updateUSVFS: true).setupRequest.updateUSVFS)
-        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.updateUSVFS)
+        XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.updateUSVFS)
+        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine, updateUSVFS: true).setupRequest.updateUSVFS)
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.usvfsSource, "")
     }
 

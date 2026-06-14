@@ -181,6 +181,7 @@ public struct SetupRequest: Codable {
     public var gammaPath: String
     public var anomalyPath: String
     public var programBatch: String
+    public var launchBatches: [LaunchBatch]?
     public var driveMappingMode: String
     public var extraWinetricks: [String]
     public var commonFixes: [String]
@@ -218,6 +219,7 @@ public struct SetupRequest: Codable {
         gammaPath: String = "",
         anomalyPath: String = "",
         programBatch: String = "/mo2.bat",
+        launchBatches: [LaunchBatch] = [],
         driveMappingMode: String = "preserve",
         extraWinetricks: [String] = [],
         commonFixes: [String] = [],
@@ -254,6 +256,7 @@ public struct SetupRequest: Codable {
         self.gammaPath = gammaPath
         self.anomalyPath = anomalyPath
         self.programBatch = programBatch
+        self.launchBatches = launchBatches
         self.driveMappingMode = driveMappingMode
         self.extraWinetricks = extraWinetricks
         self.commonFixes = commonFixes
@@ -270,6 +273,19 @@ public struct SetupRequest: Codable {
         self.usvfsSource = usvfsSource
         self.appIconSource = appIconSource
         self.resourceRoot = resourceRoot
+    }
+}
+
+public struct LaunchBatch: Codable, Identifiable, Equatable {
+    public var id: String { batchPath }
+    public var batchPath: String
+    public var executablePath: String
+    public var workingDirectory: String
+
+    public init(batchPath: String, executablePath: String, workingDirectory: String = "") {
+        self.batchPath = batchPath
+        self.executablePath = executablePath
+        self.workingDirectory = workingDirectory
     }
 }
 

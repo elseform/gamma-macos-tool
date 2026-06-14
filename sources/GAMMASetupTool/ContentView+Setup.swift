@@ -62,6 +62,66 @@ struct SetupPage: View {
                         .foregroundStyle(.blue)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Launch")
+                        Spacer()
+                        Menu {
+                            Button("Choose .exe...") {
+                                model.chooseLaunchExecutable()
+                            }
+                        } label: {
+                            Label("Add batch", systemImage: "plus")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .help("Create a launch batch from a Windows executable")
+                    }
+
+                    launchBatchRow(path: "/mo2.bat", removable: nil)
+                    if model.programBatch != "/mo2.bat",
+                       !model.launchBatches.contains(where: { $0.batchPath == model.programBatch }) {
+                        launchBatchRow(path: model.programBatch, removable: nil)
+                    }
+                    ForEach(model.launchBatches) { batch in
+                        launchBatchRow(path: batch.batchPath, removable: batch)
+                    }
+                }
+            }
+        }
+    }
+
+    func launchBatchRow(path: String, removable: LaunchBatch?) -> some View {
+        HStack(spacing: 8) {
+            Toggle("", isOn: Binding(
+                get: { model.programBatch == path },
+                set: { selected in
+                    if selected {
+                        model.selectLaunchBatch(path)
+                    }
+                }
+            ))
+            .toggleStyle(.checkbox)
+            .labelsHidden()
+
+            Text(path)
+                .font(.system(.caption, design: .monospaced))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+
+            Spacer()
+
+            if let removable {
+                Button {
+                    model.removeLaunchBatch(removable)
+                } label: {
+                    Image(systemName: "minus.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Remove this planned batch")
             }
         }
     }
@@ -93,17 +153,6 @@ struct SetupPage: View {
                 Toggle("MSync", isOn: $model.wineMSync)
             }
         }
-    }
-
-    var updateUSVFSBinding: Binding<Bool> {
-        Binding(
-            get: {
-                model.engine == SetupConfiguration.sikarugir10Engine || model.updateUSVFS
-            },
-            set: { value in
-                model.updateUSVFS = value
-            }
-        )
     }
 
     var rendererCard: some View {
@@ -405,8 +454,7 @@ struct SetupPage: View {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "GAMMA Fixes")
 
-                Toggle("Update usvfs binaries", isOn: updateUSVFSBinding)
-                    .disabled(model.engine == SetupConfiguration.sikarugir10Engine)
+                Toggle("Update usvfs binaries", isOn: $model.updateUSVFS)
 
                 if model.renderer == "dxvk" {
                     Toggle("Fix missing reticles", isOn: .constant(false))
