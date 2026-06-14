@@ -167,6 +167,7 @@ struct SetupContext {
     var zRewriteRequired = false
     var driveLetter = "g"
     var driveRoot = ""
+    var updatingExistingWrapper = false
 
     init(request: SetupRequest, executablePath: String) {
         let outputApp = URL(fileURLWithPath: request.outputApp)
@@ -297,7 +298,7 @@ public final class GAMMASetupEngine {
         let rendererChangedOnUpdate = rendererChangedForExistingManagedApp(context: context)
 
         try runStage(.wrapper) {
-            try prepareTargetApp(context: context)
+            try prepareTargetApp(context: &context)
             try markManagedApp(context: context, status: "in-progress")
             try ensureAppTemplateLayout(context: context)
             try installAppIcon(context: context)
@@ -325,6 +326,7 @@ public final class GAMMASetupEngine {
             try createDXMTConfig(context: context)
             try createDXVKConfig(context: context)
             try createMO2Batch(context: &context)
+            try createLaunchBatches(context: &context)
             try applyCommonFixes(context: context)
             try cleanupAnomalyCachesIfNeeded(context: context, rendererChangedOnUpdate: rendererChangedOnUpdate)
             try markManagedApp(context: context, status: "complete")
@@ -339,7 +341,7 @@ public final class GAMMASetupEngine {
         var context = SetupContext(request: request, executablePath: executablePath)
         context.templateSource = templateSource
         context.templateName = templateName
-        try prepareTargetApp(context: context)
+        try prepareTargetApp(context: &context)
         try ensureAppTemplateLayout(context: context)
     }
 
@@ -449,8 +451,9 @@ public final class GAMMASetupEngine {
         }
     }
 
-    private func prepareTargetApp(context: SetupContext) throws {
+    private func prepareTargetApp(context: inout SetupContext) throws {
         let app = context.outputApp
+        context.updatingExistingWrapper = false
         if fileManager.fileExists(atPath: app.path) {
             var isDir: ObjCBool = false
             fileManager.fileExists(atPath: app.path, isDirectory: &isDir)
@@ -469,6 +472,7 @@ public final class GAMMASetupEngine {
                     try remove(app, context: context)
                 } else {
                     reporter.log("Configuring existing managed Sikarugir wrapper at \(app.path)")
+                    context.updatingExistingWrapper = true
                     return
                 }
             } else {
@@ -688,6 +692,10 @@ public final class GAMMASetupEngine {
 
     private func configureDriveMapping(context: inout SetupContext) throws {
         reporter.log("Configuring Wine drive mapping")
+        if context.updatingExistingWrapper, context.request.driveMappingMode == "preserve" {
+            reporter.log("Preserving existing Wine drive mapping")
+            return
+        }
         resolveDriveRoot(context: &context, allowRewrite: true)
         guard directoryExists(context.driveRoot) else {
             throw SetupEngineError.message("mounted disk root not found: \(context.driveRoot)")
@@ -888,8 +896,12 @@ public final class GAMMASetupEngine {
         resolveDriveRoot(context: &context, allowRewrite: false)
         let mo2WinPath = try nativeToWindowsPath(context.mo2Path, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
         let mo2WinDir = URL(fileURLWithPath: mo2WinPath).deletingLastPathComponent().path
-        let batch = context.driveC.appendingPathComponent(context.request.programBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+        let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
+        if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
+            reporter.log("Preserving existing mo2.bat")
+            return
+        }
         try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
         var lines = [
             "@echo off",
@@ -909,6 +921,71 @@ public final class GAMMASetupEngine {
             #"start "" "\#(windowsBackslashPath(mo2WinPath))""#
         ]
         try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
+    }
+
+    private func createLaunchBatches(context: inout SetupContext) throws {
+        let launchBatches = context.request.launchBatches ?? []
+        guard !launchBatches.isEmpty else { return }
+        reporter.log("Creating launch batches")
+        resolveDriveRoot(context: &context, allowRewrite: false)
+        for launch in launchBatches {
+            let batchPath = launch.batchPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard !batchPath.isEmpty else { continue }
+            let batch = context.driveC.appendingPathComponent(batchPath)
+            if fileManager.fileExists(atPath: batch.path) {
+                reporter.log("Preserving existing \(launch.batchPath)")
+                continue
+            }
+            let exeWinPath = try launchWindowsPath(nativePath: launch.executablePath, context: context)
+            let workingNative = launch.workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? URL(fileURLWithPath: launch.executablePath).deletingLastPathComponent().path
+                : launch.workingDirectory
+            let workingWinPath = try launchWindowsPath(nativePath: workingNative, context: context)
+            guard !context.request.dryRun else { continue }
+            try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let lines = [
+                "@echo off",
+                #"start "" /D "\#(windowsBackslashPath(workingWinPath))" "\#(windowsBackslashPath(exeWinPath))""#
+            ]
+            try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
+        }
+    }
+
+    private func launchWindowsPath(nativePath: String, context: SetupContext) throws -> String {
+        if pathIsUnder(nativePath, parent: context.driveC.path) {
+            let rel = String(nativePath.dropFirst(context.driveC.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return "C:/\(rel)"
+        }
+        if let driveCIndex = nativePath.range(of: "/drive_c/", options: [.caseInsensitive]) {
+            let rel = String(nativePath[driveCIndex.upperBound...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return "C:/\(rel)"
+        }
+        if context.updatingExistingWrapper,
+           let mapped = existingMappedWindowsPath(nativePath: nativePath, context: context) {
+            return mapped
+        }
+        return try nativeToWindowsPath(nativePath, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
+    }
+
+    private func existingMappedWindowsPath(nativePath: String, context: SetupContext) -> String? {
+        guard let entries = try? fileManager.contentsOfDirectory(at: context.dosdevices, includingPropertiesForKeys: nil) else {
+            return nil
+        }
+        let mappings = entries.compactMap { url -> (letter: String, root: String)? in
+            let name = url.lastPathComponent
+            guard name.count == 2, name.hasSuffix(":"),
+                  let letter = name.first,
+                  let destination = try? fileManager.destinationOfSymbolicLink(atPath: url.path),
+                  destination != "../drive_c" else {
+                return nil
+            }
+            return (String(letter).uppercased(), destination)
+        }
+        for mapping in mappings.sorted(by: { $0.root.count > $1.root.count }) where pathIsUnder(nativePath, parent: mapping.root) {
+            let rel = mapping.root == "/" ? nativePath.trimmingCharacters(in: CharacterSet(charactersIn: "/")) : String(nativePath.dropFirst(mapping.root.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return "\(mapping.letter):/\(rel)"
+        }
+        return nil
     }
 
     private func applyCommonFixes(context: SetupContext) throws {
@@ -1126,7 +1203,8 @@ public final class GAMMASetupEngine {
         guard fileManager.fileExists(atPath: context.userReg.path) else { throw SetupEngineError.message("missing Wine user registry") }
         guard directoryExists(context.driveC.path) else { throw SetupEngineError.message("missing drive_c") }
         let batch = context.driveC.appendingPathComponent(context.request.programBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
-        guard fileManager.fileExists(atPath: batch.path) else { throw SetupEngineError.message("missing ModOrganizer batch") }
+        guard fileManager.fileExists(atPath: batch.path) else { throw SetupEngineError.message("missing selected launch batch") }
+        guard !(context.updatingExistingWrapper && context.request.driveMappingMode == "preserve") else { return }
         let driveLink = context.dosdevices.appendingPathComponent("\(context.driveLetter):")
         guard (try? fileManager.destinationOfSymbolicLink(atPath: driveLink.path)) == context.driveRoot else {
             throw SetupEngineError.message("Wine drive mapping was not created correctly")
