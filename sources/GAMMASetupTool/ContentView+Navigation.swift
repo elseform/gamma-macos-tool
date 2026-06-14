@@ -1,12 +1,35 @@
 import SwiftUI
 
 extension ContentView {
+    private var footerVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.69"
+    }
+
+    private var headerText: (title: String, subtitle: String) {
+        switch step {
+        case .environment:
+            return (
+                "Check environment",
+                "Verify required tools and GAMMA installation before continuing."
+            )
+        case .setup:
+            return (
+                "Wrapper settings",
+                "Default settings are fine in most cases. Try other options only if you encounter issues."
+            )
+        case .create:
+            return (model.createHeaderTitle, model.createHeaderSubtitle)
+        case .complete:
+            return ("Installation finished", "Get out of here, Stalker")
+        }
+    }
+
     var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 7) {
-                Text(headerTitle)
+                Text(headerText.title)
                     .font(.title2.weight(.semibold))
-                Text(headerSubtitle)
+                Text(headerText.subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -20,32 +43,6 @@ extension ContentView {
         .background(Color(nsColor: .underPageBackgroundColor))
         .transaction { transaction in
             transaction.animation = nil
-        }
-    }
-
-    var headerTitle: String {
-        switch step {
-        case .environment:
-            return "Check environment"
-        case .setup:
-            return "Wrapper settings"
-        case .create:
-            return model.createHeaderTitle
-        case .complete:
-            return "Installation finished"
-        }
-    }
-
-    var headerSubtitle: String {
-        switch step {
-        case .environment:
-            return "Verify required tools and GAMMA installation before continuing."
-        case .setup:
-            return "Default settings are fine in most cases. Try other options only if you encounter issues."
-        case .create:
-            return model.createHeaderSubtitle
-        case .complete:
-            return "Get out of here, Stalker"
         }
     }
 
@@ -65,7 +62,7 @@ extension ContentView {
 
     var footer: some View {
         HStack(spacing: 12) {
-            Text("0.69")
+            Text(footerVersion)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
@@ -83,11 +80,14 @@ extension ContentView {
     }
 
     var footerLinks: some View {
-        HStack(spacing: 10) {
+        let sourceURL = URL(string: "https://github.com/elseform/gamma-macos-tool")!
+        let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
+
+        return HStack(spacing: 10) {
             Text("Source:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: URL(string: "https://github.com/elseform/gamma-macos-tool")!) {
+            Link(destination: sourceURL) {
                 BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
             }
             .buttonStyle(.plain)
@@ -97,7 +97,7 @@ extension ContentView {
             Text("Support thread:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!) {
+            Link(destination: supportURL) {
                 BrandIcon(resourceName: "discord", fallbackSystemName: "bubble.left.and.bubble.right")
             }
             .buttonStyle(.plain)
