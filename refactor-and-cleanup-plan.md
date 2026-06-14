@@ -21,7 +21,7 @@ Create a new branch from `master` named `refactor-and-cleanup`. Port only the co
   - Preserve all current engine integration exactly: `--request-file`, `install-dependencies`, `install-dependency`, `SetupEngineEvent`, stage tracking, artifact log path handling, and fallback stage inference.
 
 - SwiftUI cleanup:
-  - Add clear `MARK` sections and private extensions in page files where it improves scanability.
+  - Keep the existing page-file split (`ContentView+Environment.swift`, `ContentView+Setup.swift`, `ContentView+CreateComplete.swift`, and `ContentView+Navigation.swift`) and add clear `MARK` sections/private helpers only where it improves scanability.
   - Keep current environment/create/complete behavior intact, including setup review before create, failure view, output disclosure, saved-log link, and install buttons.
   - Apply tiny polish only:
     - Use bundle `CFBundleShortVersionString` in footer with fallback `"0.69"`.
@@ -33,6 +33,13 @@ Create a new branch from `master` named `refactor-and-cleanup`. Port only the co
   - Convert simple immutable data holders to `let` where behavior is unchanged.
   - Remove trailing whitespace and ensure final newlines.
   - Do not introduce new app state names from the broken refactor branch.
+
+## Implementation Order
+
+1. Create `refactor-and-cleanup` from current `master`.
+2. Apply tiny helper/UI cleanups that are easy to verify independently.
+3. Split `AppModel` mechanically into extensions by responsibility, changing cross-file helpers from `private` to module-internal only where needed.
+4. Run verification after each meaningful slice, with a final full `./test.sh` pass.
 
 ## Tests And Verification
 
