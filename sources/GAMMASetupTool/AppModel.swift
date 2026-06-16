@@ -7,8 +7,8 @@ import GAMMASetupCore
 #endif
 
 struct ToolResult {
-    var output: String
-    var exitCode: Int32
+    let output: String
+    let exitCode: Int32
 }
 
 enum SetupComponent: String {

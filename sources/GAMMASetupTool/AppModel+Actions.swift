@@ -72,7 +72,7 @@ extension AppModel {
         }
     }
 
-    func addLaunchBatch(forExecutable executablePath: String) {
+    private func addLaunchBatch(forExecutable executablePath: String) {
         let executable = URL(fileURLWithPath: executablePath)
         let batchPath = uniqueBatchPath(for: executable)
         let batch = LaunchBatch(

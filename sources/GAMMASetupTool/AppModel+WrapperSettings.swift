@@ -9,7 +9,7 @@ import GAMMASetupCore
 extension AppModel {
     // MARK: - Saved Settings
 
-    var settingsURL: URL? {
+    private var settingsURL: URL? {
         AppSettingsStore.defaultSettingsURL()
     }
 
@@ -154,7 +154,7 @@ extension AppModel {
         existingWrapperSettingsDetected = hasDetectedWrapperSettings(settings)
     }
 
-    func hasDetectedWrapperSettings(_ settings: [String: String]) -> Bool {
+    private func hasDetectedWrapperSettings(_ settings: [String: String]) -> Bool {
         if let engine = settings["engine"], engine != "Unknown" {
             return true
         }
@@ -173,7 +173,7 @@ extension AppModel {
         return false
     }
 
-    func apply(settings: [String: String]) {
+    private func apply(settings: [String: String]) {
         switch settings["engine"] {
         case "Wine Sikarugir 10.0":
             engine = SetupConfiguration.sikarugir10Engine
@@ -334,7 +334,7 @@ extension AppModel {
         return values
     }
 
-    func hidDeviceOverridesEnabled(in registry: String) -> Bool {
+    private func hidDeviceOverridesEnabled(in registry: String) -> Bool {
         var inSection = false
         var values: [String: String] = [:]
 
@@ -357,21 +357,21 @@ extension AppModel {
             && values["Map Controllers"] == "dword:00000000"
     }
 
-    func wineVirtualDesktopEnabled(in registry: String) -> Bool {
+    private func wineVirtualDesktopEnabled(in registry: String) -> Bool {
         registryValue(in: registry, section: #"Software\\Wine\\Explorer"#, key: "Desktop") == "Default"
     }
 
-    func wineVirtualDesktopResolution(in registry: String) -> String? {
+    private func wineVirtualDesktopResolution(in registry: String) -> String? {
         registryValue(in: registry, section: #"Software\\Wine\\Explorer\\Desktops"#, key: "Default")
     }
 
-    func managedWineDisplayEnabled(in registry: String) -> Bool {
+    private func managedWineDisplayEnabled(in registry: String) -> Bool {
         registryValue(in: registry, section: #"Software\\Wine\\Mac Driver"#, key: "RetinaMode") == "n"
             && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "LogPixels") == "dword:00000060"
             && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "Win8DpiScaling") == "dword:00000000"
     }
 
-    var preflightGameResolution: String? {
+    private var preflightGameResolution: String? {
         guard let width = preflight?.gameResolutionWidth,
               let height = preflight?.gameResolutionHeight else {
             return nil
@@ -379,7 +379,7 @@ extension AppModel {
         return "\(width)x\(height)"
     }
 
-    func applyDisplayResolution(_ resolution: String) {
+    private func applyDisplayResolution(_ resolution: String) {
         let normalized = resolution
             .lowercased()
             .replacingOccurrences(of: " ", with: "")
@@ -403,7 +403,7 @@ extension AppModel {
         }
     }
 
-    func displayResolutionLabel(from resolution: String) -> String {
+    private func displayResolutionLabel(from resolution: String) -> String {
         let normalized = resolution
             .lowercased()
             .replacingOccurrences(of: " ", with: "")
@@ -412,7 +412,7 @@ extension AppModel {
         return "\(parts[0]) x \(parts[1])"
     }
 
-    func registryValue(in registry: String, section: String, key: String) -> String? {
+    private func registryValue(in registry: String, section: String, key: String) -> String? {
         var inSection = false
 
         for line in registry.split(whereSeparator: \.isNewline) {
@@ -436,7 +436,7 @@ extension AppModel {
         return nil
     }
 
-    func registrySectionName(_ line: String) -> String? {
+    private func registrySectionName(_ line: String) -> String? {
         guard line.hasPrefix("["),
               let end = line.firstIndex(of: "]") else {
             return nil
@@ -460,23 +460,23 @@ extension AppModel {
         displayResolutionMode = "detected"
     }
 
-    func readText(_ url: URL) -> String {
+    private func readText(_ url: URL) -> String {
         (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
 
-    func boolLike(_ value: Any?) -> Bool {
+    private func boolLike(_ value: Any?) -> Bool {
         if let value = value as? Bool { return value }
         if let value = value as? NSNumber { return value.intValue != 0 }
         if let value = value as? String { return value == "1" || value.lowercased() == "true" }
         return false
     }
 
-    func enabledValue(_ value: Any?) -> String? {
+    private func enabledValue(_ value: Any?) -> String? {
         guard value != nil else { return nil }
         return boolLike(value) ? "Enabled" : "Disabled"
     }
 
-    func rendererName(from plist: [String: Any], marker: String) -> String {
+    private func rendererName(from plist: [String: Any], marker: String) -> String {
         if boolLike(plist["DXVK"]) { return "DXVK" }
         if boolLike(plist["DXMT"]) { return "DXMT" }
         if boolLike(plist["D3DMETAL"]) { return "D3DMetal" }
@@ -495,7 +495,7 @@ extension AppModel {
         return "Unknown"
     }
 
-    func engineLabel(from marker: String) -> String {
+    private func engineLabel(from marker: String) -> String {
         for line in marker.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("engine=") else { continue }
@@ -511,7 +511,7 @@ extension AppModel {
         return "Unknown"
     }
 
-    func markerValue(_ key: String, in marker: String) -> String? {
+    private func markerValue(_ key: String, in marker: String) -> String? {
         let prefix = "\(key)="
         return marker
             .split(whereSeparator: \.isNewline)
@@ -519,7 +519,7 @@ extension AppModel {
             .map { String($0.dropFirst(prefix.count)) }
     }
 
-    func markerEnabledValue(_ key: String, in marker: String) -> String? {
+    private func markerEnabledValue(_ key: String, in marker: String) -> String? {
         guard let value = markerValue(key, in: marker) else { return nil }
         switch value.lowercased() {
         case "enabled", "true", "1":
@@ -531,7 +531,7 @@ extension AppModel {
         }
     }
 
-    func configValue(_ text: String, key: String) -> String? {
+    private func configValue(_ text: String, key: String) -> String? {
         for line in text.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("\(key)") else { continue }
@@ -543,7 +543,7 @@ extension AppModel {
         return nil
     }
 
-    func batchValue(_ text: String, key: String) -> String? {
+    private func batchValue(_ text: String, key: String) -> String? {
         let trimSet = CharacterSet.whitespaces.union(CharacterSet(charactersIn: "\""))
         for line in text.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -559,7 +559,7 @@ extension AppModel {
         return nil
     }
 
-    func driveLetter(from value: String) -> String {
+    private func driveLetter(from value: String) -> String {
         String(value.trimmingCharacters(in: CharacterSet(charactersIn: ":")).prefix(1)).uppercased()
     }
 }
