@@ -1,7 +1,7 @@
 import Foundation
 
 struct AppSettings: Codable {
-    var gammaPath: String
+    let gammaPath: String
 }
 
 enum AppSettingsStore {

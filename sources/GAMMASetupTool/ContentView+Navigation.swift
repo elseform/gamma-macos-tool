@@ -1,9 +1,7 @@
 import SwiftUI
 
 extension ContentView {
-    private var footerVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.69"
-    }
+    // MARK: - Header
 
     private var headerText: (title: String, subtitle: String) {
         switch step {
@@ -60,6 +58,12 @@ extension ContentView {
         }
     }
 
+    // MARK: - Footer
+
+    private var footerVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.69"
+    }
+
     var footer: some View {
         HStack(spacing: 12) {
             Text(footerVersion)
@@ -79,7 +83,7 @@ extension ContentView {
         .background(Color(nsColor: .underPageBackgroundColor))
     }
 
-    var footerLinks: some View {
+    private var footerLinks: some View {
         let sourceURL = URL(string: "https://github.com/elseform/gamma-macos-tool")!
         let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
 
@@ -107,7 +111,7 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var footerBackButton: some View {
+    private var footerBackButton: some View {
         if step == .create && !model.isRunning && !createButtonSubmitted {
             Button("Back") {
                 if let previous = previousStep {
@@ -119,7 +123,7 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var footerPrimaryButton: some View {
+    private var footerPrimaryButton: some View {
         switch step {
         case .environment:
             Button {
@@ -161,23 +165,25 @@ extension ContentView {
         }
     }
 
-    var visibleSteps: [WizardStep] {
+    // MARK: - Navigation State
+
+    private var visibleSteps: [WizardStep] {
         if environmentCompleted && step != .complete {
             return [.setup, .create]
         }
         return []
     }
 
-    var currentStepIndex: Int? {
+    private var currentStepIndex: Int? {
         visibleSteps.firstIndex(of: step)
     }
 
-    var previousStep: WizardStep? {
+    private var previousStep: WizardStep? {
         guard let index = currentStepIndex, index > 0 else { return nil }
         return visibleSteps[index - 1]
     }
 
-    var nextStep: WizardStep? {
+    private var nextStep: WizardStep? {
         guard let index = currentStepIndex, index + 1 < visibleSteps.count else { return nil }
         return visibleSteps[index + 1]
     }
@@ -186,7 +192,7 @@ extension ContentView {
         lhs.rawValue >= rhs.rawValue ? lhs : rhs
     }
 
-    var canContinue: Bool {
+    private var canContinue: Bool {
         if model.isRunning {
             return false
         }
@@ -199,20 +205,20 @@ extension ContentView {
         return nextStep != nil
     }
 
-    func continueToNextStep() {
+    private func continueToNextStep() {
         guard let next = nextStep else { return }
         furthestUnlockedStep = next.rawValue > furthestUnlockedStep.rawValue ? next : furthestUnlockedStep
         step = next
     }
 
-    func continueFromEnvironment() {
+    private func continueFromEnvironment() {
         guard model.environmentOK else { return }
         environmentCompleted = true
         furthestUnlockedStep = .setup
         step = .setup
     }
 
-    func startCreate() {
+    private func startCreate() {
         createButtonSubmitted = true
         Task {
             let created = await model.create()

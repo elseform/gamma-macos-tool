@@ -8,6 +8,8 @@ struct SetupPage: View {
     @ObservedObject var model: AppModel
     @Binding var showWinetricksList: Bool
 
+    // MARK: - Body
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: Layout.setupColumnSpacing) {
@@ -28,7 +30,9 @@ struct SetupPage: View {
         .opacity((model.environmentOK && !model.isRunning) ? 1 : 0.45)
     }
 
-    var setupOptionsCard: some View {
+    // MARK: - App And Prefix
+
+    private var setupOptionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             appPanel
             prefixPanel
@@ -38,7 +42,7 @@ struct SetupPage: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    var appPanel: some View {
+    private var appPanel: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "App")
@@ -93,7 +97,7 @@ struct SetupPage: View {
         }
     }
 
-    func launchBatchRow(path: String, removable: LaunchBatch?) -> some View {
+    private func launchBatchRow(path: String, removable: LaunchBatch?) -> some View {
         HStack(spacing: 8) {
             Toggle("", isOn: Binding(
                 get: { model.programBatch == path },
@@ -126,7 +130,7 @@ struct SetupPage: View {
         }
     }
 
-    var prefixPanel: some View {
+    private var prefixPanel: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 engineControls
@@ -136,7 +140,7 @@ struct SetupPage: View {
         }
     }
 
-    var engineControls: some View {
+    private var engineControls: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Engine")
@@ -155,7 +159,9 @@ struct SetupPage: View {
         }
     }
 
-    var rendererCard: some View {
+    // MARK: - Renderer
+
+    private var rendererCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "Renderer")
@@ -188,7 +194,7 @@ struct SetupPage: View {
         }
     }
 
-    var rendererOptionsCard: some View {
+    private var rendererOptionsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "Controls")
@@ -202,7 +208,9 @@ struct SetupPage: View {
         }
     }
 
-    var displayCard: some View {
+    // MARK: - Display
+
+    private var displayCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "Display")
@@ -273,7 +281,7 @@ struct SetupPage: View {
         }
     }
 
-    func rendererHelp(for renderer: String) -> String {
+    private func rendererHelp(for renderer: String) -> String {
         switch renderer {
         case "dxmt":
             return "Best performance. Can cause visual bugs if advanced features like MetalFX are enabled. Experimental."
@@ -284,7 +292,7 @@ struct SetupPage: View {
         }
     }
 
-    var detectedResolutionLabel: String? {
+    private var detectedResolutionLabel: String? {
         guard let width = model.preflight?.gameResolutionWidth,
               let height = model.preflight?.gameResolutionHeight else {
             return nil
@@ -292,7 +300,7 @@ struct SetupPage: View {
         return "Use detected: \(width) x \(height)"
     }
 
-    func gameResolutionText(_ preflight: Preflight) -> String {
+    private func gameResolutionText(_ preflight: Preflight) -> String {
         if let width = preflight.gameResolutionWidth,
            let height = preflight.gameResolutionHeight {
             return "\(width) x \(height)"
@@ -300,8 +308,10 @@ struct SetupPage: View {
         return "Not detected"
     }
 
+    // MARK: - Drive Mapping
+
     @ViewBuilder
-    var driveMappingControls: some View {
+    private var driveMappingControls: some View {
         if let preflight = model.preflight {
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 7) {
                 if preflight.zShortenAvailable {
@@ -341,7 +351,9 @@ struct SetupPage: View {
         }
     }
 
-    var metalFXControls: some View {
+    // MARK: - Renderer Options
+
+    private var metalFXControls: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Toggle("MetalFX Spatial Upscale", isOn: $model.dxmtMetalFXSpatial)
                 .disabled(!dxmtOptionsAvailable)
@@ -356,12 +368,12 @@ struct SetupPage: View {
         }
     }
 
-    var performanceHUDToggle: some View {
+    private var performanceHUDToggle: some View {
         Toggle("Performance HUD", isOn: $model.metalHUD)
             .help(model.renderer == "dxvk" ? "Enable DXVK HUD. The wrapper stores this through Sikarugir's METAL_HUD key." : "Enable Sikarugir's performance HUD.")
     }
 
-    var metalFXFactorControls: some View {
+    private var metalFXFactorControls: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text("Scale factor")
                 .font(.caption)
@@ -374,15 +386,17 @@ struct SetupPage: View {
         }
     }
 
-    var dxmtOptionsAvailable: Bool {
+    private var dxmtOptionsAvailable: Bool {
         model.renderer == "dxmt"
     }
 
-    func rendererOptionOpacity(_ available: Bool) -> Double {
+    private func rendererOptionOpacity(_ available: Bool) -> Double {
         available ? 1 : 0.45
     }
 
-    var winetricksStatusIcon: String {
+    // MARK: - Winetricks
+
+    private var winetricksStatusIcon: String {
         switch model.winetricksWrapperState {
         case .installed:
             return "checkmark.circle.fill"
@@ -393,7 +407,7 @@ struct SetupPage: View {
         }
     }
 
-    var winetricksStatusText: String {
+    private var winetricksStatusText: String {
         switch model.winetricksWrapperState {
         case .installed:
             return "Present"
@@ -404,17 +418,17 @@ struct SetupPage: View {
         }
     }
 
-    var winetricksStatusColor: Color {
+    private var winetricksStatusColor: Color {
         SetupStatusTone.winetricks(model.winetricksWrapperState).color
     }
 
-    var winetricksCard: some View {
+    private var winetricksCard: some View {
         WizardCard(verticalPadding: Layout.winetricksPanelVerticalPadding) {
             winetricksCardContent
         }
     }
 
-    var winetricksCardContent: some View {
+    private var winetricksCardContent: some View {
         VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
             CardHeading(title: "Winetricks")
 
@@ -449,7 +463,9 @@ struct SetupPage: View {
         }
     }
 
-    var modsCard: some View {
+    // MARK: - Fixes
+
+    private var modsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
                 CardHeading(title: "GAMMA Fixes")

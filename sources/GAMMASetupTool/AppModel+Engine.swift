@@ -85,7 +85,7 @@ extension AppModel {
 
     // MARK: - Event Handling
 
-    func appendLog(_ text: String) {
+    private func appendLog(_ text: String) {
         pendingEngineEventText += text
         var lines = pendingEngineEventText.components(separatedBy: "\n")
         pendingEngineEventText = lines.popLast() ?? ""
@@ -97,7 +97,7 @@ extension AppModel {
         }
     }
 
-    func handleEngineEventLine(_ line: String) -> Bool {
+    private func handleEngineEventLine(_ line: String) -> Bool {
         guard let data = line.data(using: .utf8),
               let event = try? JSONDecoder().decode(SetupEngineEvent.self, from: data) else {
             return false
@@ -147,7 +147,7 @@ extension AppModel {
         return true
     }
 
-    func installStageIndex(for stage: SetupEngineStage) -> Int? {
+    private func installStageIndex(for stage: SetupEngineStage) -> Int? {
         switch stage {
         case .wrapper: return 0
         case .engine: return 1
@@ -158,7 +158,7 @@ extension AppModel {
         }
     }
 
-    func inferredInstallStageIndex(from status: String) -> Int {
+    private func inferredInstallStageIndex(from status: String) -> Int {
         let status = status.lowercased()
         if status.contains("creating sikarugir wrapper")
             || status.contains("rebuilding")
