@@ -28,6 +28,9 @@ struct SetupPage: View {
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
         .disabled(!model.environmentOK || model.isRunning)
         .opacity((model.environmentOK && !model.isRunning) ? 1 : 0.45)
+        .onChange(of: model.outputAppPath) { _ in
+            model.targetAppPathDidChange()
+        }
     }
 
     // MARK: - App And Prefix
@@ -69,33 +72,19 @@ struct SetupPage: View {
 
                 Divider()
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Launch")
-                        Spacer()
-                        Button {
-                            model.chooseLaunchExecutable()
-                        } label: {
-                            Label("Change .exe", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .buttonStyle(.borderless)
-                        .help("Choose the Windows executable that the wrapper starts")
-                    }
-
-                    HStack(spacing: 8) {
-                        Image(systemName: "app.fill")
-                            .foregroundStyle(.secondary)
-                        Text(URL(fileURLWithPath: model.configuration.selectedLaunchExecutablePath).lastPathComponent)
-                            .font(.system(.caption, design: .monospaced))
-                            .lineLimit(1)
-                        Spacer()
-                    }
-                    Text(model.configuration.selectedLaunchExecutablePath)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Text("Launch")
+                    Spacer()
+                    Text(model.configuration.selectedLaunchExecutableLabel)
                         .lineLimit(1)
                         .truncationMode(.middle)
-                        .textSelection(.enabled)
+                    Button {
+                        model.chooseLaunchExecutable()
+                    } label: {
+                        Label("Change .exe", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Choose the Windows executable that the wrapper starts")
                 }
             }
         }

@@ -56,6 +56,11 @@ struct SetupConfiguration {
         return launchBatches.first { $0.batchPath == programBatch }?.executablePath ?? programBatch
     }
 
+    var selectedLaunchExecutableLabel: String {
+        if programBatch == "/mo2.bat" { return "ModOrganizer" }
+        return URL(fileURLWithPath: selectedLaunchExecutablePath).lastPathComponent
+    }
+
     var rendererLabel: String {
         switch renderer {
         case "dxmt":

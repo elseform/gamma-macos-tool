@@ -49,6 +49,7 @@ This repository builds a native macOS SwiftUI setup tool for creating and updati
 6. Report honestly.
    - Mention tests run.
    - Mention tests not run and why.
+   - Always state whether `dist/GAMMA Setup Tool.app` was rebuilt during the task.
    - Call out any behavior-sensitive areas touched, especially wrapper recreation, downloaded resources, Wine registry settings, or `winetricks`.
 
 ## Build And Test Commands
@@ -171,3 +172,4 @@ Keep this list current. Move items to a task-specific plan when actively working
 - Docs and README updates are included when behavior or commands change.
 - No unrelated user changes were reverted.
 - The final response names the files changed and the verification performed.
+- The final response explicitly states whether the app bundle was rebuilt.
