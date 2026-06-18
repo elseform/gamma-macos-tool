@@ -720,18 +720,62 @@ public final class GAMMASetupEngine {
     }
 
     private func installWinetricksDependencies(context: SetupContext) throws {
+        let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
         let groups: [(String, String, [String])] = [
-            ("required dependencies", "winetricks-required-v2.done", ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"])
+            ("required dependencies", "winetricks-required-v2.done", requiredVerbs)
         ]
-        for (label, markerName, verbs) in groups {
-            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, context: context)
+        let pendingGroups = groups.filter {
+            !fileManager.fileExists(atPath: context.markerDir.appendingPathComponent($0.1).path)
         }
-        if !context.request.extraWinetricks.isEmpty {
-            try installWinetricksGroup(label: "extra", marker: context.markerDir.appendingPathComponent("winetricks-extra.done"), verbs: context.request.extraWinetricks, context: context)
+        let extraMarker = context.markerDir.appendingPathComponent("winetricks-extra.done")
+        let hasPendingExtra = !context.request.extraWinetricks.isEmpty && !fileManager.fileExists(atPath: extraMarker.path)
+        guard !pendingGroups.isEmpty || hasPendingExtra else { return }
+
+        let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
+        for (label, markerName, verbs) in pendingGroups {
+            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, winetricks: winetricks, context: context)
+        }
+        if hasPendingExtra {
+            try installWinetricksGroup(label: "extra", marker: extraMarker, verbs: context.request.extraWinetricks, winetricks: winetricks, context: context)
         }
     }
 
-    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], context: SetupContext) throws {
+    private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
+        let managedWinetricks = context.sharedSupport.appendingPathComponent("gamma-setup-winetricks")
+        let candidates = [managedWinetricks.path, findTool("winetricks")].compactMap { $0 }
+        let validationRunner = ProcessRunner(dryRun: context.request.dryRun, verbose: false, reporter: reporter)
+        for candidate in candidates where fileManager.isExecutableFile(atPath: candidate) {
+            if context.request.dryRun {
+                return candidate
+            }
+            if let output = try? validationRunner.run(candidate, ["list-all"], label: "validate winetricks").output,
+               WinetricksTools.supports(requiredVerbs, listOutput: output) {
+                return candidate
+            }
+        }
+
+        reporter.log("Installed winetricks does not support all required verbs; downloading a current wrapper-local script")
+        if !context.request.dryRun {
+            try? fileManager.removeItem(at: managedWinetricks)
+        }
+        _ = try downloadFile(
+            label: "current winetricks script",
+            url: "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks",
+            output: managedWinetricks,
+            context: context
+        )
+        if context.request.dryRun {
+            return managedWinetricks.path
+        }
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedWinetricks.path)
+        let output = try validationRunner.run(managedWinetricks.path, ["list-all"], label: "validate downloaded winetricks").output
+        guard WinetricksTools.supports(requiredVerbs, listOutput: output) else {
+            throw SetupEngineError.message("downloaded winetricks does not support required verbs: \(requiredVerbs.joined(separator: ", "))")
+        }
+        return managedWinetricks.path
+    }
+
+    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], winetricks: String, context: SetupContext) throws {
         if fileManager.fileExists(atPath: marker.path) {
             return
         }
@@ -739,7 +783,7 @@ public final class GAMMASetupEngine {
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
-        try runner(context: context).run(findTool("winetricks") ?? "winetricks", ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
+        try runner(context: context).run(winetricks, ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
         fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
