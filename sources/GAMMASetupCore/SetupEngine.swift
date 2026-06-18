@@ -874,11 +874,7 @@ public final class GAMMASetupEngine {
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
-        var entries: [String: String] = [:]
-        for name in dllOverrideNames {
-            entries["*\(name)"] = "native,builtin"
-        }
-        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: entries, context: context)
+        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: dllOverrides, context: context)
     }
 
     private func configureWinebusDefaults(context: SetupContext) throws {
@@ -1879,16 +1875,19 @@ public final class GAMMASetupEngine {
     }
 }
 
-private let dllOverrideNames = [
-    "concrt140",
-    "d3dcompiler_43",
-    "d3dcompiler_47",
-    "d3dx10",
-    "d3dx10_33", "d3dx10_34", "d3dx10_35", "d3dx10_36", "d3dx10_37", "d3dx10_38", "d3dx10_39", "d3dx10_40", "d3dx10_41", "d3dx10_42", "d3dx10_43",
-    "d3dx11_42", "d3dx11_43",
-    "d3dx9_24", "d3dx9_25", "d3dx9_26", "d3dx9_27", "d3dx9_28", "d3dx9_29", "d3dx9_30", "d3dx9_31", "d3dx9_32", "d3dx9_33",
-    "d3dx9_34", "d3dx9_35", "d3dx9_36", "d3dx9_37", "d3dx9_38", "d3dx9_39", "d3dx9_40", "d3dx9_41", "d3dx9_42", "d3dx9_43",
-    "msvcp140", "msvcp140_1", "msvcp140_2", "msvcp140_atomic_wait", "msvcp140_codecvt_ids",
-    "vcamp140", "vccorlib140", "vcomp140",
-    "vcruntime140", "vcruntime140_1"
+private let dllOverrides: [String: String] = [
+    "*concrt140": "native,builtin",
+    "*d3dcompiler_47": "native",
+    "*d3dx11_43": "native",
+    "*d3dx9_43": "native",
+    "*msvcp140": "native,builtin",
+    "*msvcp140_1": "native,builtin",
+    "*msvcp140_2": "native,builtin",
+    "*msvcp140_atomic_wait": "native,builtin",
+    "*msvcp140_codecvt_ids": "native,builtin",
+    "*vcamp140": "native,builtin",
+    "*vccorlib140": "native,builtin",
+    "*vcomp140": "native,builtin",
+    "*vcruntime140": "native,builtin",
+    "*vcruntime140_1": "native,builtin",
 ]

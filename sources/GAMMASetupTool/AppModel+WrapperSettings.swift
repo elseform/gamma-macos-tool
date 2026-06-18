@@ -360,8 +360,8 @@ extension AppModel {
     }
 
     func missingDllOverrides(in overrides: [String: String]) -> [String] {
-        return requiredDllOverrides.filter { name in
-            overrides[name.lowercased()] != "native,builtin"
+        return requiredDllOverrides.compactMap { name, expected in
+            overrides[name.lowercased()] != expected ? name : nil
         }
     }
 
