@@ -47,7 +47,9 @@ struct EnvironmentPage: View {
                 if shouldShowEnvironmentGate {
                     environmentGate
                 }
-                installDetailsLink
+                if !gammaInstallationFound(preflight) {
+                    installDetailsLink
+                }
             } else if let gammaFolderSelectionError = model.gammaFolderSelectionError {
                 WizardCard(
                     horizontalPadding: Layout.environmentPanelHorizontalPadding,

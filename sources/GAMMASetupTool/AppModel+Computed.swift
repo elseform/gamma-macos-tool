@@ -183,7 +183,7 @@ extension AppModel {
         }
 
         add("App", outputAppPath)
-        add("Launch batch", programBatch, currentKey: "programBatch")
+        add("Executable", configuration.selectedLaunchExecutablePath, currentKey: "launchExecutable")
         if let engineRecreateWarning {
             add("Warning", engineRecreateWarning)
         }

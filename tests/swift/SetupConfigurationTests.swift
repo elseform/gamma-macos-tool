@@ -112,6 +112,40 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
     }
 
+    func testLaunchExecutableDefaultsToDetectedModOrganizer() {
+        var preflight = Preflight.fixture()
+        preflight.mo2Path = "/Games/GAMMA/ModOrganizer.exe"
+
+        let config = SetupConfiguration(preflight: preflight)
+
+        XCTAssertEqual(config.selectedLaunchExecutablePath, "/Games/GAMMA/ModOrganizer.exe")
+        XCTAssertEqual(config.setupRequest.programBatch, "/mo2.bat")
+    }
+
+    func testCustomLaunchExecutableIsSerializedWithEnvironmentChoice() {
+        let launch = LaunchBatch(
+            batchPath: "/Anomaly.bat",
+            executablePath: "/Games/Anomaly/bin/AnomalyDX11AVX.exe",
+            workingDirectory: "/Games/Anomaly/bin",
+            usesModOrganizerEnvironment: false
+        )
+        let config = SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch])
+
+        XCTAssertEqual(config.selectedLaunchExecutablePath, launch.executablePath)
+        XCTAssertEqual(config.setupRequest.launchBatches?.first, launch)
+        XCTAssertEqual(config.setupRequest.launchBatches?.first?.usesModOrganizerEnvironment, false)
+    }
+
+    func testCustomModOrganizerLaunchRequestsEnvironment() {
+        let launch = LaunchBatch(
+            batchPath: "/Alternate MO2.bat",
+            executablePath: "/Games/Alternate/ModOrganizer.exe",
+            usesModOrganizerEnvironment: true
+        )
+
+        XCTAssertEqual(launch.usesModOrganizerEnvironment, true)
+    }
+
     func testSetupRequestIncludesDisplayResolutionOptions() {
         let defaultWine = SetupConfiguration(displayMode: "defaultWine")
         XCTAssertEqual(defaultWine.displayResolutionLabel, "Default Wine")

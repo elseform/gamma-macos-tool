@@ -281,11 +281,18 @@ public struct LaunchBatch: Codable, Identifiable, Equatable {
     public var batchPath: String
     public var executablePath: String
     public var workingDirectory: String
+    public var usesModOrganizerEnvironment: Bool?
 
-    public init(batchPath: String, executablePath: String, workingDirectory: String = "") {
+    public init(
+        batchPath: String,
+        executablePath: String,
+        workingDirectory: String = "",
+        usesModOrganizerEnvironment: Bool = false
+    ) {
         self.batchPath = batchPath
         self.executablePath = executablePath
         self.workingDirectory = workingDirectory
+        self.usesModOrganizerEnvironment = usesModOrganizerEnvironment
     }
 }
 
