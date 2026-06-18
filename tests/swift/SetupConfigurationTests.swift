@@ -67,6 +67,20 @@ final class SetupConfigurationTests {
         XCTAssertTrue(config.setupRequest.wineMSync)
     }
 
+    func testDefaultsMatchPlaytestedSikarugirWrapper() {
+        let config = SetupConfiguration()
+
+        XCTAssertEqual(config.engine, SetupConfiguration.sikarugir10Engine)
+        XCTAssertEqual(config.renderer, "d3dmetal")
+        XCTAssertTrue(config.wineESync)
+        XCTAssertTrue(config.wineMSync)
+        XCTAssertFalse(config.enableHIDDevices)
+        XCTAssertFalse(config.enableFnToggle)
+        XCTAssertFalse(config.moltenVKFastMath)
+        XCTAssertFalse(config.metalHUD)
+        XCTAssertEqual(config.displayMode, "forced")
+    }
+
     func testSetupRequestIncludesWineSyncOptions() {
         let config = SetupConfiguration(wineESync: false, wineMSync: false)
 
@@ -118,7 +132,7 @@ final class SetupConfigurationTests {
     }
 
     func testEngineLabels() {
-        XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.defaultEngine).engineLabel, "Wine CX 24.0.7")
+        XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.crossOverEngine).engineLabel, "Wine CX 24.0.7")
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
     }
 

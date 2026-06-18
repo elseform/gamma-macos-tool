@@ -290,9 +290,10 @@ public struct LaunchBatch: Codable, Identifiable, Equatable {
 }
 
 public enum SetupDefaults {
-    public static let defaultEngine = "WS12WineCX24.0.7_7"
+    public static let crossOverEngine = "WS12WineCX24.0.7_7"
     public static let sikarugir10Engine = "WS12WineSikarugir10.0_6"
-    public static let supportedEngines = [defaultEngine, sikarugir10Engine]
+    public static let defaultEngine = sikarugir10Engine
+    public static let supportedEngines = [defaultEngine, crossOverEngine]
     public static let defaultUSVFSSource = ""
     public static let defaultSettingsFile = NSString(
         string: "~/Library/Application Support/stalker-gamma/settings.json"

@@ -178,7 +178,7 @@ extension AppModel {
         case "Wine Sikarugir 10.0":
             engine = SetupConfiguration.sikarugir10Engine
         case "Wine CX 24.0.7":
-            engine = SetupConfiguration.defaultEngine
+            engine = SetupConfiguration.crossOverEngine
         default:
             break
         }
@@ -503,7 +503,7 @@ extension AppModel {
             if value == SetupConfiguration.sikarugir10Engine {
                 return "Wine Sikarugir 10.0"
             }
-            if value == SetupConfiguration.defaultEngine {
+            if value == SetupConfiguration.crossOverEngine {
                 return "Wine CX 24.0.7"
             }
             return value

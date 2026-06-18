@@ -145,7 +145,7 @@ struct SetupPage: View {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Engine")
                 Picker("Engine", selection: $model.engine) {
-                    Text("Wine CX 24.0.7").tag(SetupConfiguration.defaultEngine)
+                    Text("Wine CX 24.0.7").tag(SetupConfiguration.crossOverEngine)
                     Text("Wine Sikarugir 10.0").tag(SetupConfiguration.sikarugir10Engine)
                 }
                 .labelsHidden()

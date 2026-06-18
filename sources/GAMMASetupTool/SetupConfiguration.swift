@@ -6,6 +6,7 @@ import GAMMASetupCore
 
 struct SetupConfiguration {
     static let defaultEngine = SetupDefaults.defaultEngine
+    static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
 
@@ -58,10 +59,10 @@ struct SetupConfiguration {
 
     var engineLabel: String {
         switch engine {
-        case Self.sikarugir10Engine:
-            return "Wine Sikarugir 10.0"
-        default:
+        case Self.crossOverEngine:
             return "Wine CX 24.0.7"
+        default:
+            return "Wine Sikarugir 10.0"
         }
     }
 
