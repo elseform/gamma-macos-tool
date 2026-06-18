@@ -73,59 +73,30 @@ struct SetupPage: View {
                     HStack {
                         Text("Launch")
                         Spacer()
-                        Menu {
-                            Button("Choose .exe...") {
-                                model.chooseLaunchExecutable()
-                            }
+                        Button {
+                            model.chooseLaunchExecutable()
                         } label: {
-                            Label("Add batch", systemImage: "plus")
+                            Label("Change .exe", systemImage: "arrow.triangle.2.circlepath")
                         }
-                        .menuStyle(.borderlessButton)
-                        .help("Create a launch batch from a Windows executable")
+                        .buttonStyle(.borderless)
+                        .help("Choose the Windows executable that the wrapper starts")
                     }
 
-                    launchBatchRow(path: "/mo2.bat", removable: nil)
-                    if model.programBatch != "/mo2.bat",
-                       !model.launchBatches.contains(where: { $0.batchPath == model.programBatch }) {
-                        launchBatchRow(path: model.programBatch, removable: nil)
+                    HStack(spacing: 8) {
+                        Image(systemName: "app.fill")
+                            .foregroundStyle(.secondary)
+                        Text(URL(fileURLWithPath: model.configuration.selectedLaunchExecutablePath).lastPathComponent)
+                            .font(.system(.caption, design: .monospaced))
+                            .lineLimit(1)
+                        Spacer()
                     }
-                    ForEach(model.launchBatches) { batch in
-                        launchBatchRow(path: batch.batchPath, removable: batch)
-                    }
+                    Text(model.configuration.selectedLaunchExecutablePath)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
                 }
-            }
-        }
-    }
-
-    private func launchBatchRow(path: String, removable: LaunchBatch?) -> some View {
-        HStack(spacing: 8) {
-            Toggle("", isOn: Binding(
-                get: { model.programBatch == path },
-                set: { selected in
-                    if selected {
-                        model.selectLaunchBatch(path)
-                    }
-                }
-            ))
-            .toggleStyle(.checkbox)
-            .labelsHidden()
-
-            Text(path)
-                .font(.system(.caption, design: .monospaced))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .textSelection(.enabled)
-
-            Spacer()
-
-            if let removable {
-                Button {
-                    model.removeLaunchBatch(removable)
-                } label: {
-                    Image(systemName: "minus.circle")
-                }
-                .buttonStyle(.borderless)
-                .help("Remove this planned batch")
             }
         }
     }

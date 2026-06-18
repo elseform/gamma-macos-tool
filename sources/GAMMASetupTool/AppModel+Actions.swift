@@ -58,31 +58,26 @@ extension AppModel {
             panel.directoryURL = URL(fileURLWithPath: preflight.gammaPath)
         }
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        addLaunchBatch(forExecutable: url.path)
-    }
-
-    func selectLaunchBatch(_ batchPath: String) {
-        programBatch = normalizedBatchPath(batchPath)
-    }
-
-    func removeLaunchBatch(_ batch: LaunchBatch) {
-        launchBatches.removeAll { $0.batchPath == batch.batchPath }
-        if programBatch == batch.batchPath {
+        let detectedModOrganizerPath = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
+        if let detectedModOrganizerPath,
+           URL(fileURLWithPath: detectedModOrganizerPath).standardizedFileURL == url.standardizedFileURL {
             programBatch = "/mo2.bat"
+            launchBatches.removeAll()
+        } else {
+            setLaunchExecutable(url.path)
         }
     }
 
-    private func addLaunchBatch(forExecutable executablePath: String) {
+    func setLaunchExecutable(_ executablePath: String) {
         let executable = URL(fileURLWithPath: executablePath)
         let batchPath = uniqueBatchPath(for: executable)
         let batch = LaunchBatch(
             batchPath: batchPath,
             executablePath: executablePath,
-            workingDirectory: executable.deletingLastPathComponent().path
+            workingDirectory: executable.deletingLastPathComponent().path,
+            usesModOrganizerEnvironment: executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
         )
-        if !launchBatches.contains(where: { $0.batchPath == batch.batchPath }) {
-            launchBatches.append(batch)
-        }
+        launchBatches = [batch]
         programBatch = batch.batchPath
     }
 

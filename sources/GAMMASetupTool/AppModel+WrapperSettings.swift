@@ -40,10 +40,14 @@ extension AppModel {
         let systemReg = readText(prefix.appendingPathComponent("system.reg"))
         let userReg = readText(prefix.appendingPathComponent("user.reg"))
         let marker = readText(sharedSupport.appendingPathComponent(".stalker-gamma-sikarugir-setup"))
+        let cliCustomCommands = plist["CLI Custom Commands"] as? String ?? ""
 
         var values: [String: String] = [:]
         values["engine"] = engineLabel(from: marker)
         values["programBatch"] = plistProgramBatch
+        let legacyLaunchExecutable = plistProgramBatch == "/mo2.bat" ? (preflight?.mo2Path ?? plistProgramBatch) : plistProgramBatch
+        values["launchExecutable"] = markerValue("launch_executable", in: marker) ?? legacyLaunchExecutable
+        values["launchUsesModOrganizerEnvironment"] = markerValue("launch_uses_modorganizer_environment", in: marker) ?? "false"
         let detectedRenderer = rendererName(from: plist, marker: marker)
         values["renderer"] = detectedRenderer
         if let esync = enabledValue(plist["WINEESYNC"]) {
@@ -76,15 +80,19 @@ extension AppModel {
         } else if let markerHUD = markerEnabledValue("metal_hud", in: marker) {
             values["hud"] = markerHUD
         }
-        if !activeBatch.isEmpty {
-            values["dxmtSpatial"] = activeBatch.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
+        if cliCustomCommands.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") {
+            values["dxmtSpatial"] = "Enabled"
         } else if let markerSpatial = markerEnabledValue("dxmt_metalfx_spatial", in: marker) {
             values["dxmtSpatial"] = markerSpatial
+        } else if !activeBatch.isEmpty {
+            values["dxmtSpatial"] = activeBatch.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
         }
-        if !activeBatch.isEmpty {
-            values["dxmtLog"] = batchValue(activeBatch, key: "DXMT_LOG_LEVEL") ?? "Default"
+        if let plistLog = commandValue(cliCustomCommands, key: "DXMT_LOG_LEVEL") {
+            values["dxmtLog"] = plistLog
         } else if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
             values["dxmtLog"] = markerLog == "default" ? "Default" : markerLog
+        } else if !activeBatch.isEmpty {
+            values["dxmtLog"] = batchValue(activeBatch, key: "DXMT_LOG_LEVEL") ?? "Default"
         }
         if let markerScale = markerValue("dxmt_scale", in: marker), !markerScale.isEmpty {
             values["dxmtScale"] = markerScale
@@ -245,6 +253,15 @@ extension AppModel {
         }
         if let detectedProgramBatch = settings["programBatch"] {
             programBatch = normalizedBatchPath(detectedProgramBatch)
+        }
+        if programBatch != "/mo2.bat", let executablePath = settings["launchExecutable"], executablePath != programBatch {
+            let executable = URL(fileURLWithPath: executablePath)
+            launchBatches = [LaunchBatch(
+                batchPath: programBatch,
+                executablePath: executablePath,
+                workingDirectory: executable.deletingLastPathComponent().path,
+                usesModOrganizerEnvironment: settings["launchUsesModOrganizerEnvironment"] == "true"
+            )]
         }
     }
 
@@ -557,6 +574,15 @@ extension AppModel {
             }
         }
         return nil
+    }
+
+    private func commandValue(_ text: String, key: String) -> String? {
+        let prefix = "\(key)="
+        return text
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+            .first { $0.hasPrefix(prefix) }
+            .map { String($0.dropFirst(prefix.count)) }
     }
 
     private func driveLetter(from value: String) -> String {

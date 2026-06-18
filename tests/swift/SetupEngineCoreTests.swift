@@ -238,6 +238,46 @@ final class SetupEngineCoreTests {
         XCTAssertEqual(SetupDefaults.defaultUSVFSSource, "")
     }
 
+    func testLaunchBatchEnvironmentIsOnlyAddedForModOrganizer() {
+        let gameLines = SetupLaunchBatchTools.commandLines(
+            executableWindowsPath: #"G:\Anomaly\bin\AnomalyDX11AVX.exe"#,
+            workingDirectoryWindowsPath: #"G:\Anomaly\bin"#,
+            usesModOrganizerEnvironment: false
+        )
+        XCTAssertFalse(gameLines.contains { $0.contains("QT_OPENGL") })
+        XCTAssertFalse(gameLines.contains { $0.contains("DXMT_LOG_LEVEL") })
+
+        let mo2Lines = SetupLaunchBatchTools.commandLines(
+            executableWindowsPath: #"G:\GAMMA\ModOrganizer.exe"#,
+            workingDirectoryWindowsPath: #"G:\GAMMA"#,
+            usesModOrganizerEnvironment: true
+        )
+        XCTAssertTrue(mo2Lines.contains(#"set "QT_OPENGL=software""#))
+        XCTAssertFalse(mo2Lines.contains { $0.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN") })
+        XCTAssertFalse(mo2Lines.contains { $0.contains("DXMT_LOG_LEVEL") })
+    }
+
+    func testDXMTCLICommandsReplaceManagedValuesAndPreserveOthers() {
+        let enabled = SetupCLICommandTools.updatingDXMTCommands(
+            "KEEP_THIS=1 DXMT_LOG_LEVEL=debug",
+            renderer: "dxmt",
+            metalFXSpatial: true,
+            logLevel: "info"
+        )
+        XCTAssertEqual(
+            enabled,
+            "KEEP_THIS=1 DXMT_METALFX_SPATIAL_SWAPCHAIN=1 DXMT_LOG_LEVEL=info"
+        )
+
+        let disabled = SetupCLICommandTools.updatingDXMTCommands(
+            enabled,
+            renderer: "dxvk",
+            metalFXSpatial: true,
+            logLevel: "trace"
+        )
+        XCTAssertEqual(disabled, "KEEP_THIS=1")
+    }
+
     private func makeGammaFixture(gamePath: String) throws -> (temp: URL, gamma: URL, anomaly: URL) {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("gamma-setup-engine-fixture-\(UUID().uuidString)")

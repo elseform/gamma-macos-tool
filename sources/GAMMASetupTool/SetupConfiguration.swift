@@ -46,6 +46,16 @@ struct SetupConfiguration {
         return URL(fileURLWithPath: installDirectory).appendingPathComponent(name).path
     }
 
+    var selectedLaunchExecutablePath: String {
+        if programBatch == "/mo2.bat" {
+            let manualPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !manualPath.isEmpty { return manualPath }
+            if let detectedPath = preflight?.mo2Path, !detectedPath.isEmpty { return detectedPath }
+            return "ModOrganizer.exe"
+        }
+        return launchBatches.first { $0.batchPath == programBatch }?.executablePath ?? programBatch
+    }
+
     var rendererLabel: String {
         switch renderer {
         case "dxmt":
