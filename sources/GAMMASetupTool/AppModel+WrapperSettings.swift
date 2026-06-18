@@ -151,6 +151,9 @@ extension AppModel {
 
     func applyExistingWrapperSettingsIfNeeded() {
         guard outputAppExists else {
+            if appliedWrapperSettingsPath != nil {
+                resetWrapperDerivedSettings()
+            }
             appliedWrapperSettingsPath = nil
             existingWrapperSettingsDetected = false
             return
@@ -160,6 +163,40 @@ extension AppModel {
         apply(settings: settings)
         appliedWrapperSettingsPath = outputAppPath
         existingWrapperSettingsDetected = hasDetectedWrapperSettings(settings)
+    }
+
+    func targetAppPathDidChange() {
+        guard appliedWrapperSettingsPath != outputAppPath else { return }
+        if appliedWrapperSettingsPath != nil {
+            resetWrapperDerivedSettings()
+        }
+        appliedWrapperSettingsPath = nil
+        existingWrapperSettingsDetected = false
+        applyExistingWrapperSettingsIfNeeded()
+    }
+
+    private func resetWrapperDerivedSettings() {
+        engine = SetupConfiguration.defaultEngine
+        renderer = "d3dmetal"
+        wineESync = true
+        wineMSync = true
+        enableHIDDevices = false
+        enableFnToggle = false
+        moltenVKFastMath = false
+        metalHUD = false
+        dxmtMetalFXSpatial = false
+        dxmtMetalFXScaleFactor = ""
+        dxmtLogLevel = "default"
+        dxvkHUD = "default"
+        programBatch = "/mo2.bat"
+        launchBatches = []
+        extraWinetricks = ""
+        applyReticleFix = true
+        driveMappingMode = "preserve"
+        displayMode = "forced"
+        displayResolutionMode = "detected"
+        customDisplayResolutionWidth = ""
+        customDisplayResolutionHeight = ""
     }
 
     private func hasDetectedWrapperSettings(_ settings: [String: String]) -> Bool {
@@ -254,14 +291,19 @@ extension AppModel {
         if let detectedProgramBatch = settings["programBatch"] {
             programBatch = normalizedBatchPath(detectedProgramBatch)
         }
-        if programBatch != "/mo2.bat", let executablePath = settings["launchExecutable"], executablePath != programBatch {
-            let executable = URL(fileURLWithPath: executablePath)
-            launchBatches = [LaunchBatch(
-                batchPath: programBatch,
-                executablePath: executablePath,
-                workingDirectory: executable.deletingLastPathComponent().path,
-                usesModOrganizerEnvironment: settings["launchUsesModOrganizerEnvironment"] == "true"
-            )]
+        if programBatch != "/mo2.bat" {
+            if let executablePath = settings["launchExecutable"], executablePath != programBatch {
+                let executable = URL(fileURLWithPath: executablePath)
+                launchBatches = [LaunchBatch(
+                    batchPath: programBatch,
+                    executablePath: executablePath,
+                    workingDirectory: executable.deletingLastPathComponent().path,
+                    usesModOrganizerEnvironment: settings["launchUsesModOrganizerEnvironment"] == "true"
+                )]
+            } else {
+                programBatch = "/mo2.bat"
+                launchBatches = []
+            }
         }
     }
 

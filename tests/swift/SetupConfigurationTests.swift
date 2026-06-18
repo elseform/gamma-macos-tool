@@ -119,6 +119,7 @@ final class SetupConfigurationTests {
         let config = SetupConfiguration(preflight: preflight)
 
         XCTAssertEqual(config.selectedLaunchExecutablePath, "/Games/GAMMA/ModOrganizer.exe")
+        XCTAssertEqual(config.selectedLaunchExecutableLabel, "ModOrganizer")
         XCTAssertEqual(config.setupRequest.programBatch, "/mo2.bat")
     }
 
@@ -132,6 +133,7 @@ final class SetupConfigurationTests {
         let config = SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch])
 
         XCTAssertEqual(config.selectedLaunchExecutablePath, launch.executablePath)
+        XCTAssertEqual(config.selectedLaunchExecutableLabel, "AnomalyDX11AVX.exe")
         XCTAssertEqual(config.setupRequest.launchBatches?.first, launch)
         XCTAssertEqual(config.setupRequest.launchBatches?.first?.usesModOrganizerEnvironment, false)
     }
