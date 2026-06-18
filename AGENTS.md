@@ -98,7 +98,7 @@ Prefer `./test.sh` before handing off a code change because it matches this repo
 - Do not intentionally modify files under a user's GAMMA install, Anomaly folder, Wine prefix, Sikarugir app, Homebrew installation, or cache while testing unless the user approved the exact live-system operation.
 - Use dry-run behavior, temporary directories, and fake tools for setup engine tests.
 - Do not remove or rewrite user-created wrappers while debugging. Wrapper recreation is user-visible and can destroy local prefix state.
-- Do not change the required `winetricks` groups casually. `corefonts`, `vcrun2022`, and the DirectX compiler/runtime verbs are part of the expected wrapper baseline.
+- Do not change the required `winetricks` group casually. `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026` are the expected wrapper baseline.
 - Do not change managed wrapper marker semantics without updating both the setup engine writer and the GUI wrapper-settings reader.
 - Do not change renderer option semantics without checking all paths: UI controls, `SetupConfiguration`, request construction, engine application, marker writing, wrapper detection, and tests.
 - Do not write to `user.ltx`. The setup tool reads game resolution for context only.

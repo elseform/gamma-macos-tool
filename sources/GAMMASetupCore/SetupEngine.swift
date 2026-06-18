@@ -720,28 +720,70 @@ public final class GAMMASetupEngine {
     }
 
     private func installWinetricksDependencies(context: SetupContext) throws {
+        let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
         let groups: [(String, String, [String])] = [
-            ("corefonts", "winetricks-corefonts.done", ["corefonts"]),
-            ("vcrun2022", "winetricks-vcrun2022.done", ["vcrun2022"]),
-            ("directx", "winetricks-directx.done", ["d3dcompiler_42", "d3dcompiler_43", "d3dcompiler_46", "d3dcompiler_47", "d3dx9", "d3dx10", "d3dx11_42", "d3dx11_43"])
+            ("required dependencies", "winetricks-required-v2.done", requiredVerbs)
         ]
-        for (label, markerName, verbs) in groups {
-            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, context: context)
+        let pendingGroups = groups.filter {
+            !fileManager.fileExists(atPath: context.markerDir.appendingPathComponent($0.1).path)
         }
-        if !context.request.extraWinetricks.isEmpty {
-            try installWinetricksGroup(label: "extra", marker: context.markerDir.appendingPathComponent("winetricks-extra.done"), verbs: context.request.extraWinetricks, context: context)
+        let extraMarker = context.markerDir.appendingPathComponent("winetricks-extra.done")
+        let hasPendingExtra = !context.request.extraWinetricks.isEmpty && !fileManager.fileExists(atPath: extraMarker.path)
+        guard !pendingGroups.isEmpty || hasPendingExtra else { return }
+
+        let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
+        for (label, markerName, verbs) in pendingGroups {
+            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, winetricks: winetricks, context: context)
+        }
+        if hasPendingExtra {
+            try installWinetricksGroup(label: "extra", marker: extraMarker, verbs: context.request.extraWinetricks, winetricks: winetricks, context: context)
         }
     }
 
-    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], context: SetupContext) throws {
+    private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
+        let managedWinetricks = context.sharedSupport.appendingPathComponent("gamma-setup-winetricks")
+        let candidates = [managedWinetricks.path, findTool("winetricks")].compactMap { $0 }
+        let validationRunner = ProcessRunner(dryRun: context.request.dryRun, verbose: false, reporter: reporter)
+        for candidate in candidates where fileManager.isExecutableFile(atPath: candidate) {
+            if context.request.dryRun {
+                return candidate
+            }
+            if let output = try? validationRunner.run(candidate, ["list-all"], label: "validate winetricks").output,
+               WinetricksTools.supports(requiredVerbs, listOutput: output) {
+                return candidate
+            }
+        }
+
+        reporter.log("Installed winetricks does not support all required verbs; downloading a current wrapper-local script")
+        if !context.request.dryRun {
+            try? fileManager.removeItem(at: managedWinetricks)
+        }
+        _ = try downloadFile(
+            label: "current winetricks script",
+            url: "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks",
+            output: managedWinetricks,
+            context: context
+        )
+        if context.request.dryRun {
+            return managedWinetricks.path
+        }
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedWinetricks.path)
+        let output = try validationRunner.run(managedWinetricks.path, ["list-all"], label: "validate downloaded winetricks").output
+        guard WinetricksTools.supports(requiredVerbs, listOutput: output) else {
+            throw SetupEngineError.message("downloaded winetricks does not support required verbs: \(requiredVerbs.joined(separator: ", "))")
+        }
+        return managedWinetricks.path
+    }
+
+    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], winetricks: String, context: SetupContext) throws {
         if fileManager.fileExists(atPath: marker.path) {
             return
         }
-        reporter.log(label == "corefonts" ? "Installing corefonts with winetricks: Arial, Courier New, Times New Roman, Verdana" : "Installing \(label) with winetricks")
+        reporter.log("Installing \(label) with winetricks")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
-        try runner(context: context).run(findTool("winetricks") ?? "winetricks", ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
+        try runner(context: context).run(winetricks, ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
         fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
@@ -832,11 +874,7 @@ public final class GAMMASetupEngine {
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
-        var entries: [String: String] = [:]
-        for name in dllOverrideNames {
-            entries["*\(name)"] = "native,builtin"
-        }
-        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: entries, context: context)
+        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: dllOverrides, context: context)
     }
 
     private func configureWinebusDefaults(context: SetupContext) throws {
@@ -1837,16 +1875,19 @@ public final class GAMMASetupEngine {
     }
 }
 
-private let dllOverrideNames = [
-    "concrt140",
-    "d3dcompiler_43",
-    "d3dcompiler_47",
-    "d3dx10",
-    "d3dx10_33", "d3dx10_34", "d3dx10_35", "d3dx10_36", "d3dx10_37", "d3dx10_38", "d3dx10_39", "d3dx10_40", "d3dx10_41", "d3dx10_42", "d3dx10_43",
-    "d3dx11_42", "d3dx11_43",
-    "d3dx9_24", "d3dx9_25", "d3dx9_26", "d3dx9_27", "d3dx9_28", "d3dx9_29", "d3dx9_30", "d3dx9_31", "d3dx9_32", "d3dx9_33",
-    "d3dx9_34", "d3dx9_35", "d3dx9_36", "d3dx9_37", "d3dx9_38", "d3dx9_39", "d3dx9_40", "d3dx9_41", "d3dx9_42", "d3dx9_43",
-    "msvcp140", "msvcp140_1", "msvcp140_2", "msvcp140_atomic_wait", "msvcp140_codecvt_ids",
-    "vcamp140", "vccorlib140", "vcomp140",
-    "vcruntime140", "vcruntime140_1"
+private let dllOverrides: [String: String] = [
+    "*concrt140": "native,builtin",
+    "*d3dcompiler_47": "native",
+    "*d3dx11_43": "native",
+    "*d3dx9_43": "native",
+    "*msvcp140": "native,builtin",
+    "*msvcp140_1": "native,builtin",
+    "*msvcp140_2": "native,builtin",
+    "*msvcp140_atomic_wait": "native,builtin",
+    "*msvcp140_codecvt_ids": "native,builtin",
+    "*vcamp140": "native,builtin",
+    "*vccorlib140": "native,builtin",
+    "*vcomp140": "native,builtin",
+    "*vcruntime140": "native,builtin",
+    "*vcruntime140_1": "native,builtin",
 ]

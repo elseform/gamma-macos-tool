@@ -5,6 +5,21 @@ final class SetupEngineCoreTests {
         XCTAssertEqual(SetupPathTools.appendWords("corefonts,d3dx9 dxvk"), ["corefonts", "d3dx9", "dxvk"])
     }
 
+    func testWinetricksVerbSupportRequiresEveryExactVerb() {
+        let output = """
+        corefonts                 Microsoft Core Fonts
+        d3dx9_43                  DirectX 9 helper
+        d3dx11_43                 DirectX 11 helper
+        d3dcompiler_47            Direct3D compiler
+        vcrun2026                 Visual C++ 2017-2026 libraries
+        """
+        XCTAssertTrue(WinetricksTools.supports(
+            ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"],
+            listOutput: output
+        ))
+        XCTAssertFalse(WinetricksTools.supports(["vcrun2022"], listOutput: output))
+    }
+
     func testPathHelpers() throws {
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root/child", parent: "/tmp/root"))
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root", parent: "/tmp/root"))

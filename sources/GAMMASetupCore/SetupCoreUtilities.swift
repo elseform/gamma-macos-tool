@@ -71,6 +71,19 @@ public enum SetupPathTools {
     }
 }
 
+public enum WinetricksTools {
+    public static func listedVerbs(_ output: String) -> Set<String> {
+        Set(output.split(whereSeparator: \.isNewline).compactMap { line in
+            line.split(whereSeparator: \.isWhitespace).first.map(String.init)
+        })
+    }
+
+    public static func supports(_ requiredVerbs: [String], listOutput: String) -> Bool {
+        let available = listedVerbs(listOutput)
+        return requiredVerbs.allSatisfy(available.contains)
+    }
+}
+
 public enum SetupLaunchBatchTools {
     public static func commandLines(
         executableWindowsPath: String,

@@ -341,9 +341,7 @@ extension AppModel {
     var winetricksMarkersInstalled: Bool {
         let markers = URL(fileURLWithPath: outputAppPath)
             .appendingPathComponent("Contents/SharedSupport/.stalker-gamma-sikarugir-markers")
-        return FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-corefonts.done").path)
-            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-vcrun2022.done").path)
-            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-directx.done").path)
+        return FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-required-v2.done").path)
     }
 
     func currentUserRegistryText() -> String? {
@@ -362,8 +360,8 @@ extension AppModel {
     }
 
     func missingDllOverrides(in overrides: [String: String]) -> [String] {
-        return requiredDllOverrides.filter { name in
-            overrides[name.lowercased()] != "native,builtin"
+        return requiredDllOverrides.compactMap { name, expected in
+            overrides[name.lowercased()] != expected ? name : nil
         }
     }
 
