@@ -6,3 +6,4 @@ dist/
 *.profraw
 .DS_Store
 AGENTS.md
+refactor-and-cleanup-plan.md

@@ -721,9 +721,7 @@ public final class GAMMASetupEngine {
 
     private func installWinetricksDependencies(context: SetupContext) throws {
         let groups: [(String, String, [String])] = [
-            ("corefonts", "winetricks-corefonts.done", ["corefonts"]),
-            ("vcrun2022", "winetricks-vcrun2022.done", ["vcrun2022"]),
-            ("directx", "winetricks-directx.done", ["d3dcompiler_42", "d3dcompiler_43", "d3dcompiler_46", "d3dcompiler_47", "d3dx9", "d3dx10", "d3dx11_42", "d3dx11_43"])
+            ("required dependencies", "winetricks-required-v2.done", ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"])
         ]
         for (label, markerName, verbs) in groups {
             try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, context: context)
@@ -737,7 +735,7 @@ public final class GAMMASetupEngine {
         if fileManager.fileExists(atPath: marker.path) {
             return
         }
-        reporter.log(label == "corefonts" ? "Installing corefonts with winetricks: Arial, Courier New, Times New Roman, Verdana" : "Installing \(label) with winetricks")
+        reporter.log("Installing \(label) with winetricks")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)

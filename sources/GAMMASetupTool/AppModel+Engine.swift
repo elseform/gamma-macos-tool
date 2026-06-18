@@ -180,8 +180,7 @@ extension AppModel {
             return 3
         }
         if status.contains("winetricks")
-            || status.contains("corefonts")
-            || status.contains("vcrun2022")
+            || status.contains("vcrun2026")
             || status.contains("directx")
             || status.contains("dll overrides") {
             return 4

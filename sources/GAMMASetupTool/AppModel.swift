@@ -105,15 +105,10 @@ final class AppModel: ObservableObject {
 
     let requiredWinetricks = [
         "corefonts",
-        "vcrun2022",
-        "d3dcompiler_42",
-        "d3dcompiler_43",
-        "d3dcompiler_46",
+        "d3dx9_43",
+        "d3dx11_43",
         "d3dcompiler_47",
-        "d3dx9",
-        "d3dx10",
-        "d3dx11_42",
-        "d3dx11_43"
+        "vcrun2026"
     ]
 
     let requiredDllOverrides = [

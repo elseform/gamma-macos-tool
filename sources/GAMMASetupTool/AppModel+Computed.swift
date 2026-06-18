@@ -10,7 +10,7 @@ extension AppModel {
     // MARK: - Wrapper Status
 
     var requiredWinetricksSummary: String {
-        "corefonts, vcrun2022, DirectX runtimes"
+        "corefonts, d3dx9_43, d3dx11_43, d3dcompiler_47, vcrun2026"
     }
 
     var winetricksWrapperState: WinetricksWrapperState {
