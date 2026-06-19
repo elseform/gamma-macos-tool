@@ -87,7 +87,7 @@ extension AppModel {
         } else if !activeBatch.isEmpty {
             values["dxmtSpatial"] = activeBatch.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
         }
-        if let plistLog = commandValue(cliCustomCommands, key: "DXMT_LOG_LEVEL") {
+        if let plistLog = SetupCLICommandTools.value(for: "DXMT_LOG_LEVEL", in: cliCustomCommands) {
             values["dxmtLog"] = plistLog
         } else if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
             values["dxmtLog"] = markerLog == "default" ? "Default" : markerLog
@@ -176,27 +176,28 @@ extension AppModel {
     }
 
     private func resetWrapperDerivedSettings() {
-        engine = SetupConfiguration.defaultEngine
-        renderer = "d3dmetal"
-        wineESync = true
-        wineMSync = true
-        enableHIDDevices = false
-        enableFnToggle = false
-        moltenVKFastMath = false
-        metalHUD = false
-        dxmtMetalFXSpatial = false
-        dxmtMetalFXScaleFactor = ""
-        dxmtLogLevel = "default"
-        dxvkHUD = "default"
-        programBatch = "/mo2.bat"
-        launchBatches = []
-        extraWinetricks = ""
-        applyReticleFix = true
-        driveMappingMode = "preserve"
-        displayMode = "forced"
-        displayResolutionMode = "detected"
-        customDisplayResolutionWidth = ""
-        customDisplayResolutionHeight = ""
+        let defaults = SetupConfiguration()
+        engine = defaults.engine
+        renderer = defaults.renderer
+        wineESync = defaults.wineESync
+        wineMSync = defaults.wineMSync
+        enableHIDDevices = defaults.enableHIDDevices
+        enableFnToggle = defaults.enableFnToggle
+        moltenVKFastMath = defaults.moltenVKFastMath
+        metalHUD = defaults.metalHUD
+        dxmtMetalFXSpatial = defaults.dxmtMetalFXSpatial
+        dxmtMetalFXScaleFactor = defaults.dxmtMetalFXScaleFactor
+        dxmtLogLevel = defaults.dxmtLogLevel
+        dxvkHUD = defaults.dxvkHUD
+        programBatch = defaults.programBatch
+        launchBatches = defaults.launchBatches
+        extraWinetricks = defaults.extraWinetricks
+        applyReticleFix = defaults.applyReticleFix
+        driveMappingMode = defaults.driveMappingMode
+        displayMode = defaults.displayMode
+        displayResolutionMode = defaults.displayResolutionMode
+        customDisplayResolutionWidth = defaults.customDisplayResolutionWidth
+        customDisplayResolutionHeight = defaults.customDisplayResolutionHeight
     }
 
     private func hasDetectedWrapperSettings(_ settings: [String: String]) -> Bool {
@@ -341,7 +342,13 @@ extension AppModel {
     var winetricksMarkersInstalled: Bool {
         let markers = URL(fileURLWithPath: outputAppPath)
             .appendingPathComponent("Contents/SharedSupport/.stalker-gamma-sikarugir-markers")
-        return FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-required-v2.done").path)
+        if FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-required-v2.done").path) {
+            return true
+        }
+        // Accept legacy per-verb markers from wrappers set up before the consolidated marker was introduced
+        return FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-corefonts.done").path)
+            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-vcrun2022.done").path)
+            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-directx.done").path)
     }
 
     func currentUserRegistryText() -> String? {
@@ -361,7 +368,11 @@ extension AppModel {
 
     func missingDllOverrides(in overrides: [String: String]) -> [String] {
         return requiredDllOverrides.compactMap { name, expected in
-            overrides[name.lowercased()] != expected ? name : nil
+            guard let actual = overrides[name.lowercased()] else { return name }
+            if actual == expected { return nil }
+            // "native,builtin" satisfies a "native" requirement — old wrappers used the stricter mode
+            if expected == "native", actual == "native,builtin" { return nil }
+            return name
         }
     }
 
@@ -614,15 +625,6 @@ extension AppModel {
             }
         }
         return nil
-    }
-
-    private func commandValue(_ text: String, key: String) -> String? {
-        let prefix = "\(key)="
-        return text
-            .split(whereSeparator: \.isWhitespace)
-            .map(String.init)
-            .first { $0.hasPrefix(prefix) }
-            .map { String($0.dropFirst(prefix.count)) }
     }
 
     private func driveLetter(from value: String) -> String {

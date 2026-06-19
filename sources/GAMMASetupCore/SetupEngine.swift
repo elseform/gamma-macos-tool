@@ -748,9 +748,13 @@ public final class GAMMASetupEngine {
             if context.request.dryRun {
                 return candidate
             }
-            if let output = try? validationRunner.run(candidate, ["list-all"], label: "validate winetricks").output,
-               WinetricksTools.supports(requiredVerbs, listOutput: output) {
-                return candidate
+            do {
+                let output = try validationRunner.run(candidate, ["list-all"], label: "validate winetricks").output
+                if WinetricksTools.supports(requiredVerbs, listOutput: output) {
+                    return candidate
+                }
+            } catch {
+                reporter.log("Could not validate winetricks at \(candidate): \(error)")
             }
         }
 
@@ -952,8 +956,8 @@ public final class GAMMASetupEngine {
             let sanitized = existing
                 .components(separatedBy: .newlines)
                 .filter {
-                    !$0.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=")
-                        && !$0.contains("DXMT_LOG_LEVEL=")
+                    !$0.hasPrefix(#"set "DXMT_METALFX_SPATIAL_SWAPCHAIN="#)
+                        && !$0.hasPrefix(#"set "DXMT_LOG_LEVEL="#)
                 }
                 .joined(separator: "\r\n")
             try (sanitized.trimmingCharacters(in: .newlines) + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
@@ -991,6 +995,10 @@ public final class GAMMASetupEngine {
             let workingWinPath = try launchWindowsPath(nativePath: workingNative, context: context)
             guard !context.request.dryRun else { continue }
             try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
+            if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
+                reporter.log("Preserving existing \(launch.batchPath)")
+                continue
+            }
             let lines = SetupLaunchBatchTools.commandLines(
                 executableWindowsPath: windowsBackslashPath(exeWinPath),
                 workingDirectoryWindowsPath: windowsBackslashPath(workingWinPath),

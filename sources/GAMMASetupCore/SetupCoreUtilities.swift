@@ -105,6 +105,15 @@ public enum SetupLaunchBatchTools {
 }
 
 public enum SetupCLICommandTools {
+    public static func value(for key: String, in commands: String) -> String? {
+        let prefix = "\(key)="
+        return commands
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+            .first { $0.hasPrefix(prefix) }
+            .map { String($0.dropFirst(prefix.count)) }
+    }
+
     public static func updatingDXMTCommands(
         _ existing: String,
         renderer: String,
