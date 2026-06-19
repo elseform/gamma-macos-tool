@@ -67,6 +67,20 @@ final class SetupConfigurationTests {
         XCTAssertTrue(config.setupRequest.wineMSync)
     }
 
+    func testDefaultsMatchPlaytestedSikarugirWrapper() {
+        let config = SetupConfiguration()
+
+        XCTAssertEqual(config.engine, SetupConfiguration.sikarugir10Engine)
+        XCTAssertEqual(config.renderer, "d3dmetal")
+        XCTAssertTrue(config.wineESync)
+        XCTAssertTrue(config.wineMSync)
+        XCTAssertFalse(config.enableHIDDevices)
+        XCTAssertFalse(config.enableFnToggle)
+        XCTAssertFalse(config.moltenVKFastMath)
+        XCTAssertFalse(config.metalHUD)
+        XCTAssertEqual(config.displayMode, "forced")
+    }
+
     func testSetupRequestIncludesWineSyncOptions() {
         let config = SetupConfiguration(wineESync: false, wineMSync: false)
 
@@ -98,6 +112,42 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
     }
 
+    func testLaunchExecutableDefaultsToDetectedModOrganizer() {
+        var preflight = Preflight.fixture()
+        preflight.mo2Path = "/Games/GAMMA/ModOrganizer.exe"
+
+        let config = SetupConfiguration(preflight: preflight)
+
+        XCTAssertEqual(config.selectedLaunchExecutablePath, "/Games/GAMMA/ModOrganizer.exe")
+        XCTAssertEqual(config.selectedLaunchExecutableLabel, "ModOrganizer")
+        XCTAssertEqual(config.setupRequest.programBatch, "/mo2.bat")
+    }
+
+    func testCustomLaunchExecutableIsSerializedWithEnvironmentChoice() {
+        let launch = LaunchBatch(
+            batchPath: "/Anomaly.bat",
+            executablePath: "/Games/Anomaly/bin/AnomalyDX11AVX.exe",
+            workingDirectory: "/Games/Anomaly/bin",
+            usesModOrganizerEnvironment: false
+        )
+        let config = SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch])
+
+        XCTAssertEqual(config.selectedLaunchExecutablePath, launch.executablePath)
+        XCTAssertEqual(config.selectedLaunchExecutableLabel, "AnomalyDX11AVX.exe")
+        XCTAssertEqual(config.setupRequest.launchBatches?.first, launch)
+        XCTAssertEqual(config.setupRequest.launchBatches?.first?.usesModOrganizerEnvironment, false)
+    }
+
+    func testCustomModOrganizerLaunchRequestsEnvironment() {
+        let launch = LaunchBatch(
+            batchPath: "/Alternate MO2.bat",
+            executablePath: "/Games/Alternate/ModOrganizer.exe",
+            usesModOrganizerEnvironment: true
+        )
+
+        XCTAssertEqual(launch.usesModOrganizerEnvironment, true)
+    }
+
     func testSetupRequestIncludesDisplayResolutionOptions() {
         let defaultWine = SetupConfiguration(displayMode: "defaultWine")
         XCTAssertEqual(defaultWine.displayResolutionLabel, "Default Wine")
@@ -118,7 +168,7 @@ final class SetupConfigurationTests {
     }
 
     func testEngineLabels() {
-        XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.defaultEngine).engineLabel, "Wine CX 24.0.7")
+        XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.crossOverEngine).engineLabel, "Wine CX 24.0.7")
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
     }
 

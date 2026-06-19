@@ -5,6 +5,8 @@ struct CreatePage: View {
     @ObservedObject var model: AppModel
     @Binding var createButtonSubmitted: Bool
 
+    // MARK: - Body
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if model.isRunning || createButtonSubmitted || model.installFailed {
@@ -16,7 +18,9 @@ struct CreatePage: View {
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
     }
 
-    var setupReviewCard: some View {
+    // MARK: - Setup Review
+
+    private var setupReviewCard: some View {
         WizardCard {
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 9) {
                 ForEach(model.setupSummaryItems) { item in
@@ -29,7 +33,9 @@ struct CreatePage: View {
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
     }
 
-    var runStatus: some View {
+    // MARK: - Run Status
+
+    private var runStatus: some View {
         VStack(alignment: .leading, spacing: 12) {
             if model.isRunning || model.installFailed {
                 WizardCard {
@@ -56,7 +62,7 @@ struct CreatePage: View {
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
     }
 
-    var installFailureView: some View {
+    private var installFailureView: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "xmark.circle.fill")
                 .font(.title3.weight(.semibold))
@@ -94,7 +100,7 @@ struct CreatePage: View {
         .padding(.top, 2)
     }
 
-    var installStages: some View {
+    private var installStages: some View {
         VStack(alignment: .leading, spacing: 5) {
             ForEach(Array(installStageRows.enumerated()), id: \.offset) { index, row in
                 installStageRow(index: index, row: row)
@@ -105,7 +111,7 @@ struct CreatePage: View {
         }
     }
 
-    var installStageRows: [(title: String, detail: String)] {
+    private var installStageRows: [(title: String, detail: String)] {
         [
             (model.wrapperStageTitle, ""),
             ("Engine", model.engineLabel),
@@ -116,7 +122,7 @@ struct CreatePage: View {
         ]
     }
 
-    func installStageRow(index: Int, row: (title: String, detail: String)) -> some View {
+    private func installStageRow(index: Int, row: (title: String, detail: String)) -> some View {
         HStack(spacing: 8) {
             stageIcon(for: index)
             Text(row.title)
@@ -133,7 +139,7 @@ struct CreatePage: View {
         .frame(height: 16)
     }
 
-    func stageIcon(for index: Int) -> some View {
+    private func stageIcon(for index: Int) -> some View {
         return Group {
             if model.installFailed && index == model.installStageIndex {
                 Image(systemName: "xmark.circle.fill")
@@ -155,6 +161,8 @@ struct CreatePage: View {
 
 struct CompletePage: View {
     @ObservedObject var model: AppModel
+
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {

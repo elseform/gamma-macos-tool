@@ -139,7 +139,8 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a short Wine drive mapping for the detected macOS install location.
-- Installs required Wine dependencies with `winetricks`: `corefonts`, `vcrun2022`, `d3dcompiler_42`, `d3dcompiler_43`, `d3dcompiler_46`, `d3dcompiler_47`, `d3dx9`, `d3dx10`, `d3dx11_42`, and `d3dx11_43`.
+- Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
+- Uses the installed `winetricks` CLI when it supports every required verb; otherwise downloads a current script into the managed wrapper without modifying the Homebrew installation.
 - Installs any extra winetricks verbs requested by the user.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs as `native,builtin`.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.

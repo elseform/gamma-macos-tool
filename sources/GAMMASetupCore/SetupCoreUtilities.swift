@@ -71,6 +71,72 @@ public enum SetupPathTools {
     }
 }
 
+public enum WinetricksTools {
+    public static func listedVerbs(_ output: String) -> Set<String> {
+        Set(output.split(whereSeparator: \.isNewline).compactMap { line in
+            line.split(whereSeparator: \.isWhitespace).first.map(String.init)
+        })
+    }
+
+    public static func supports(_ requiredVerbs: [String], listOutput: String) -> Bool {
+        let available = listedVerbs(listOutput)
+        return requiredVerbs.allSatisfy(available.contains)
+    }
+}
+
+public enum SetupLaunchBatchTools {
+    public static func commandLines(
+        executableWindowsPath: String,
+        workingDirectoryWindowsPath: String,
+        usesModOrganizerEnvironment: Bool
+    ) -> [String] {
+        var lines = ["@echo off"]
+        if usesModOrganizerEnvironment {
+            lines += [
+                #"set "QT_OPENGL=software""#,
+                #"set "QT_QUICK_BACKEND=software""#,
+                #"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#
+            ]
+            lines.append("")
+        }
+        lines.append(#"start "" /D "\#(workingDirectoryWindowsPath)" "\#(executableWindowsPath)""#)
+        return lines
+    }
+}
+
+public enum SetupCLICommandTools {
+    public static func value(for key: String, in commands: String) -> String? {
+        let prefix = "\(key)="
+        return commands
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+            .first { $0.hasPrefix(prefix) }
+            .map { String($0.dropFirst(prefix.count)) }
+    }
+
+    public static func updatingDXMTCommands(
+        _ existing: String,
+        renderer: String,
+        metalFXSpatial: Bool,
+        logLevel: String
+    ) -> String {
+        var commands = existing
+            .split(whereSeparator: \.isWhitespace)
+            .map(String.init)
+            .filter {
+                !$0.hasPrefix("DXMT_METALFX_SPATIAL_SWAPCHAIN=")
+                    && !$0.hasPrefix("DXMT_LOG_LEVEL=")
+            }
+        if renderer == "dxmt", metalFXSpatial {
+            commands.append("DXMT_METALFX_SPATIAL_SWAPCHAIN=1")
+        }
+        if renderer == "dxmt", !logLevel.isEmpty {
+            commands.append("DXMT_LOG_LEVEL=\(logLevel)")
+        }
+        return commands.joined(separator: " ")
+    }
+}
+
 public enum SetupTextEditor {
     public static func ensureSectionKeyValues(text: String, section: String, entries: [String: String]) -> String {
         var lines = text.components(separatedBy: .newlines)

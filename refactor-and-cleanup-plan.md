@@ -2,44 +2,36 @@
 
 ## Summary
 
-Create a new branch from `master` named `refactor-and-cleanup`. Port only the conservative cleanup value from `refactor`: organization, readability, small duplication reduction, and tiny low-risk UI polish. Do not cherry-pick the broken branch wholesale, and do not intentionally change setup behavior, engine commands, install flow, failure handling, saved logs, or wrapper-setting detection.
+Continue the conservative cleanup on `refactor-and-cleanup`. Port only the remaining low-risk value from `refactor`: readability, small duplication reduction, and tiny UI organization improvements. Do not cherry-pick the broken branch wholesale, and do not intentionally change setup behavior, engine commands, install flow, failure handling, saved logs, or wrapper-setting detection.
 
-## Key Changes
+## Current Status
 
-- Branch setup:
-  - Start from current `master`.
-  - Create/switch to exact branch name `refactor-and-cleanup`.
-  - If the worktree is dirty before branching, stop and consult instead of stashing or overwriting.
+- Branch `refactor-and-cleanup` exists and is active.
+- `AppModel` has been split into `AppModel+Computed.swift`, `AppModel+Actions.swift`, `AppModel+Engine.swift`, and `AppModel+WrapperSettings.swift`.
+- Completed tiny polish:
+  - Footer uses bundle `CFBundleShortVersionString` with fallback `"0.69"`.
+  - Header title/subtitle switch logic is combined into one private computed value.
+  - Footer link URLs are local constants.
+  - `OutputBuffer.stringValue()` releases its lock with `defer`.
+- Completed follow-up cleanup:
+  - Extension-file helpers were tightened back to `private` where cross-file access is not needed.
+  - Existing SwiftUI page files now have `MARK` sections and private page-local helpers.
+  - Simple immutable data holders use `let` where behavior is unchanged.
+- Final checkpoint passed `git diff --check` and `./test.sh`.
 
-- `AppModel` cleanup:
-  - Keep stored `@Published` state, small supporting structs/enums, and `init` in `AppModel.swift`.
-  - Split existing behavior into extension files without changing API names or logic:
-    - `AppModel+Computed.swift`: configuration-derived computed properties, setup summary, environment messages.
-    - `AppModel+Actions.swift`: directory pickers, preflight/create/install/open actions.
-    - `AppModel+Engine.swift`: engine request construction, process execution, log streaming, stage/event handling.
-    - `AppModel+WrapperSettings.swift`: existing wrapper detection, settings application, plist/registry/marker parsing.
-  - Preserve all current engine integration exactly: `--request-file`, `install-dependencies`, `install-dependency`, `SetupEngineEvent`, stage tracking, artifact log path handling, and fallback stage inference.
+## Remaining Work
 
-- SwiftUI cleanup:
-  - Add clear `MARK` sections and private extensions in page files where it improves scanability.
-  - Keep current environment/create/complete behavior intact, including setup review before create, failure view, output disclosure, saved-log link, and install buttons.
-  - Apply tiny polish only:
-    - Use bundle `CFBundleShortVersionString` in footer with fallback `"0.69"`.
-    - Combine duplicated header title/subtitle switch logic into one private computed value.
-    - Move repeated link URL strings into local constants.
+- None for the conservative cleanup slice.
 
-- Helper cleanup:
-  - Use `defer` in `OutputBuffer.stringValue()` for lock release.
-  - Convert simple immutable data holders to `let` where behavior is unchanged.
-  - Remove trailing whitespace and ensure final newlines.
-  - Do not introduce new app state names from the broken refactor branch.
+## Implementation Order
+
+1. Prepare the diff for review or commit.
 
 ## Tests And Verification
 
-- Run `git diff --check`.
-- Run the existing test entrypoint, preferably `./test.sh`.
-- Run `swift build` if needed to verify SwiftPM compilation; if sandbox cache permissions block it, rerun with approval rather than changing project files.
-- Compare behavior-sensitive diffs manually:
+- `git diff --check` passed.
+- `./test.sh` passed.
+- Behavior-sensitive diff review passed:
   - Engine command arguments remain unchanged.
   - `enableFnToggle` remains wired through `AppModel`, `SetupConfiguration`, UI, and tests.
   - Install failure and saved-log behavior remains present.

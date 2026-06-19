@@ -580,6 +580,17 @@ public final class GAMMASetupEngine {
         plist["Winetricks silent"] = "1"
         plist["Winetricks disable logging"] = "1"
         plist["WINEDEBUG"] = "-all"
+        let cliCustomCommands = SetupCLICommandTools.updatingDXMTCommands(
+            plist["CLI Custom Commands"] as? String ?? "",
+            renderer: renderer,
+            metalFXSpatial: context.request.dxmtMetalFXSpatial,
+            logLevel: context.request.dxmtLogLevel
+        )
+        if cliCustomCommands.isEmpty {
+            plist.removeValue(forKey: "CLI Custom Commands")
+        } else {
+            plist["CLI Custom Commands"] = cliCustomCommands
+        }
         var environment = plist["LSEnvironment"] as? [String: String] ?? [:]
         for key in [
             "MVK_CONFIG_FAST_MATH_ENABLED", "MTL_HUD_ENABLED", "DXVK_HUD",
@@ -709,28 +720,74 @@ public final class GAMMASetupEngine {
     }
 
     private func installWinetricksDependencies(context: SetupContext) throws {
+        let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
         let groups: [(String, String, [String])] = [
-            ("corefonts", "winetricks-corefonts.done", ["corefonts"]),
-            ("vcrun2022", "winetricks-vcrun2022.done", ["vcrun2022"]),
-            ("directx", "winetricks-directx.done", ["d3dcompiler_42", "d3dcompiler_43", "d3dcompiler_46", "d3dcompiler_47", "d3dx9", "d3dx10", "d3dx11_42", "d3dx11_43"])
+            ("required dependencies", "winetricks-required-v2.done", requiredVerbs)
         ]
-        for (label, markerName, verbs) in groups {
-            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, context: context)
+        let pendingGroups = groups.filter {
+            !fileManager.fileExists(atPath: context.markerDir.appendingPathComponent($0.1).path)
         }
-        if !context.request.extraWinetricks.isEmpty {
-            try installWinetricksGroup(label: "extra", marker: context.markerDir.appendingPathComponent("winetricks-extra.done"), verbs: context.request.extraWinetricks, context: context)
+        let extraMarker = context.markerDir.appendingPathComponent("winetricks-extra.done")
+        let hasPendingExtra = !context.request.extraWinetricks.isEmpty && !fileManager.fileExists(atPath: extraMarker.path)
+        guard !pendingGroups.isEmpty || hasPendingExtra else { return }
+
+        let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
+        for (label, markerName, verbs) in pendingGroups {
+            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, winetricks: winetricks, context: context)
+        }
+        if hasPendingExtra {
+            try installWinetricksGroup(label: "extra", marker: extraMarker, verbs: context.request.extraWinetricks, winetricks: winetricks, context: context)
         }
     }
 
-    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], context: SetupContext) throws {
+    private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
+        let managedWinetricks = context.sharedSupport.appendingPathComponent("gamma-setup-winetricks")
+        let candidates = [managedWinetricks.path, findTool("winetricks")].compactMap { $0 }
+        let validationRunner = ProcessRunner(dryRun: context.request.dryRun, verbose: false, reporter: reporter)
+        for candidate in candidates where fileManager.isExecutableFile(atPath: candidate) {
+            if context.request.dryRun {
+                return candidate
+            }
+            do {
+                let output = try validationRunner.run(candidate, ["list-all"], label: "validate winetricks").output
+                if WinetricksTools.supports(requiredVerbs, listOutput: output) {
+                    return candidate
+                }
+            } catch {
+                reporter.log("Could not validate winetricks at \(candidate): \(error)")
+            }
+        }
+
+        reporter.log("Installed winetricks does not support all required verbs; downloading a current wrapper-local script")
+        if !context.request.dryRun {
+            try? fileManager.removeItem(at: managedWinetricks)
+        }
+        _ = try downloadFile(
+            label: "current winetricks script",
+            url: "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks",
+            output: managedWinetricks,
+            context: context
+        )
+        if context.request.dryRun {
+            return managedWinetricks.path
+        }
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedWinetricks.path)
+        let output = try validationRunner.run(managedWinetricks.path, ["list-all"], label: "validate downloaded winetricks").output
+        guard WinetricksTools.supports(requiredVerbs, listOutput: output) else {
+            throw SetupEngineError.message("downloaded winetricks does not support required verbs: \(requiredVerbs.joined(separator: ", "))")
+        }
+        return managedWinetricks.path
+    }
+
+    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], winetricks: String, context: SetupContext) throws {
         if fileManager.fileExists(atPath: marker.path) {
             return
         }
-        reporter.log(label == "corefonts" ? "Installing corefonts with winetricks: Arial, Courier New, Times New Roman, Verdana" : "Installing \(label) with winetricks")
+        reporter.log("Installing \(label) with winetricks")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
-        try runner(context: context).run(findTool("winetricks") ?? "winetricks", ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
+        try runner(context: context).run(winetricks, ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
         fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
@@ -821,11 +878,7 @@ public final class GAMMASetupEngine {
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
-        var entries: [String: String] = [:]
-        for name in dllOverrideNames {
-            entries["*\(name)"] = "native,builtin"
-        }
-        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: entries, context: context)
+        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: dllOverrides, context: context)
     }
 
     private func configureWinebusDefaults(context: SetupContext) throws {
@@ -865,7 +918,7 @@ public final class GAMMASetupEngine {
         guard !context.request.dryRun else { return }
         let text = """
         # Generated by GAMMA Setup Tool.
-        # DXMT_METALFX_SPATIAL_SWAPCHAIN remains an environment switch.
+        # DXMT_METALFX_SPATIAL_SWAPCHAIN is configured through the wrapper plist.
         d3d11.metalSpatialUpscaleFactor = \(context.request.dxmtMetalFXScaleFactor)
 
         """
@@ -899,7 +952,16 @@ public final class GAMMASetupEngine {
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
         if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
-            reporter.log("Preserving existing mo2.bat")
+            let existing = (try? String(contentsOf: batch)) ?? ""
+            let sanitized = existing
+                .components(separatedBy: .newlines)
+                .filter {
+                    !$0.hasPrefix(#"set "DXMT_METALFX_SPATIAL_SWAPCHAIN="#)
+                        && !$0.hasPrefix(#"set "DXMT_LOG_LEVEL="#)
+                }
+                .joined(separator: "\r\n")
+            try (sanitized.trimmingCharacters(in: .newlines) + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
+            reporter.log("Preserving existing mo2.bat without legacy DXMT environment lines")
             return
         }
         try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -909,12 +971,6 @@ public final class GAMMASetupEngine {
             #"set "QT_QUICK_BACKEND=software""#,
             #"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#
         ]
-        if context.request.renderer == "dxmt", context.request.dxmtMetalFXSpatial {
-            lines.append(#"set "DXMT_METALFX_SPATIAL_SWAPCHAIN=1""#)
-        }
-        if context.request.renderer == "dxmt", !context.request.dxmtLogLevel.isEmpty {
-            lines.append(#"set "DXMT_LOG_LEVEL=\#(context.request.dxmtLogLevel)""#)
-        }
         lines += [
             "",
             #"cd /d "\#(windowsBackslashPath(mo2WinDir))""#,
@@ -932,10 +988,6 @@ public final class GAMMASetupEngine {
             let batchPath = launch.batchPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             guard !batchPath.isEmpty else { continue }
             let batch = context.driveC.appendingPathComponent(batchPath)
-            if fileManager.fileExists(atPath: batch.path) {
-                reporter.log("Preserving existing \(launch.batchPath)")
-                continue
-            }
             let exeWinPath = try launchWindowsPath(nativePath: launch.executablePath, context: context)
             let workingNative = launch.workingDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? URL(fileURLWithPath: launch.executablePath).deletingLastPathComponent().path
@@ -943,10 +995,15 @@ public final class GAMMASetupEngine {
             let workingWinPath = try launchWindowsPath(nativePath: workingNative, context: context)
             guard !context.request.dryRun else { continue }
             try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let lines = [
-                "@echo off",
-                #"start "" /D "\#(windowsBackslashPath(workingWinPath))" "\#(windowsBackslashPath(exeWinPath))""#
-            ]
+            if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
+                reporter.log("Preserving existing \(launch.batchPath)")
+                continue
+            }
+            let lines = SetupLaunchBatchTools.commandLines(
+                executableWindowsPath: windowsBackslashPath(exeWinPath),
+                workingDirectoryWindowsPath: windowsBackslashPath(workingWinPath),
+                usesModOrganizerEnvironment: launch.usesModOrganizerEnvironment == true
+            )
             try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
         }
     }
@@ -1091,6 +1148,8 @@ public final class GAMMASetupEngine {
         managed_by=gamma-setup-engine
         engine=\(context.request.engine)
         renderer=\(context.request.renderer)
+        launch_executable=\(selectedLaunchExecutable(context: context))
+        launch_uses_modorganizer_environment=\(selectedLaunchUsesModOrganizerEnvironment(context: context) ? "true" : "false")
         wine_esync=\(managedEnabled(context.request.wineESync))
         wine_msync=\(managedEnabled(context.request.wineMSync))
         mouse_input=\((context.request.enableHIDDevices ?? false) ? "compatibility" : "default")
@@ -1113,6 +1172,28 @@ public final class GAMMASetupEngine {
 
         """
         try text.write(to: context.appMarker, atomically: true, encoding: .utf8)
+    }
+
+    private func selectedLaunchExecutable(context: SetupContext) -> String {
+        if context.request.programBatch == "/mo2.bat" { return context.mo2Path }
+        return selectedLaunchBatch(context: context)?.executablePath ?? context.request.programBatch
+    }
+
+    private func selectedLaunchUsesModOrganizerEnvironment(context: SetupContext) -> Bool {
+        context.request.programBatch == "/mo2.bat"
+            || selectedLaunchBatch(context: context)?.usesModOrganizerEnvironment == true
+    }
+
+    private func selectedLaunchBatch(context: SetupContext) -> LaunchBatch? {
+        let selectedPath = normalizedBatchPath(context.request.programBatch)
+        return (context.request.launchBatches ?? []).first {
+            normalizedBatchPath($0.batchPath) == selectedPath
+        }
+    }
+
+    private func normalizedBatchPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("/") ? trimmed : "/" + trimmed
     }
 
     private func managedEnabled(_ enabled: Bool) -> String {
@@ -1802,16 +1883,19 @@ public final class GAMMASetupEngine {
     }
 }
 
-private let dllOverrideNames = [
-    "concrt140",
-    "d3dcompiler_43",
-    "d3dcompiler_47",
-    "d3dx10",
-    "d3dx10_33", "d3dx10_34", "d3dx10_35", "d3dx10_36", "d3dx10_37", "d3dx10_38", "d3dx10_39", "d3dx10_40", "d3dx10_41", "d3dx10_42", "d3dx10_43",
-    "d3dx11_42", "d3dx11_43",
-    "d3dx9_24", "d3dx9_25", "d3dx9_26", "d3dx9_27", "d3dx9_28", "d3dx9_29", "d3dx9_30", "d3dx9_31", "d3dx9_32", "d3dx9_33",
-    "d3dx9_34", "d3dx9_35", "d3dx9_36", "d3dx9_37", "d3dx9_38", "d3dx9_39", "d3dx9_40", "d3dx9_41", "d3dx9_42", "d3dx9_43",
-    "msvcp140", "msvcp140_1", "msvcp140_2", "msvcp140_atomic_wait", "msvcp140_codecvt_ids",
-    "vcamp140", "vccorlib140", "vcomp140",
-    "vcruntime140", "vcruntime140_1"
+private let dllOverrides: [String: String] = [
+    "*concrt140": "native,builtin",
+    "*d3dcompiler_47": "native",
+    "*d3dx11_43": "native",
+    "*d3dx9_43": "native",
+    "*msvcp140": "native,builtin",
+    "*msvcp140_1": "native,builtin",
+    "*msvcp140_2": "native,builtin",
+    "*msvcp140_atomic_wait": "native,builtin",
+    "*msvcp140_codecvt_ids": "native,builtin",
+    "*vcamp140": "native,builtin",
+    "*vccorlib140": "native,builtin",
+    "*vcomp140": "native,builtin",
+    "*vcruntime140": "native,builtin",
+    "*vcruntime140_1": "native,builtin",
 ]

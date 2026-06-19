@@ -3,12 +3,12 @@ import CoreGraphics
 import Foundation
 
 struct MacDisplaySettings: Equatable {
-    var visibleWidth: Int
-    var visibleHeight: Int
-    var backingWidth: Int
-    var backingHeight: Int
-    var scaleFactor: Double
-    var localizedName: String
+    let visibleWidth: Int
+    let visibleHeight: Int
+    let backingWidth: Int
+    let backingHeight: Int
+    let scaleFactor: Double
+    let localizedName: String
 
     var isHiDPI: Bool {
         scaleFactor > 1.01 || backingWidth > visibleWidth || backingHeight > visibleHeight

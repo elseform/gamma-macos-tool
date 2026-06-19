@@ -1,12 +1,33 @@
 import SwiftUI
 
 extension ContentView {
+    // MARK: - Header
+
+    private var headerText: (title: String, subtitle: String) {
+        switch step {
+        case .environment:
+            return (
+                "Check environment",
+                "Verify required tools and GAMMA installation before continuing."
+            )
+        case .setup:
+            return (
+                "Wrapper settings",
+                "Default settings are fine in most cases. Try other options only if you encounter issues."
+            )
+        case .create:
+            return (model.createHeaderTitle, model.createHeaderSubtitle)
+        case .complete:
+            return ("Installation finished", "Get out of here, Stalker")
+        }
+    }
+
     var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 7) {
-                Text(headerTitle)
+                Text(headerText.title)
                     .font(.title2.weight(.semibold))
-                Text(headerSubtitle)
+                Text(headerText.subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -20,32 +41,6 @@ extension ContentView {
         .background(Color(nsColor: .underPageBackgroundColor))
         .transaction { transaction in
             transaction.animation = nil
-        }
-    }
-
-    var headerTitle: String {
-        switch step {
-        case .environment:
-            return "Check environment"
-        case .setup:
-            return "Wrapper settings"
-        case .create:
-            return model.createHeaderTitle
-        case .complete:
-            return "Installation finished"
-        }
-    }
-
-    var headerSubtitle: String {
-        switch step {
-        case .environment:
-            return "Verify required tools and GAMMA installation before continuing."
-        case .setup:
-            return "Default settings are fine in most cases. Try other options only if you encounter issues."
-        case .create:
-            return model.createHeaderSubtitle
-        case .complete:
-            return "Get out of here, Stalker"
         }
     }
 
@@ -63,9 +58,15 @@ extension ContentView {
         }
     }
 
+    // MARK: - Footer
+
+    private var footerVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.69"
+    }
+
     var footer: some View {
         HStack(spacing: 12) {
-            Text("0.69")
+            Text(footerVersion)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
 
@@ -82,12 +83,15 @@ extension ContentView {
         .background(Color(nsColor: .underPageBackgroundColor))
     }
 
-    var footerLinks: some View {
-        HStack(spacing: 10) {
+    private var footerLinks: some View {
+        let sourceURL = URL(string: "https://github.com/elseform/gamma-macos-tool")!
+        let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
+
+        return HStack(spacing: 10) {
             Text("Source:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: URL(string: "https://github.com/elseform/gamma-macos-tool")!) {
+            Link(destination: sourceURL) {
                 BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
             }
             .buttonStyle(.plain)
@@ -97,7 +101,7 @@ extension ContentView {
             Text("Support thread:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!) {
+            Link(destination: supportURL) {
                 BrandIcon(resourceName: "discord", fallbackSystemName: "bubble.left.and.bubble.right")
             }
             .buttonStyle(.plain)
@@ -107,7 +111,7 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var footerBackButton: some View {
+    private var footerBackButton: some View {
         if step == .create && !model.isRunning && !createButtonSubmitted {
             Button("Back") {
                 if let previous = previousStep {
@@ -119,7 +123,7 @@ extension ContentView {
     }
 
     @ViewBuilder
-    var footerPrimaryButton: some View {
+    private var footerPrimaryButton: some View {
         switch step {
         case .environment:
             Button {
@@ -161,23 +165,25 @@ extension ContentView {
         }
     }
 
-    var visibleSteps: [WizardStep] {
+    // MARK: - Navigation State
+
+    private var visibleSteps: [WizardStep] {
         if environmentCompleted && step != .complete {
             return [.setup, .create]
         }
         return []
     }
 
-    var currentStepIndex: Int? {
+    private var currentStepIndex: Int? {
         visibleSteps.firstIndex(of: step)
     }
 
-    var previousStep: WizardStep? {
+    private var previousStep: WizardStep? {
         guard let index = currentStepIndex, index > 0 else { return nil }
         return visibleSteps[index - 1]
     }
 
-    var nextStep: WizardStep? {
+    private var nextStep: WizardStep? {
         guard let index = currentStepIndex, index + 1 < visibleSteps.count else { return nil }
         return visibleSteps[index + 1]
     }
@@ -186,7 +192,7 @@ extension ContentView {
         lhs.rawValue >= rhs.rawValue ? lhs : rhs
     }
 
-    var canContinue: Bool {
+    private var canContinue: Bool {
         if model.isRunning {
             return false
         }
@@ -199,20 +205,20 @@ extension ContentView {
         return nextStep != nil
     }
 
-    func continueToNextStep() {
+    private func continueToNextStep() {
         guard let next = nextStep else { return }
         furthestUnlockedStep = next.rawValue > furthestUnlockedStep.rawValue ? next : furthestUnlockedStep
         step = next
     }
 
-    func continueFromEnvironment() {
+    private func continueFromEnvironment() {
         guard model.environmentOK else { return }
         environmentCompleted = true
         furthestUnlockedStep = .setup
         step = .setup
     }
 
-    func startCreate() {
+    private func startCreate() {
         createButtonSubmitted = true
         Task {
             let created = await model.create()

@@ -186,10 +186,10 @@ struct CheckRow<Action: View>: View {
     let label: String
     let status: String
     let ok: Bool
-    var warning = false
-    var detail: String?
-    var prominent = false
-    @ViewBuilder var action: () -> Action
+    let warning: Bool
+    let detail: String?
+    let prominent: Bool
+    @ViewBuilder let action: () -> Action
 
     init(
         label: String,

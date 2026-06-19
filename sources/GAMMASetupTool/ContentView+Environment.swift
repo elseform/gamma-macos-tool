@@ -8,6 +8,8 @@ private enum InstallButtonRow {
 struct EnvironmentPage: View {
     @ObservedObject var model: AppModel
 
+    // MARK: - Body
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let preflight = model.preflight {
@@ -45,7 +47,9 @@ struct EnvironmentPage: View {
                 if shouldShowEnvironmentGate {
                     environmentGate
                 }
-                installDetailsLink
+                if !gammaInstallationFound(preflight) {
+                    installDetailsLink
+                }
             } else if let gammaFolderSelectionError = model.gammaFolderSelectionError {
                 WizardCard(
                     horizontalPadding: Layout.environmentPanelHorizontalPadding,
@@ -76,7 +80,9 @@ struct EnvironmentPage: View {
         .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
     }
 
-    var installDetailsLink: some View {
+    // MARK: - Status Helpers
+
+    private var installDetailsLink: some View {
         HStack(spacing: 4) {
             Text("Visit")
                 .foregroundStyle(.secondary)
@@ -97,13 +103,15 @@ struct EnvironmentPage: View {
         .padding(.leading, 2)
     }
 
-    func sikarugirFound(_ preflight: Preflight) -> Bool {
+    private func sikarugirFound(_ preflight: Preflight) -> Bool {
         preflight.sikarugirInstalled
     }
 
-    func gammaInstallationFound(_ preflight: Preflight) -> Bool {
+    private func gammaInstallationFound(_ preflight: Preflight) -> Bool {
         preflight.gammaFound && preflight.mo2Found && preflight.modOrganizerIniFound
     }
+
+    // MARK: - Install Actions
 
     private func shouldShowInstallButton(on row: InstallButtonRow, preflight: Preflight) -> Bool {
         guard model.canInstallComponents else {
@@ -136,13 +144,13 @@ struct EnvironmentPage: View {
         }
     }
 
-    var installSpinner: some View {
+    private var installSpinner: some View {
         ProgressView()
             .controlSize(.small)
             .frame(width: 20, height: 20)
     }
 
-    var installComponentsButton: some View {
+    private var installComponentsButton: some View {
         Group {
             if model.isInstallingComponents {
                 EmptyView()
@@ -156,7 +164,9 @@ struct EnvironmentPage: View {
         }
     }
 
-    var environmentGate: some View {
+    // MARK: - Environment Gate
+
+    private var environmentGate: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 if !environmentGateMessage.isEmpty {
@@ -202,11 +212,11 @@ struct EnvironmentPage: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    var shouldShowEnvironmentGate: Bool {
+    private var shouldShowEnvironmentGate: Bool {
         !model.requiredToolsOK || model.isInstallingComponents || model.statusText == "Install failed"
     }
 
-    var environmentGateMessage: String {
+    private var environmentGateMessage: String {
         if model.requiredToolsOK || model.isInstallingComponents || model.canInstallComponents {
             return ""
         }

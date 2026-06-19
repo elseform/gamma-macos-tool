@@ -6,6 +6,7 @@ import GAMMASetupCore
 
 struct SetupConfiguration {
     static let defaultEngine = SetupDefaults.defaultEngine
+    static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
 
@@ -45,6 +46,21 @@ struct SetupConfiguration {
         return URL(fileURLWithPath: installDirectory).appendingPathComponent(name).path
     }
 
+    var selectedLaunchExecutablePath: String {
+        if programBatch == "/mo2.bat" {
+            let manualPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !manualPath.isEmpty { return manualPath }
+            if let detectedPath = preflight?.mo2Path, !detectedPath.isEmpty { return detectedPath }
+            return "ModOrganizer.exe"
+        }
+        return launchBatches.first { $0.batchPath == programBatch }?.executablePath ?? programBatch
+    }
+
+    var selectedLaunchExecutableLabel: String {
+        if programBatch == "/mo2.bat" { return "ModOrganizer" }
+        return URL(fileURLWithPath: selectedLaunchExecutablePath).lastPathComponent
+    }
+
     var rendererLabel: String {
         switch renderer {
         case "dxmt":
@@ -58,10 +74,10 @@ struct SetupConfiguration {
 
     var engineLabel: String {
         switch engine {
-        case Self.sikarugir10Engine:
-            return "Wine Sikarugir 10.0"
-        default:
+        case Self.crossOverEngine:
             return "Wine CX 24.0.7"
+        default:
+            return "Wine Sikarugir 10.0"
         }
     }
 
