@@ -71,11 +71,18 @@ extension AppModel {
     func setLaunchExecutable(_ executablePath: String) {
         let executable = URL(fileURLWithPath: executablePath)
         let batchPath = uniqueBatchPath(for: executable)
+        let detectedMO2 = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
+        let usesMOEnv: Bool
+        if let detectedMO2 {
+            usesMOEnv = URL(fileURLWithPath: detectedMO2).standardizedFileURL == executable.standardizedFileURL
+        } else {
+            usesMOEnv = executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
+        }
         let batch = LaunchBatch(
             batchPath: batchPath,
             executablePath: executablePath,
             workingDirectory: executable.deletingLastPathComponent().path,
-            usesModOrganizerEnvironment: executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
+            usesModOrganizerEnvironment: usesMOEnv
         )
         launchBatches = [batch]
         programBatch = batch.batchPath
