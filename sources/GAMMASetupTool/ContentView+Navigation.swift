@@ -5,10 +5,36 @@ extension ContentView {
 
     private var headerText: (title: String, subtitle: String) {
         switch step {
+        case .welcome:
+            return (
+                "Welcome",
+                "Choose whether to create a new wrapper or update an existing one."
+            )
+        case .wrapperName:
+            return (
+                "Name wrapper",
+                "The wrapper will be created under ~/Applications."
+            )
+        case .existingWrapper:
+            return (
+                "Select wrapper",
+                "Choose the Sikarugir wrapper you want to update or refresh."
+            )
         case .environment:
+            if flowIntent == .update {
+                return (
+                    "Select ModOrganizer",
+                    "Choose the ModOrganizer folder used by this wrapper."
+                )
+            }
             return (
                 "Check environment",
-                "Verify required tools and GAMMA installation before continuing."
+                "Verify required tools and select your ModOrganizer folder before continuing."
+            )
+        case .installChoice:
+            return (
+                "Choose installation",
+                "Use defaults or review advanced wrapper settings."
             )
         case .setup:
             return (
@@ -47,12 +73,34 @@ extension ContentView {
     @ViewBuilder
     var currentStepView: some View {
         switch step {
+        case .welcome:
+            WelcomePage(
+                createAction: startCreateFlow,
+                updateAction: startUpdateFlow
+            )
+        case .wrapperName:
+            WrapperNamePage(model: model)
+        case .existingWrapper:
+            ExistingWrapperPage(model: model)
         case .environment:
-            EnvironmentPage(model: model)
+            EnvironmentPage(
+                model: model,
+                mode: flowIntent == .update ? .modOrganizerOnly : .create
+            )
+        case .installChoice:
+            InstallChoicePage(
+                defaultDisabled: !model.driveMappingReady,
+                defaultAction: selectDefaultInstall,
+                advancedAction: selectAdvancedInstall
+            )
         case .setup:
             SetupPage(model: model, showWinetricksList: $showWinetricksList)
         case .create:
-            CreatePage(model: model, createButtonSubmitted: $createButtonSubmitted)
+            CreatePage(
+                model: model,
+                createButtonSubmitted: $createButtonSubmitted,
+                minimalSummary: installMode == .defaultInstall
+            )
         case .complete:
             CompletePage(model: model)
         }
@@ -112,7 +160,7 @@ extension ContentView {
 
     @ViewBuilder
     private var footerBackButton: some View {
-        if step == .create && !model.isRunning && !createButtonSubmitted {
+        if step != .welcome && step != .complete && !model.isRunning && !createButtonSubmitted {
             Button("Back") {
                 if let previous = previousStep {
                     step = previous
@@ -125,6 +173,24 @@ extension ContentView {
     @ViewBuilder
     private var footerPrimaryButton: some View {
         switch step {
+        case .welcome:
+            EmptyView()
+        case .wrapperName:
+            Button {
+                continueToNextStep()
+            } label: {
+                Label("Continue", systemImage: "arrow.right.circle")
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .disabled(!model.wrapperNameIsValid || model.isRunning)
+        case .existingWrapper:
+            Button {
+                continueFromExistingWrapper()
+            } label: {
+                Label("Continue", systemImage: "arrow.right.circle")
+            }
+            .keyboardShortcut(.return, modifiers: [.command])
+            .disabled(!model.hasSelectedExistingWrapper || model.isRunning)
         case .environment:
             Button {
                 continueFromEnvironment()
@@ -132,7 +198,9 @@ extension ContentView {
                 Label("Continue", systemImage: "arrow.right.circle")
             }
             .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!model.environmentOK || model.isRunning)
+            .disabled(!canContinueFromEnvironment || model.isRunning)
+        case .installChoice:
+            EmptyView()
         case .setup:
             Button {
                 continueToNextStep()
@@ -149,7 +217,7 @@ extension ContentView {
                     Label(model.primaryButtonTitle, systemImage: "play.circle")
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
-                .disabled(model.isRunning || !model.environmentOK || !model.driveMappingReady)
+                .disabled(model.isRunning || !model.setupReady)
             }
         case .complete:
             Button {
@@ -168,10 +236,26 @@ extension ContentView {
     // MARK: - Navigation State
 
     private var visibleSteps: [WizardStep] {
-        if environmentCompleted && step != .complete {
-            return [.setup, .create]
+        if step == .complete {
+            return []
         }
-        return []
+        switch flowIntent {
+        case .create:
+            if installMode == .defaultInstall {
+                return [.welcome, .wrapperName, .environment, .installChoice, .create]
+            }
+            if installMode == .advanced {
+                return [.welcome, .wrapperName, .environment, .installChoice, .setup, .create]
+            }
+            return [.welcome, .wrapperName, .environment, .installChoice]
+        case .update:
+            if model.selectedModOrganizerExecutableFound && step != .environment {
+                return [.welcome, .existingWrapper, .setup, .create]
+            }
+            return [.welcome, .existingWrapper, .environment, .setup, .create]
+        case nil:
+            return [.welcome]
+        }
     }
 
     private var currentStepIndex: Int? {
@@ -197,12 +281,19 @@ extension ContentView {
             return false
         }
         if step == .environment {
-            return model.environmentOK
+            return canContinueFromEnvironment
         }
         if step == .setup {
-            return nextStep != nil && model.driveMappingReady
+            return nextStep != nil && model.setupReady
         }
         return nextStep != nil
+    }
+
+    private var canContinueFromEnvironment: Bool {
+        if flowIntent == .update {
+            return model.selectedModOrganizerExecutableFound
+        }
+        return model.createFlowEnvironmentOK
     }
 
     private func continueToNextStep() {
@@ -212,10 +303,13 @@ extension ContentView {
     }
 
     private func continueFromEnvironment() {
-        guard model.environmentOK else { return }
+        guard canContinueFromEnvironment else { return }
         environmentCompleted = true
-        furthestUnlockedStep = .setup
-        step = .setup
+        if flowIntent == .update {
+            step = .setup
+        } else {
+            step = .installChoice
+        }
     }
 
     private func startCreate() {
@@ -227,5 +321,35 @@ extension ContentView {
                 step = .complete
             }
         }
+    }
+
+    private func startCreateFlow() {
+        flowIntent = .create
+        installMode = nil
+        model.prepareNewWrapperFlow()
+        step = .wrapperName
+    }
+
+    private func startUpdateFlow() {
+        flowIntent = .update
+        installMode = .advanced
+        model.selectedExistingWrapperPath = ""
+        step = .existingWrapper
+    }
+
+    private func continueFromExistingWrapper() {
+        guard model.hasSelectedExistingWrapper else { return }
+        step = model.selectedModOrganizerExecutableFound ? .setup : .environment
+    }
+
+    private func selectDefaultInstall() {
+        guard model.driveMappingReady else { return }
+        installMode = .defaultInstall
+        step = .create
+    }
+
+    private func selectAdvancedInstall() {
+        installMode = .advanced
+        step = .setup
     }
 }

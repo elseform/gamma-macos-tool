@@ -147,8 +147,27 @@ struct WizardCard<Content: View>: View {
     }
 }
 
+enum SetupFlowIntent {
+    case create
+    case update
+}
+
+enum SetupInstallMode {
+    case defaultInstall
+    case advanced
+}
+
+enum EnvironmentPageMode {
+    case create
+    case modOrganizerOnly
+}
+
 enum WizardStep: Int, CaseIterable, Identifiable {
+    case welcome
+    case wrapperName
+    case existingWrapper
     case environment
+    case installChoice
     case setup
     case create
     case complete
@@ -157,7 +176,11 @@ enum WizardStep: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .welcome: return "Welcome"
+        case .wrapperName: return "Name"
+        case .existingWrapper: return "Wrapper"
         case .environment: return "Environment"
+        case .installChoice: return "Install"
         case .setup: return "Setup"
         case .create: return "Create"
         case .complete: return "Complete"
@@ -166,7 +189,11 @@ enum WizardStep: Int, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .welcome: return "sparkles"
+        case .wrapperName: return "text.cursor"
+        case .existingWrapper: return "app"
         case .environment: return "checkmark.shield"
+        case .installChoice: return "list.bullet.rectangle"
         case .setup: return "slider.horizontal.3"
         case .create: return "play.circle"
         case .complete: return "checkmark.circle"

@@ -5,13 +5,14 @@ import GAMMASetupCore
 #endif
 
 struct SetupConfiguration {
+    static let defaultInstallDirectory = AppSettingsStore.defaultInstallDirectory
     static let defaultEngine = SetupDefaults.defaultEngine
     static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
 
     var appName = "stalker-gamma"
-    var installDirectory = NSString(string: "~/Applications/Sikarugir").expandingTildeInPath
+    var installDirectory = SetupConfiguration.defaultInstallDirectory
     var engine = SetupConfiguration.defaultEngine
     var renderer = "d3dmetal"
     var wineESync = true
@@ -44,6 +45,17 @@ struct SetupConfiguration {
         let baseName = cleanName.hasSuffix(".app") ? String(cleanName.dropLast(4)) : cleanName
         let name = "\(baseName).app"
         return URL(fileURLWithPath: installDirectory).appendingPathComponent(name).path
+    }
+
+    var wrapperNameIsValid: Bool {
+        Self.isValidWrapperName(appName)
+    }
+
+    static func isValidWrapperName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        guard trimmed != "." && trimmed != ".." else { return false }
+        return trimmed.rangeOfCharacter(from: CharacterSet(charactersIn: "/:")) == nil
     }
 
     var selectedLaunchExecutablePath: String {
@@ -89,6 +101,21 @@ struct SetupConfiguration {
             && preflight.gammaFound
             && preflight.mo2Found
             && preflight.modOrganizerIniFound
+    }
+
+    var requiredToolsOK: Bool {
+        guard let preflight else { return false }
+        return preflight.homebrewFound
+            && preflight.sikarugirInstalled
+            && preflight.winetricksFound
+    }
+
+    var selectedModOrganizerExecutableFound: Bool {
+        AppSettingsStore.isValidModOrganizerExecutable(manualModOrganizerPath)
+    }
+
+    var createFlowEnvironmentOK: Bool {
+        requiredToolsOK && selectedModOrganizerExecutableFound
     }
 
     var canInstallComponents: Bool {

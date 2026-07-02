@@ -56,7 +56,7 @@ final class OutputBuffer: @unchecked Sendable {
 @MainActor
 final class AppModel: ObservableObject {
     @Published var appName = "stalker-gamma"
-    @Published var installDirectory = NSString(string: "~/Applications").expandingTildeInPath
+    @Published var installDirectory = SetupConfiguration.defaultInstallDirectory
     @Published var engine = SetupConfiguration.defaultEngine
     @Published var renderer = "d3dmetal"
     @Published var wineESync = true
@@ -82,6 +82,8 @@ final class AppModel: ObservableObject {
     @Published var customDisplayResolutionHeight = ""
     @Published var detectedDisplay: MacDisplaySettings?
     @Published var manualModOrganizerPath = ""
+    @Published var modOrganizerSelectionError = ""
+    @Published var selectedExistingWrapperPath = ""
     @Published var preflight: Preflight?
     @Published var preflightError = ""
     @Published var logText = ""

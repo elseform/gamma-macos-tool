@@ -83,6 +83,11 @@ extension AppModel {
         FileManager.default.fileExists(atPath: outputAppPath)
     }
 
+    var hasSelectedExistingWrapper: Bool {
+        !selectedExistingWrapperPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && FileManager.default.fileExists(atPath: selectedExistingWrapperPath)
+    }
+
     var createModeLabel: String {
         createModeOverride ?? plannedCreateModeLabel
     }
@@ -133,15 +138,53 @@ extension AppModel {
         configuration.environmentOK
     }
 
+    var wrapperNameIsValid: Bool {
+        configuration.wrapperNameIsValid
+    }
+
+    var wrapperNameValidationMessage: String {
+        let trimmed = appName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "Enter a wrapper name."
+        }
+        if !SetupConfiguration.isValidWrapperName(appName) {
+            return "Use a name without / or : characters."
+        }
+        return ""
+    }
+
+    var createFlowEnvironmentOK: Bool {
+        configuration.createFlowEnvironmentOK
+    }
+
+    var setupReady: Bool {
+        configuration.createFlowEnvironmentOK && driveMappingReady
+    }
+
+    var selectedModOrganizerExecutableFound: Bool {
+        configuration.selectedModOrganizerExecutableFound
+    }
+
+    var selectedModOrganizerDetail: String {
+        let trimmed = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if selectedModOrganizerExecutableFound {
+            return trimmed
+        }
+        if !modOrganizerSelectionError.isEmpty {
+            return modOrganizerSelectionError
+        }
+        if !trimmed.isEmpty {
+            return "ModOrganizer.exe not found at \(trimmed)"
+        }
+        return "Select the folder that contains ModOrganizer.exe."
+    }
+
     var canInstallComponents: Bool {
         configuration.canInstallComponents
     }
 
     var requiredToolsOK: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && preflight.sikarugirInstalled
-            && preflight.winetricksFound
+        configuration.requiredToolsOK
     }
 
     var primaryButtonTitle: String {
@@ -169,6 +212,16 @@ extension AppModel {
         }
         let current = currentSettingsOverride ?? (outputAppExists ? currentManagedSettings() : [:])
         return makeSetupSummaryItems(current: current, includeCurrent: true)
+    }
+
+    var minimalSetupSummaryItems: [SetupSummaryItem] {
+        [
+            SetupSummaryItem(label: "App", planned: outputAppPath, current: nil),
+            SetupSummaryItem(label: "ModOrganizer", planned: configuration.selectedLaunchExecutablePath, current: nil),
+            SetupSummaryItem(label: "Engine", planned: engineLabel, current: nil),
+            SetupSummaryItem(label: "Renderer", planned: rendererLabel, current: nil),
+            SetupSummaryItem(label: "Installation", planned: "Default settings", current: nil)
+        ]
     }
 
     func makeSetupSummaryItems(current: [String: String], includeCurrent: Bool) -> [SetupSummaryItem] {
@@ -273,8 +326,8 @@ extension AppModel {
         if !preflight.homebrewFound {
             return "Install Homebrew first; it is required for Sikarugir and winetricks."
         }
-        if !preflight.gammaFound || !preflight.mo2Found || !preflight.modOrganizerIniFound {
-            return "Select the GAMMA path."
+        if !selectedModOrganizerExecutableFound {
+            return "Select the ModOrganizer folder."
         }
         return "Install Homebrew-managed setup components, then recheck."
     }
