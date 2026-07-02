@@ -948,7 +948,6 @@ public final class GAMMASetupEngine {
         reporter.log("Creating ModOrganizer launch batch")
         resolveDriveRoot(context: &context, allowRewrite: false)
         let mo2WinPath = try nativeToWindowsPath(context.mo2Path, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
-        let mo2WinDir = URL(fileURLWithPath: mo2WinPath).deletingLastPathComponent().path
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
         if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
@@ -960,22 +959,15 @@ public final class GAMMASetupEngine {
                         && !$0.hasPrefix(#"set "DXMT_LOG_LEVEL="#)
                 }
                 .joined(separator: "\r\n")
-            try (sanitized.trimmingCharacters(in: .newlines) + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
-            reporter.log("Preserving existing mo2.bat without legacy DXMT environment lines")
-            return
+            if !SetupLaunchBatchTools.isDefaultModOrganizerBatch(sanitized) {
+                try (sanitized.trimmingCharacters(in: .newlines) + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
+                reporter.log("Preserving existing mo2.bat without legacy DXMT environment lines")
+                return
+            }
+            reporter.log("Refreshing generated mo2.bat")
         }
         try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
-        var lines = [
-            "@echo off",
-            #"set "QT_OPENGL=software""#,
-            #"set "QT_QUICK_BACKEND=software""#,
-            #"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#
-        ]
-        lines += [
-            "",
-            #"cd /d "\#(windowsBackslashPath(mo2WinDir))""#,
-            #"start "" "\#(windowsBackslashPath(mo2WinPath))""#
-        ]
+        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: mo2WinPath)
         try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
     }
 
