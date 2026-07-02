@@ -69,6 +69,18 @@ public enum SetupPathTools {
             : String(native.dropFirst(driveRoot.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         return "\(driveLetter.uppercased()):/\(relative)"
     }
+
+    public static func windowsDirectoryPath(_ path: String) -> String {
+        let normalized = path.replacingOccurrences(of: "\\", with: "/")
+        guard let separator = normalized.lastIndex(of: "/") else {
+            return normalized
+        }
+        let directory = String(normalized[..<separator])
+        if directory.count == 2, directory.hasSuffix(":") {
+            return directory + "/"
+        }
+        return directory
+    }
 }
 
 public enum WinetricksTools {
@@ -85,6 +97,34 @@ public enum WinetricksTools {
 }
 
 public enum SetupLaunchBatchTools {
+    public static func modOrganizerCommandLines(executableWindowsPath: String) -> [String] {
+        let workingDirectory = SetupPathTools.windowsDirectoryPath(executableWindowsPath)
+        return [
+            "@echo off",
+            #"set "QT_OPENGL=software""#,
+            #"set "QT_QUICK_BACKEND=software""#,
+            #"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#,
+            "",
+            #"cd /d "\#(workingDirectory.replacingOccurrences(of: "/", with: "\\"))""#,
+            #"start "" "\#(executableWindowsPath.replacingOccurrences(of: "/", with: "\\"))""#
+        ]
+    }
+
+    public static func isDefaultModOrganizerBatch(_ text: String) -> Bool {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard lines.count == 6 else { return false }
+        return lines[0].caseInsensitiveCompare("@echo off") == .orderedSame
+            && lines[1].caseInsensitiveCompare(#"set "QT_OPENGL=software""#) == .orderedSame
+            && lines[2].caseInsensitiveCompare(#"set "QT_QUICK_BACKEND=software""#) == .orderedSame
+            && lines[3].caseInsensitiveCompare(#"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#) == .orderedSame
+            && lines[4].range(of: "cd /d ", options: [.caseInsensitive, .anchored]) != nil
+            && lines[5].range(of: #"start "" "#, options: [.caseInsensitive, .anchored]) != nil
+            && lines[5].localizedCaseInsensitiveContains(#"\ModOrganizer.exe""#)
+    }
+
     public static func commandLines(
         executableWindowsPath: String,
         workingDirectoryWindowsPath: String,

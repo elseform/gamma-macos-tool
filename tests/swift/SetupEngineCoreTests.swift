@@ -29,6 +29,9 @@ final class SetupEngineCoreTests {
         XCTAssertEqual(SetupPathTools.windowsPathDrive(#"Z:\Games\Anomaly"#), "z")
         XCTAssertEqual(SetupPathTools.windowsPathRelative(#"Z:\Games\Anomaly"#), "Games/Anomaly")
         XCTAssertEqual(try SetupPathTools.nativeToWindowsPath("/Users/me/Games/GAMMA/ModOrganizer.exe", driveRoot: "/Users/me/Games", driveLetter: "g"), "G:/GAMMA/ModOrganizer.exe")
+        XCTAssertEqual(SetupPathTools.windowsDirectoryPath("G:/GAMMA/ModOrganizer.exe"), "G:/GAMMA")
+        XCTAssertEqual(SetupPathTools.windowsDirectoryPath(#"G:\GAMMA\ModOrganizer.exe"#), "G:/GAMMA")
+        XCTAssertEqual(SetupPathTools.windowsDirectoryPath("G:/ModOrganizer.exe"), "G:/")
     }
 
     func testRegistryKeyValueEditorUpdatesSection() {
@@ -270,6 +273,22 @@ final class SetupEngineCoreTests {
         XCTAssertTrue(mo2Lines.contains(#"set "QT_OPENGL=software""#))
         XCTAssertFalse(mo2Lines.contains { $0.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN") })
         XCTAssertFalse(mo2Lines.contains { $0.contains("DXMT_LOG_LEVEL") })
+    }
+
+    func testModOrganizerBatchUsesWindowsWorkingDirectory() {
+        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: "G:/g/ModOrganizer.exe")
+        XCTAssertContains(lines.joined(separator: "\n"), #"cd /d "G:\g""#)
+        XCTAssertContains(lines.joined(separator: "\n"), #"start "" "G:\g\ModOrganizer.exe""#)
+        XCTAssertFalse(lines.joined(separator: "\n").contains("Contents\\Resources"))
+    }
+
+    func testDefaultModOrganizerBatchDetectionIsNarrow() {
+        let generated = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: "G:/g/ModOrganizer.exe")
+            .joined(separator: "\r\n")
+        XCTAssertTrue(SetupLaunchBatchTools.isDefaultModOrganizerBatch(generated))
+
+        let edited = generated + "\r\nrem user customization"
+        XCTAssertFalse(SetupLaunchBatchTools.isDefaultModOrganizerBatch(edited))
     }
 
     func testDXMTCLICommandsReplaceManagedValuesAndPreserveOthers() {

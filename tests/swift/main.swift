@@ -98,6 +98,8 @@ run("testEnginePreflightDetectsZRewriteRequirement", engine.testEnginePreflightD
 run("testDryRunCreateAcceptsTemplateDriveCSymlink", engine.testDryRunCreateAcceptsTemplateDriveCSymlink)
 run("testUSVFSDefaultSourceIsNotUserSpecific", engine.testUSVFSDefaultSourceIsNotUserSpecific)
 run("testLaunchBatchEnvironmentIsOnlyAddedForModOrganizer", engine.testLaunchBatchEnvironmentIsOnlyAddedForModOrganizer)
+run("testModOrganizerBatchUsesWindowsWorkingDirectory", engine.testModOrganizerBatchUsesWindowsWorkingDirectory)
+run("testDefaultModOrganizerBatchDetectionIsNarrow", engine.testDefaultModOrganizerBatchDetectionIsNarrow)
 run("testDXMTCLICommandsReplaceManagedValuesAndPreserveOthers", engine.testDXMTCLICommandsReplaceManagedValuesAndPreserveOthers)
 
 let appSettings = AppSettingsStoreTests()
