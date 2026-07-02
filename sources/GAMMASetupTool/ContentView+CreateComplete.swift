@@ -4,6 +4,7 @@ import AppKit
 struct CreatePage: View {
     @ObservedObject var model: AppModel
     @Binding var createButtonSubmitted: Bool
+    var minimalSummary = false
 
     // MARK: - Body
 
@@ -12,7 +13,7 @@ struct CreatePage: View {
             if model.isRunning || createButtonSubmitted || model.installFailed {
                 runStatus
             } else {
-                setupReviewCard
+                setupReviewCard(items: minimalSummary ? model.minimalSetupSummaryItems : model.setupSummaryItems)
             }
         }
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
@@ -20,10 +21,10 @@ struct CreatePage: View {
 
     // MARK: - Setup Review
 
-    private var setupReviewCard: some View {
+    private func setupReviewCard(items: [SetupSummaryItem]) -> some View {
         WizardCard {
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 9) {
-                ForEach(model.setupSummaryItems) { item in
+                ForEach(items) { item in
                     SetupSummaryRow(item: item)
                 }
             }

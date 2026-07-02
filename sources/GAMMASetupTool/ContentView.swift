@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject var model = AppModel()
-    @State var step: WizardStep = .environment
+    @State var step: WizardStep = .welcome
+    @State var flowIntent: SetupFlowIntent?
+    @State var installMode: SetupInstallMode?
     @State var environmentCompleted = false
     @State var furthestUnlockedStep = WizardStep.setup
     @State var showWinetricksList = false

@@ -1,3 +1,5 @@
+import Foundation
+
 final class SetupConfigurationTests {
     func testOutputAppPathAddsAppSuffix() {
         let config = SetupConfiguration(appName: "stalker-gamma", installDirectory: "/tmp/Sikarugir")
@@ -9,6 +11,22 @@ final class SetupConfigurationTests {
         let config = SetupConfiguration(appName: "  stalker-gamma.app  ", installDirectory: "/tmp/Sikarugir")
 
         XCTAssertEqual(config.outputAppPath, "/tmp/Sikarugir/stalker-gamma.app")
+    }
+
+    func testDefaultOutputAppPathUsesApplicationsFolder() {
+        let expected = URL(fileURLWithPath: SetupConfiguration.defaultInstallDirectory)
+            .appendingPathComponent("stalker-gamma.app")
+            .path
+
+        XCTAssertEqual(SetupConfiguration().outputAppPath, expected)
+    }
+
+    func testWrapperNameValidationRejectsUnsafeNames() {
+        XCTAssertTrue(SetupConfiguration.isValidWrapperName("GAMMA"))
+        XCTAssertTrue(SetupConfiguration.isValidWrapperName("GAMMA.app"))
+        XCTAssertFalse(SetupConfiguration.isValidWrapperName(""))
+        XCTAssertFalse(SetupConfiguration.isValidWrapperName("../GAMMA"))
+        XCTAssertFalse(SetupConfiguration.isValidWrapperName("GAMMA:Test"))
     }
 
     func testRendererLabels() {
@@ -110,6 +128,29 @@ final class SetupConfigurationTests {
         let config = SetupConfiguration(manualModOrganizerPath: "/Games/GAMMA/ModOrganizer.exe")
 
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
+    }
+
+    func testCreateFlowEnvironmentRequiresSelectedModOrganizerButNotAutomaticGammaDiscovery() throws {
+        let temp = try makeTempDir("gamma-create-flow")
+        let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
+        FileManager.default.createFile(atPath: mo2.path, contents: Data())
+
+        var preflight = Preflight.fixture()
+        preflight.stalkerGammaFound = false
+        preflight.settingsFound = false
+        preflight.gammaFound = false
+        preflight.mo2Found = false
+        preflight.modOrganizerIniFound = false
+
+        let config = SetupConfiguration(
+            manualModOrganizerPath: mo2.path,
+            preflight: preflight
+        )
+
+        XCTAssertFalse(config.environmentOK)
+        XCTAssertTrue(config.createFlowEnvironmentOK)
+        XCTAssertEqual(config.setupRequest.mo2Path, mo2.path)
+        try? FileManager.default.removeItem(at: temp)
     }
 
     func testLaunchExecutableDefaultsToDetectedModOrganizer() {
@@ -250,6 +291,13 @@ final class SetupConfigurationTests {
         missingMO2.mo2Found = false
         XCTAssertFalse(SetupConfiguration(preflight: missingMO2).environmentOK)
     }
+}
+
+private func makeTempDir(_ prefix: String) throws -> URL {
+    let url = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("\(prefix)-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
 }
 
 private extension Preflight {

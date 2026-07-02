@@ -32,6 +32,32 @@ final class AppSettingsStoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
+    func testModOrganizerValidationRequiresExecutableNameAndFile() throws {
+        let temp = try makeTempDir("gamma-settings-mo2-validation")
+        let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
+        let other = temp.appendingPathComponent("Other.exe")
+        FileManager.default.createFile(atPath: mo2.path, contents: Data())
+        FileManager.default.createFile(atPath: other.path, contents: Data())
+
+        XCTAssertTrue(AppSettingsStore.isValidModOrganizerExecutable(mo2.path))
+        XCTAssertFalse(AppSettingsStore.isValidModOrganizerExecutable(other.path))
+        XCTAssertFalse(AppSettingsStore.isValidModOrganizerExecutable(temp.appendingPathComponent("ModOrganizer.exe").path + ".missing"))
+        try? FileManager.default.removeItem(at: temp)
+    }
+
+    func testWrapperSelectionSplitsAppNameAndDirectory() throws {
+        let temp = try makeTempDir("gamma-wrapper-selection")
+        let wrapper = temp.appendingPathComponent("Custom GAMMA.app")
+        try FileManager.default.createDirectory(at: wrapper, withIntermediateDirectories: true)
+
+        let selection = AppSettingsStore.wrapperSelection(from: wrapper)
+
+        XCTAssertEqual(selection?.appName, "Custom GAMMA")
+        XCTAssertEqual(selection?.installDirectory, temp.standardizedFileURL.path)
+        XCTAssertNil(AppSettingsStore.wrapperSelection(from: temp.appendingPathComponent("not-wrapper")))
+        try? FileManager.default.removeItem(at: temp)
+    }
+
     func testAppSettingsSaveAndLoadManualModOrganizerPath() throws {
         let temp = try makeTempDir("gamma-settings-save")
         let settingsURL = temp.appendingPathComponent("settings/settings.json")

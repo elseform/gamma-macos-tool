@@ -22,9 +22,10 @@ extension AppModel {
         }
     }
 
-    func chooseGammaFolder() {
+    @discardableResult
+    func chooseModOrganizerFolder() -> Bool {
         let panel = NSOpenPanel()
-        panel.title = "Select GAMMA Path"
+        panel.title = "Select ModOrganizer Folder"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
@@ -34,12 +35,71 @@ extension AppModel {
             let url = URL(fileURLWithPath: currentPath)
             panel.directoryURL = url.deletingLastPathComponent()
         }
-        if panel.runModal() == .OK, let url = panel.url {
-            let modOrganizerPath = AppSettingsStore.detectedModOrganizerPath(in: url) ?? url.appendingPathComponent("ModOrganizer.exe").path
-            manualModOrganizerPath = modOrganizerPath
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        let detected = AppSettingsStore.detectedModOrganizerPath(in: url)
+        let modOrganizerPath = detected ?? url.appendingPathComponent("ModOrganizer.exe").path
+        manualModOrganizerPath = modOrganizerPath
+        if detected == nil {
+            modOrganizerSelectionError = "Selected folder does not contain ModOrganizer.exe."
+        } else {
+            modOrganizerSelectionError = ""
             saveSettings(gammaPath: URL(fileURLWithPath: modOrganizerPath).deletingLastPathComponent().path)
-            Task { await refreshPreflight() }
         }
+        if programBatch == "/mo2.bat" {
+            launchBatches.removeAll()
+        }
+        Task { await refreshPreflight() }
+        return detected != nil
+    }
+
+    func chooseGammaFolder() {
+        _ = chooseModOrganizerFolder()
+    }
+
+    @discardableResult
+    func chooseExistingWrapper() -> Bool {
+        let panel = NSOpenPanel()
+        panel.title = "Select Existing Wrapper"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+        if let appType = UTType(filenameExtension: "app") {
+            panel.allowedContentTypes = [appType]
+        }
+        panel.directoryURL = URL(fileURLWithPath: installDirectory)
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        return selectExistingWrapper(at: url)
+    }
+
+    @discardableResult
+    func selectExistingWrapper(at url: URL) -> Bool {
+        guard let selection = AppSettingsStore.wrapperSelection(from: url) else {
+            return false
+        }
+        installDirectory = selection.installDirectory
+        appName = selection.appName
+        selectedExistingWrapperPath = URL(fileURLWithPath: outputAppPath).standardizedFileURL.path
+        targetAppPathDidChange()
+
+        if let inferred = inferredModOrganizerPathFromCurrentWrapper() {
+            manualModOrganizerPath = inferred
+            modOrganizerSelectionError = ""
+            saveSettings(gammaPath: URL(fileURLWithPath: inferred).deletingLastPathComponent().path)
+        } else {
+            manualModOrganizerPath = ""
+            modOrganizerSelectionError = "Select the ModOrganizer folder used by this wrapper."
+        }
+        Task { await refreshPreflight() }
+        return true
+    }
+
+    func prepareNewWrapperFlow() {
+        appName = "stalker-gamma"
+        installDirectory = SetupConfiguration.defaultInstallDirectory
+        selectedExistingWrapperPath = ""
+        modOrganizerSelectionError = ""
+        targetAppPathDidChange()
     }
 
     func chooseLaunchExecutable() {

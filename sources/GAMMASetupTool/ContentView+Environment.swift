@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if SWIFT_PACKAGE
+import GAMMASetupCore
+#endif
+
 private enum InstallButtonRow {
     case sikarugir
     case winetricks
@@ -7,6 +11,7 @@ private enum InstallButtonRow {
 
 struct EnvironmentPage: View {
     @ObservedObject var model: AppModel
+    var mode: EnvironmentPageMode = .create
 
     // MARK: - Body
 
@@ -18,37 +23,32 @@ struct EnvironmentPage: View {
                     verticalPadding: Layout.environmentPanelVerticalPadding
                 ) {
                     VStack(alignment: .leading, spacing: 8) {
-                        CheckRow(label: "Homebrew", status: preflight.homebrewFound ? "" : "Required", ok: preflight.homebrewFound)
-                        Divider()
-                        CheckRow(label: "Sikarugir", status: "", ok: sikarugirFound(preflight), warning: true) {
-                            installAction(on: .sikarugir, preflight: preflight)
-                        }
-                        Divider()
-                        CheckRow(label: "winetricks", status: "", ok: preflight.winetricksFound, warning: true) {
-                            installAction(on: .winetricks, preflight: preflight)
-                        }
-                        Divider()
-                        CheckRow(label: "GAMMA", status: "", ok: gammaInstallationFound(preflight), warning: true) {
-                            if !gammaInstallationFound(preflight) {
-                                Button {
-                                    model.chooseGammaFolder()
-                                } label: {
-                                    Label("Select", systemImage: "folder")
-                                }
+                        if mode == .create {
+                            CheckRow(label: "Homebrew", status: preflight.homebrewFound ? "" : "Required", ok: preflight.homebrewFound)
+                            Divider()
+                            CheckRow(label: "Sikarugir", status: "", ok: sikarugirFound(preflight), warning: true) {
+                                installAction(on: .sikarugir, preflight: preflight)
                             }
+                            Divider()
+                            CheckRow(label: "winetricks", status: "", ok: preflight.winetricksFound, warning: true) {
+                                installAction(on: .winetricks, preflight: preflight)
+                            }
+                            Divider()
                         }
-                        if preflight.zRewriteRequired {
+                        modOrganizerRow(label: mode == .create ? "GAMMA" : "ModOrganizer")
+                        if preflight.zRewriteRequired, mode == .create {
                             Divider()
                             CheckRow(label: "ModOrganizer drive repair", status: "Needed", ok: false, warning: true, detail: "Z: paths need repair before setup can continue.")
                         }
+                        Text("Placeholder environment text. Replace this with final guidance for selecting your ModOrganizer folder and reviewing setup requirements.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
-                if shouldShowEnvironmentGate {
+                if shouldShowEnvironmentGate && mode == .create {
                     environmentGate
-                }
-                if !gammaInstallationFound(preflight) {
-                    installDetailsLink
                 }
             } else if let gammaFolderSelectionError = model.gammaFolderSelectionError {
                 WizardCard(
@@ -63,7 +63,7 @@ struct EnvironmentPage: View {
                             detail: gammaFolderSelectionError
                         ) {
                             Button {
-                                model.chooseGammaFolder()
+                                model.chooseModOrganizerFolder()
                             } label: {
                                 Label("Select", systemImage: "folder")
                             }
@@ -82,33 +82,24 @@ struct EnvironmentPage: View {
 
     // MARK: - Status Helpers
 
-    private var installDetailsLink: some View {
-        HStack(spacing: 4) {
-            Text("Visit")
-                .foregroundStyle(.secondary)
-            Link(destination: URL(string: "https://github.com/FaithBeam/stalker-gamma-cli")!) {
-                HStack(spacing: 4) {
-                    BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
-                        .frame(width: 13, height: 13)
-                    Text("stalker-gamma-cli")
-                }
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            .help("Visit stalker-gamma-cli on GitHub")
-            Text("for installation details.")
-                .foregroundStyle(.secondary)
-        }
-        .font(.caption)
-        .padding(.leading, 2)
-    }
-
     private func sikarugirFound(_ preflight: Preflight) -> Bool {
         preflight.sikarugirInstalled
     }
 
-    private func gammaInstallationFound(_ preflight: Preflight) -> Bool {
-        preflight.gammaFound && preflight.mo2Found && preflight.modOrganizerIniFound
+    private func modOrganizerRow(label: String) -> some View {
+        CheckRow(
+            label: label,
+            status: model.selectedModOrganizerExecutableFound ? "" : "Select",
+            ok: model.selectedModOrganizerExecutableFound,
+            warning: true,
+            detail: model.selectedModOrganizerDetail
+        ) {
+            Button {
+                model.chooseModOrganizerFolder()
+            } label: {
+                Label(model.selectedModOrganizerExecutableFound ? "Change" : "Select", systemImage: "folder")
+            }
+        }
     }
 
     // MARK: - Install Actions

@@ -175,6 +175,12 @@ extension AppModel {
         applyExistingWrapperSettingsIfNeeded()
     }
 
+    func inferredModOrganizerPathFromCurrentWrapper() -> String? {
+        let settings = currentManagedSettings()
+        guard let executable = settings["launchExecutable"] else { return nil }
+        return AppSettingsStore.isValidModOrganizerExecutable(executable) ? executable : nil
+    }
+
     private func resetWrapperDerivedSettings() {
         let defaults = SetupConfiguration()
         engine = defaults.engine

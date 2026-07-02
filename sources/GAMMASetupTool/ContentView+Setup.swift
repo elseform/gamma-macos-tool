@@ -26,8 +26,8 @@ struct SetupPage: View {
             .frame(width: Layout.setupContentWidth, alignment: .topLeading)
         }
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
-        .disabled(!model.environmentOK || model.isRunning)
-        .opacity((model.environmentOK && !model.isRunning) ? 1 : 0.45)
+        .disabled(!model.selectedModOrganizerExecutableFound || model.isRunning)
+        .opacity((model.selectedModOrganizerExecutableFound && !model.isRunning) ? 1 : 0.45)
         .onChange(of: model.outputAppPath) { _ in
             model.targetAppPathDidChange()
         }
@@ -37,57 +37,11 @@ struct SetupPage: View {
 
     private var setupOptionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            appPanel
             prefixPanel
             winetricksCard
             displayCard
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    private var appPanel: some View {
-        WizardCard {
-            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "App")
-
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("Name")
-                    TextField("stalker-gamma", text: $model.appName)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { Task { await model.refreshPreflight() } }
-                    Button {
-                        model.chooseInstallDirectory()
-                    } label: {
-                        Image(systemName: "folder")
-                    }
-                    .help("Choose install directory")
-                }
-
-                if model.outputAppExists {
-                    Text("Already created; will be updated")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Divider()
-
-                HStack(spacing: 12) {
-                    Text("Launch")
-                    Spacer()
-                    Text(model.configuration.selectedLaunchExecutableLabel)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Button {
-                        model.chooseLaunchExecutable()
-                    } label: {
-                        Label("Change .exe", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Choose the Windows executable that the wrapper starts")
-                }
-            }
-        }
     }
 
     private var prefixPanel: some View {
