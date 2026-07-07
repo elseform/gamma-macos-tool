@@ -16,11 +16,11 @@ extension AppModel {
     var winetricksWrapperState: WinetricksWrapperState {
         guard outputAppExists else { return .planned }
         guard let registry = currentUserRegistryText(), !registry.isEmpty else {
-            return winetricksMarkersInstalled ? .installed : .planned
+            return .planned
         }
         let overrides = currentDllOverrides(in: registry)
         if overrides.isEmpty {
-            return winetricksMarkersInstalled ? .installed : .planned
+            return .planned
         }
         return missingDllOverrides(in: overrides).isEmpty ? .installed : .needsUpdate
     }
@@ -33,21 +33,10 @@ extension AppModel {
             installDirectory: installDirectory,
             engine: engine,
             renderer: renderer,
-            wineESync: wineESync,
-            wineMSync: wineMSync,
             updateUSVFS: updateUSVFS,
-            enableHIDDevices: enableHIDDevices,
-            enableFnToggle: enableFnToggle,
-            moltenVKFastMath: moltenVKFastMath,
-            metalHUD: metalHUD,
-            dxmtMetalFXSpatial: dxmtMetalFXSpatial,
-            dxmtMetalFXScaleFactor: dxmtMetalFXScaleFactor,
-            dxmtLogLevel: dxmtLogLevel,
-            dxvkHUD: dxvkHUD,
+            installGPTK4Binaries: installGPTK4Binaries,
             programBatch: programBatch,
             launchBatches: launchBatches,
-            extraWinetricks: extraWinetricks,
-            applyReticleFix: applyReticleFix,
             saveVerboseLog: saveVerboseLog,
             driveMappingMode: driveMappingMode,
             displayMode: displayMode,
@@ -56,6 +45,7 @@ extension AppModel {
             customDisplayResolutionHeight: customDisplayResolutionHeight,
             manualModOrganizerPath: manualModOrganizerPath,
             preflight: preflight,
+            detectedDisplay: detectedDisplay,
             outputAppExists: outputAppExists
         )
     }
@@ -199,11 +189,23 @@ extension AppModel {
     }
 
     var createHeaderTitle: String {
-        "Review settings"
+        if installFailed {
+            return "Installation failed"
+        }
+        if isRunning {
+            return "Installing wrapper"
+        }
+        return "Review settings"
     }
 
     var createHeaderSubtitle: String {
-        "Confirm wrapper options before installation."
+        if installFailed {
+            return "Check the output log for the failed setup step."
+        }
+        if isRunning {
+            return statusText.isEmpty ? "Applying wrapper changes." : statusText
+        }
+        return "Confirm wrapper options before installation."
     }
 
     var setupSummaryItems: [SetupSummaryItem] {
@@ -215,13 +217,20 @@ extension AppModel {
     }
 
     var minimalSetupSummaryItems: [SetupSummaryItem] {
-        [
+        var rows = [
             SetupSummaryItem(label: "App", planned: outputAppPath, current: nil),
             SetupSummaryItem(label: "ModOrganizer", planned: configuration.selectedLaunchExecutablePath, current: nil),
             SetupSummaryItem(label: "Engine", planned: engineLabel, current: nil),
-            SetupSummaryItem(label: "Renderer", planned: rendererLabel, current: nil),
-            SetupSummaryItem(label: "Installation", planned: "Default settings", current: nil)
+            SetupSummaryItem(label: "Renderer", planned: rendererLabel, current: nil)
         ]
+        if installGPTK4Binaries {
+            rows.append(SetupSummaryItem(label: "GPTK4 binaries", planned: "Install or update bundled files", current: nil))
+        }
+        if updateUSVFS {
+            rows.append(SetupSummaryItem(label: "ModOrganizer usvfs", planned: "Update binaries", current: nil))
+        }
+        rows.append(SetupSummaryItem(label: "Installation", planned: "Default settings", current: nil))
+        return rows
     }
 
     func makeSetupSummaryItems(current: [String: String], includeCurrent: Bool) -> [SetupSummaryItem] {
@@ -241,23 +250,9 @@ extension AppModel {
             add("Warning", engineRecreateWarning)
         }
         add("Engine", engineLabel, currentKey: "engine")
-        if wineESync {
-            add("ESync", "Enabled", currentKey: "esync")
-        }
-        if wineMSync {
-            add("MSync", "Enabled", currentKey: "msync")
-        }
-        add("Switch media keys", enableFnToggle ? "Enabled" : "Disabled", currentKey: "fnToggle")
-        add("HID Fix", enableHIDDevices ? "Compatibility mode" : "Wine default", currentKey: "hidDevices")
         add("Renderer", rendererLabel, currentKey: "renderer")
-        if moltenVKFastMath {
-            add("MoltenVK fast math", "Enabled", currentKey: "fastMath")
-        }
-        if metalHUD {
-            add(renderer == "dxvk" ? "DXVK HUD" : "Performance HUD", "Enabled", currentKey: "hud")
-        }
 
-        if preflight != nil {
+        if preflight != nil, driveMappingMode == "shorten" {
             add("Drive mapping", plannedWineDriveMapping, currentKey: "driveMapping")
             if willRewriteModOrganizerIni {
                 add("ModOrganizer.ini", "Rewrite Z: paths to short mapping")
@@ -268,27 +263,11 @@ extension AppModel {
             add("Wine display", displayResolutionLabel, currentKey: "wineDisplay")
         }
 
-        if renderer == "dxmt" {
-            if dxmtMetalFXSpatial {
-                add("DXMT MetalFX spatial", "Enabled", currentKey: "dxmtSpatial")
-                if !dxmtMetalFXScaleFactor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    add("DXMT MetalFX scale", dxmtMetalFXScaleFactor, currentKey: "dxmtScale")
-                }
-            }
-            if dxmtLogLevel != "default" {
-                add("DXMT log level", dxmtLogLevel, currentKey: "dxmtLog")
-            }
-        } else if renderer == "dxvk" {
-            if metalHUD {
-                add("DXVK HUD contents", dxvkHUD == "default" ? "Default" : dxvkHUD, currentKey: "dxvkHud")
-            }
+        if updateUSVFS {
+            add("ModOrganizer usvfs", "Update binaries", currentKey: "usvfs")
         }
-
-        if !extraWinetricks.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            add("Extra winetricks", extraWinetricks, currentKey: "extraWinetricks")
-        }
-        if renderer != "dxvk" && applyReticleFix {
-            add("Fixes", "Enabled", currentKey: "reticleFix")
+        if installGPTK4Binaries {
+            add("GPTK4 binaries", "Install", currentKey: "gptk4")
         }
 
         return rows

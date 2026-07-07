@@ -81,8 +81,6 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.outputApp, "/Applications/GAMMA.app")
         XCTAssertEqual(config.setupRequest.engine, "WS12WineSikarugir10.0_6")
         XCTAssertEqual(config.setupRequest.renderer, "dxmt")
-        XCTAssertTrue(config.setupRequest.wineESync)
-        XCTAssertTrue(config.setupRequest.wineMSync)
     }
 
     func testDefaultsMatchPlaytestedSikarugirWrapper() {
@@ -90,38 +88,21 @@ final class SetupConfigurationTests {
 
         XCTAssertEqual(config.engine, SetupConfiguration.sikarugir10Engine)
         XCTAssertEqual(config.renderer, "d3dmetal")
-        XCTAssertTrue(config.wineESync)
-        XCTAssertTrue(config.wineMSync)
-        XCTAssertFalse(config.enableHIDDevices)
-        XCTAssertFalse(config.enableFnToggle)
-        XCTAssertFalse(config.moltenVKFastMath)
-        XCTAssertFalse(config.metalHUD)
-        XCTAssertEqual(config.displayMode, "forced")
-    }
-
-    func testSetupRequestIncludesWineSyncOptions() {
-        let config = SetupConfiguration(wineESync: false, wineMSync: false)
-
-        XCTAssertFalse(config.setupRequest.wineESync)
-        XCTAssertFalse(config.setupRequest.wineMSync)
-    }
-
-    func testSetupRequestIncludesHIDDevicesOption() {
-        XCTAssertEqual(SetupConfiguration().setupRequest.enableHIDDevices, false)
-        XCTAssertEqual(SetupConfiguration(enableHIDDevices: true).setupRequest.enableHIDDevices, true)
-    }
-
-    func testSetupRequestIncludesFnToggleOption() {
-        XCTAssertEqual(SetupConfiguration().setupRequest.enableFnToggle, false)
-        XCTAssertEqual(SetupConfiguration(enableFnToggle: true).setupRequest.enableFnToggle, true)
+        XCTAssertTrue(config.updateUSVFS)
+        XCTAssertTrue(config.installGPTK4Binaries)
+        XCTAssertEqual(config.driveMappingMode, "preserve")
+        XCTAssertEqual(config.displayMode, "defaultWine")
     }
 
     func testSetupRequestIncludesUSVFSUpdateOption() {
-        XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.defaultEngine).setupRequest.updateUSVFS)
-        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.defaultEngine, updateUSVFS: true).setupRequest.updateUSVFS)
-        XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.updateUSVFS)
-        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine, updateUSVFS: true).setupRequest.updateUSVFS)
+        XCTAssertTrue(SetupConfiguration().setupRequest.updateUSVFS)
+        XCTAssertFalse(SetupConfiguration(updateUSVFS: false).setupRequest.updateUSVFS)
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.usvfsSource, "")
+    }
+
+    func testSetupRequestIncludesGPTK4Option() {
+        XCTAssertTrue(SetupConfiguration().setupRequest.installGPTK4Binaries)
+        XCTAssertFalse(SetupConfiguration(installGPTK4Binaries: false).setupRequest.installGPTK4Binaries)
     }
 
     func testSetupRequestIncludesManualModOrganizerWhenProvided() {
@@ -204,7 +185,6 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.displayResolutionLabel, "1920 x 1080")
         XCTAssertEqual(config.setupRequest.displayResolutionWidth, 1920)
         XCTAssertEqual(config.setupRequest.displayResolutionHeight, 1080)
-        XCTAssertEqual(config.setupRequest.useWineVirtualDesktop, false)
         XCTAssertEqual(config.setupRequest.resetWineDisplay, false)
     }
 
@@ -213,42 +193,11 @@ final class SetupConfigurationTests {
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
     }
 
-    func testD3DMetalSetupRequestOptions() {
-        let config = SetupConfiguration(
-            moltenVKFastMath: true,
-            metalHUD: true,
-            extraWinetricks: "  quartz dinput8  ",
-            applyReticleFix: true,
-            saveVerboseLog: true
-        )
+    func testSetupRequestIncludesVerboseLogOption() {
+        let config = SetupConfiguration(saveVerboseLog: true)
 
-        XCTAssertEqual(config.setupRequest.extraWinetricks, ["quartz", "dinput8"])
-        XCTAssertTrue(config.setupRequest.moltenVKFastMath)
-        XCTAssertTrue(config.setupRequest.metalHUD)
         XCTAssertTrue(config.setupRequest.writeLog)
         XCTAssertTrue(config.setupRequest.verbose)
-        XCTAssertEqual(config.setupRequest.commonFixes, ["d3dmetal-reticle"])
-    }
-
-    func testDXMTSetupRequestOptions() {
-        let config = SetupConfiguration(
-            renderer: "dxmt",
-            dxmtMetalFXSpatial: true,
-            dxmtMetalFXScaleFactor: " 1.5 ",
-            dxmtLogLevel: "debug"
-        )
-
-        XCTAssertTrue(config.setupRequest.dxmtMetalFXSpatial)
-        XCTAssertEqual(config.setupRequest.dxmtMetalFXScaleFactor, "1.5")
-        XCTAssertEqual(config.setupRequest.dxmtLogLevel, "debug")
-    }
-
-    func testDXVKSetupRequestOptionsRequireHUDToggleForHUDContents() {
-        let noHUDToggle = SetupConfiguration(renderer: "dxvk", dxvkHUD: "fps")
-        XCTAssertEqual(noHUDToggle.setupRequest.dxvkHUD, "")
-
-        let withHUDToggle = SetupConfiguration(renderer: "dxvk", metalHUD: true, dxvkHUD: "fps")
-        XCTAssertEqual(withHUDToggle.setupRequest.dxvkHUD, "fps")
     }
 
     func testDriveMappingShortenMode() {
@@ -306,7 +255,6 @@ private extension Preflight {
             targetApp: "/Applications/stalker-gamma.app",
             engine: "WS12WineCX24.0.7_7",
             renderer: "d3dmetal",
-            moltenVKFastMath: false,
             programBatch: "/mo2.bat",
             stalkerGammaPath: "/opt/homebrew/bin/stalker-gamma",
             stalkerGammaFound: true,

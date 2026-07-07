@@ -59,24 +59,13 @@ final class AppModel: ObservableObject {
     @Published var installDirectory = SetupConfiguration.defaultInstallDirectory
     @Published var engine = SetupConfiguration.defaultEngine
     @Published var renderer = "d3dmetal"
-    @Published var wineESync = true
-    @Published var wineMSync = true
-    @Published var updateUSVFS = false
-    @Published var enableHIDDevices = false
-    @Published var enableFnToggle = false
-    @Published var moltenVKFastMath = false
-    @Published var metalHUD = false
-    @Published var dxmtMetalFXSpatial = false
-    @Published var dxmtMetalFXScaleFactor = ""
-    @Published var dxmtLogLevel = "default"
-    @Published var dxvkHUD = "default"
+    @Published var updateUSVFS = true
+    @Published var installGPTK4Binaries = true
     @Published var programBatch = "/mo2.bat"
     @Published var launchBatches: [LaunchBatch] = []
-    @Published var extraWinetricks = ""
-    @Published var applyReticleFix = true
     @Published var saveVerboseLog = true
     @Published var driveMappingMode = "preserve"
-    @Published var displayMode = "forced"
+    @Published var displayMode = "defaultWine"
     @Published var displayResolutionMode = "detected"
     @Published var customDisplayResolutionWidth = ""
     @Published var customDisplayResolutionHeight = ""
@@ -114,7 +103,7 @@ final class AppModel: ObservableObject {
     ]
 
     let requiredDllOverrides: [String: String] = [
-        "concrt140": "native,builtin",
+        "concrt140": "builtin,native",
         "d3dcompiler_47": "native",
         "d3dx11_43": "native",
         "d3dx9_43": "native",

@@ -18,8 +18,7 @@ struct SetupPage: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     rendererCard
-                    rendererOptionsCard
-                    modsCard
+                    additionalOptionsCard
                 }
                 .frame(width: Layout.setupRightColumnWidth, alignment: .topLeading)
             }
@@ -39,7 +38,6 @@ struct SetupPage: View {
         VStack(alignment: .leading, spacing: 12) {
             prefixPanel
             winetricksCard
-            displayCard
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -66,10 +64,6 @@ struct SetupPage: View {
                 .pickerStyle(.segmented)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Toggle("ESync", isOn: $model.wineESync)
-                Toggle("MSync", isOn: $model.wineMSync)
-            }
         }
     }
 
@@ -91,106 +85,65 @@ struct SetupPage: View {
                         .tag("dxmt")
                 }
                 .pickerStyle(.segmented)
-
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        performanceHUDToggle
-                        metalFXControls
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Toggle("MoltenVK-CX", isOn: .constant(true))
-                            .disabled(true)
-                        Toggle("MoltenVK fast math", isOn: $model.moltenVKFastMath)
-                    }
-                }
-            }
-        }
-    }
-
-    private var rendererOptionsCard: some View {
-        WizardCard {
-            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "Controls")
-                HStack(alignment: .firstTextBaseline, spacing: 18) {
-                    Toggle("Switch media keys", isOn: $model.enableFnToggle)
-                        .help("Switches the wrapper's media/function key mode through Sikarugir's IsFnToggleEnabled setting.")
-                    Toggle("HID Fix", isOn: $model.enableHIDDevices)
-                        .help("Use when mouse capture, aiming, or extra mouse buttons behave incorrectly. Enables Wine winebus HID/raw-input overrides; off restores Wine defaults.")
-                }
+                displayControls
             }
         }
     }
 
     // MARK: - Display
 
-    private var displayCard: some View {
-        WizardCard {
-            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "Display")
+    private var displayControls: some View {
+        VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+            Divider()
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 7) {
+                GridRow {
+                    Text("Display")
+                    Picker("Display", selection: $model.displayMode) {
+                        Text("Default Wine").tag("defaultWine")
+                        Text("Forced").tag("forced")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                }
 
-                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 7) {
+                if model.displayMode == "forced" {
                     GridRow {
-                        Text("Resolution")
-                        Picker("Resolution", selection: $model.displayMode) {
-                            Text("Default Wine").tag("defaultWine")
-                            Text("Forced").tag("forced")
+                        Text("Value")
+                        Picker("Value", selection: $model.displayResolutionMode) {
+                            if let detectedResolutionLabel {
+                                Text(detectedResolutionLabel).tag("detected")
+                            }
+                            Text("1920 x 1080").tag("1920x1080")
+                            Text("2560 x 1440").tag("2560x1440")
+                            Text("3840 x 2160").tag("3840x2160")
+                            Text("Custom").tag("custom")
                         }
                         .labelsHidden()
-                        .pickerStyle(.segmented)
                     }
 
-                    if model.displayMode == "forced" {
+                    if model.displayResolutionMode == "custom" {
                         GridRow {
-                            Text("Value")
-                            Picker("Value", selection: $model.displayResolutionMode) {
-                                if let detectedResolutionLabel {
-                                    Text(detectedResolutionLabel).tag("detected")
-                                }
-                                Text("1920 x 1080").tag("1920x1080")
-                                Text("2560 x 1440").tag("2560x1440")
-                                Text("3840 x 2160").tag("3840x2160")
-                                Text("Custom").tag("custom")
-                            }
-                            .labelsHidden()
-                        }
-
-                        if model.displayResolutionMode == "custom" {
-                            GridRow {
-                                Text("Custom")
-                                HStack(spacing: 6) {
-                                    TextField("Width", text: $model.customDisplayResolutionWidth)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 72)
-                                    Text("x")
-                                        .foregroundStyle(.secondary)
-                                    TextField("Height", text: $model.customDisplayResolutionHeight)
-                                        .textFieldStyle(.roundedBorder)
-                                        .frame(width: 72)
-                                }
+                            Text("Custom")
+                            HStack(spacing: 6) {
+                                TextField("Width", text: $model.customDisplayResolutionWidth)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 72)
+                                Text("x")
+                                    .foregroundStyle(.secondary)
+                                TextField("Height", text: $model.customDisplayResolutionHeight)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 72)
                             }
                         }
                     }
                 }
+            }
 
-                if let display = model.detectedDisplay {
-                    Text("macOS: \(display.summary)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let preflight = model.preflight, preflight.userLtxFound {
-                    Text("Game config: \(gameResolutionText(preflight))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(preflight.userLtxPath)
-                } else if model.preflight?.anomalyFound == true {
-                    Text("Game resolution not detected.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            if let display = model.detectedDisplay {
+                Text("macOS: \(display.summary)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -198,7 +151,7 @@ struct SetupPage: View {
     private func rendererHelp(for renderer: String) -> String {
         switch renderer {
         case "dxmt":
-            return "Best performance. Can cause visual bugs if advanced features like MetalFX are enabled. Experimental."
+            return "Best performance. Experimental."
         case "dxvk":
             return "Average performance. Most accurate if you use a lot of shader mods."
         default:
@@ -207,19 +160,12 @@ struct SetupPage: View {
     }
 
     private var detectedResolutionLabel: String? {
-        guard let width = model.preflight?.gameResolutionWidth,
-              let height = model.preflight?.gameResolutionHeight else {
+        guard let display = model.detectedDisplay,
+              display.backingWidth > 0,
+              display.backingHeight > 0 else {
             return nil
         }
-        return "Use detected: \(width) x \(height)"
-    }
-
-    private func gameResolutionText(_ preflight: Preflight) -> String {
-        if let width = preflight.gameResolutionWidth,
-           let height = preflight.gameResolutionHeight {
-            return "\(width) x \(height)"
-        }
-        return "Not detected"
+        return "Use detected: \(display.backingWidth) x \(display.backingHeight)"
     }
 
     // MARK: - Drive Mapping
@@ -232,7 +178,7 @@ struct SetupPage: View {
                     GridRow {
                         Text("Drive mapping")
                         Picker("Drive mapping", selection: $model.driveMappingMode) {
-                            Text("Use ModOrganizer.ini").tag("preserve")
+                            Text("Default Wine").tag("preserve")
                             Text("Shorten mapping").tag("shorten")
                         }
                         .labelsHidden()
@@ -263,49 +209,6 @@ struct SetupPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    // MARK: - Renderer Options
-
-    private var metalFXControls: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Toggle("MetalFX Spatial Upscale", isOn: $model.dxmtMetalFXSpatial)
-                .disabled(!dxmtOptionsAvailable)
-                .opacity(rendererOptionOpacity(dxmtOptionsAvailable))
-
-            if model.dxmtMetalFXSpatial {
-                metalFXFactorControls
-            } else {
-                metalFXFactorControls
-                    .hidden()
-            }
-        }
-    }
-
-    private var performanceHUDToggle: some View {
-        Toggle("Performance HUD", isOn: $model.metalHUD)
-            .help(model.renderer == "dxvk" ? "Enable DXVK HUD. The wrapper stores this through Sikarugir's METAL_HUD key." : "Enable Sikarugir's performance HUD.")
-    }
-
-    private var metalFXFactorControls: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("Scale factor")
-                .font(.caption)
-                .foregroundStyle(dxmtOptionsAvailable ? .secondary : .tertiary)
-            TextField("2.0", text: $model.dxmtMetalFXScaleFactor)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 80)
-                .disabled(!dxmtOptionsAvailable)
-                .opacity(rendererOptionOpacity(dxmtOptionsAvailable))
-        }
-    }
-
-    private var dxmtOptionsAvailable: Bool {
-        model.renderer == "dxmt"
-    }
-
-    private func rendererOptionOpacity(_ available: Bool) -> Double {
-        available ? 1 : 0.45
     }
 
     // MARK: - Winetricks
@@ -377,31 +280,14 @@ struct SetupPage: View {
         }
     }
 
-    // MARK: - Fixes
+    // MARK: - Additional Options
 
-    private var modsCard: some View {
+    private var additionalOptionsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "GAMMA Fixes")
-
-                Toggle("Update usvfs binaries", isOn: $model.updateUSVFS)
-
-                if model.renderer == "dxvk" {
-                    Toggle("Fix missing reticles", isOn: .constant(false))
-                        .disabled(true)
-                    Text("Bug not present if DXVK is used.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Toggle("Fix missing reticles", isOn: $model.applyReticleFix)
-                }
-                if model.renderer != "dxvk", model.applyReticleFix {
-                    Text("Set highest priority in MO2 & delete shaders_cache")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                CardHeading(title: "Additional Options")
+                Toggle("Update ModOrganizer's usvfs binaries", isOn: $model.updateUSVFS)
+                Toggle("Update GPTK4 binaries", isOn: $model.installGPTK4Binaries)
             }
         }
     }

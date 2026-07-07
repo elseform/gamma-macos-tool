@@ -109,7 +109,7 @@ struct InstallChoicePage: View {
         VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Placeholder install choice text. Replace this with the final explanation of default and advanced setup.")
+                    Text("Default installation option creates wrapper with recommended settings. Advanced installation has some knobs to tweak: Wine engine, translation layer, etc.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

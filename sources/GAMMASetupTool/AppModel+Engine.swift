@@ -165,10 +165,13 @@ extension AppModel {
             || status.contains("configuring existing")
             || status.contains("installing anomaly app icon")
             || status.contains("restoring sikarugir app frameworks")
-            || status.contains("configuring sikarugir app plist") {
+            || status.contains("configuring sikarugir app plist")
+            || status.contains("configure alias") {
             return 0
         }
-        if status.contains("installing sikarugir engine") || status.contains("usvfs") {
+        if status.contains("installing sikarugir engine")
+            || status.contains("usvfs")
+            || status.contains("gptk4") {
             return 1
         }
         if status.contains("initializing sikarugir wine prefix")
@@ -185,11 +188,8 @@ extension AppModel {
             || status.contains("dll overrides") {
             return 4
         }
-        if status.contains("wine hid")
-            || status.contains("creating dxmt")
-            || status.contains("creating dxvk")
-            || status.contains("modorganizer launch batch")
-            || status.contains("common fix")
+        if status.contains("modorganizer launch batch")
+            || status.contains("launch batches")
             || status.contains("normalizing")
             || status.contains("registering")
             || status.contains("summary")

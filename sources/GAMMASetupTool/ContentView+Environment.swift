@@ -40,7 +40,7 @@ struct EnvironmentPage: View {
                             Divider()
                             CheckRow(label: "ModOrganizer drive repair", status: "Needed", ok: false, warning: true, detail: "Z: paths need repair before setup can continue.")
                         }
-                        Text("Placeholder environment text. Replace this with final guidance for selecting your ModOrganizer folder and reviewing setup requirements.")
+                        Text("GAMMA installation not found, please pick ModOrganizer.exe to proceed.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

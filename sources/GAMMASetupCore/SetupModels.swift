@@ -47,7 +47,6 @@ public struct Preflight: Codable {
     public var targetApp: String
     public var engine: String
     public var renderer: String
-    public var moltenVKFastMath: Bool
     public var programBatch: String
     public var stalkerGammaPath: String
     public var stalkerGammaFound: Bool
@@ -65,10 +64,6 @@ public struct Preflight: Codable {
     public var modOrganizerIni: String
     public var modOrganizerIniFound: Bool
     public var modOrganizerGamePath: String
-    public var userLtxPath: String
-    public var userLtxFound: Bool
-    public var gameResolutionWidth: Int?
-    public var gameResolutionHeight: Int?
     public var wineDriveLetter: String
     public var wineDriveRoot: String
     public var zRewriteRequired: Bool
@@ -86,7 +81,6 @@ public struct Preflight: Codable {
         targetApp: String,
         engine: String,
         renderer: String,
-        moltenVKFastMath: Bool,
         programBatch: String,
         stalkerGammaPath: String,
         stalkerGammaFound: Bool,
@@ -104,10 +98,6 @@ public struct Preflight: Codable {
         modOrganizerIni: String,
         modOrganizerIniFound: Bool,
         modOrganizerGamePath: String,
-        userLtxPath: String = "",
-        userLtxFound: Bool = false,
-        gameResolutionWidth: Int? = nil,
-        gameResolutionHeight: Int? = nil,
         wineDriveLetter: String,
         wineDriveRoot: String,
         zRewriteRequired: Bool,
@@ -124,7 +114,6 @@ public struct Preflight: Codable {
         self.targetApp = targetApp
         self.engine = engine
         self.renderer = renderer
-        self.moltenVKFastMath = moltenVKFastMath
         self.programBatch = programBatch
         self.stalkerGammaPath = stalkerGammaPath
         self.stalkerGammaFound = stalkerGammaFound
@@ -142,10 +131,6 @@ public struct Preflight: Codable {
         self.modOrganizerIni = modOrganizerIni
         self.modOrganizerIniFound = modOrganizerIniFound
         self.modOrganizerGamePath = modOrganizerGamePath
-        self.userLtxPath = userLtxPath
-        self.userLtxFound = userLtxFound
-        self.gameResolutionWidth = gameResolutionWidth
-        self.gameResolutionHeight = gameResolutionHeight
         self.wineDriveLetter = wineDriveLetter
         self.wineDriveRoot = wineDriveRoot
         self.zRewriteRequired = zRewriteRequired
@@ -166,28 +151,16 @@ public struct SetupRequest: Codable {
     public var outputApp: String
     public var engine: String
     public var renderer: String
-    public var wineESync: Bool
-    public var wineMSync: Bool
     public var updateUSVFS: Bool
-    public var enableHIDDevices: Bool?
-    public var enableFnToggle: Bool?
-    public var moltenVKFastMath: Bool
-    public var metalHUD: Bool
-    public var dxmtMetalFXSpatial: Bool
-    public var dxmtMetalFXScaleFactor: String
-    public var dxmtLogLevel: String
-    public var dxvkHUD: String
+    public var installGPTK4Binaries: Bool
     public var mo2Path: String
     public var gammaPath: String
     public var anomalyPath: String
     public var programBatch: String
     public var launchBatches: [LaunchBatch]?
     public var driveMappingMode: String
-    public var extraWinetricks: [String]
-    public var commonFixes: [String]
     public var displayResolutionWidth: Int?
     public var displayResolutionHeight: Int?
-    public var useWineVirtualDesktop: Bool?
     public var resetWineDisplay: Bool?
     public var writeLog: Bool
     public var verbose: Bool
@@ -204,28 +177,16 @@ public struct SetupRequest: Codable {
         outputApp: String,
         engine: String = SetupDefaults.defaultEngine,
         renderer: String = "d3dmetal",
-        wineESync: Bool = true,
-        wineMSync: Bool = true,
-        updateUSVFS: Bool = false,
-        enableHIDDevices: Bool = false,
-        enableFnToggle: Bool = false,
-        moltenVKFastMath: Bool = false,
-        metalHUD: Bool = false,
-        dxmtMetalFXSpatial: Bool = false,
-        dxmtMetalFXScaleFactor: String = "",
-        dxmtLogLevel: String = "",
-        dxvkHUD: String = "",
+        updateUSVFS: Bool = true,
+        installGPTK4Binaries: Bool = true,
         mo2Path: String = "",
         gammaPath: String = "",
         anomalyPath: String = "",
         programBatch: String = "/mo2.bat",
         launchBatches: [LaunchBatch] = [],
         driveMappingMode: String = "preserve",
-        extraWinetricks: [String] = [],
-        commonFixes: [String] = [],
         displayResolutionWidth: Int? = nil,
         displayResolutionHeight: Int? = nil,
-        useWineVirtualDesktop: Bool? = false,
         resetWineDisplay: Bool? = false,
         writeLog: Bool = false,
         verbose: Bool = false,
@@ -241,28 +202,16 @@ public struct SetupRequest: Codable {
         self.outputApp = outputApp
         self.engine = engine
         self.renderer = renderer
-        self.wineESync = wineESync
-        self.wineMSync = wineMSync
         self.updateUSVFS = updateUSVFS
-        self.enableHIDDevices = enableHIDDevices
-        self.enableFnToggle = enableFnToggle
-        self.moltenVKFastMath = moltenVKFastMath
-        self.metalHUD = metalHUD
-        self.dxmtMetalFXSpatial = dxmtMetalFXSpatial
-        self.dxmtMetalFXScaleFactor = dxmtMetalFXScaleFactor
-        self.dxmtLogLevel = dxmtLogLevel
-        self.dxvkHUD = dxvkHUD
+        self.installGPTK4Binaries = installGPTK4Binaries
         self.mo2Path = mo2Path
         self.gammaPath = gammaPath
         self.anomalyPath = anomalyPath
         self.programBatch = programBatch
         self.launchBatches = launchBatches
         self.driveMappingMode = driveMappingMode
-        self.extraWinetricks = extraWinetricks
-        self.commonFixes = commonFixes
         self.displayResolutionWidth = displayResolutionWidth
         self.displayResolutionHeight = displayResolutionHeight
-        self.useWineVirtualDesktop = useWineVirtualDesktop
         self.resetWineDisplay = resetWineDisplay
         self.writeLog = writeLog
         self.verbose = verbose

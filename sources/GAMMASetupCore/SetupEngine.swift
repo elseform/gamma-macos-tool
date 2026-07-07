@@ -144,8 +144,6 @@ struct SetupContext {
     var dosdevices: URL
     var userReg: URL
     var systemReg: URL
-    var appMarker: URL
-    var markerDir: URL
     var appLogDir: URL
     var scriptRoot: URL
     var cacheDir: URL
@@ -161,9 +159,6 @@ struct SetupContext {
     var mo2IniGamePathWin = ""
     var mo2IniDriveLetter = ""
     var mo2IniDriveRoot = ""
-    var userLtxPath = ""
-    var gameResolutionWidth: Int?
-    var gameResolutionHeight: Int?
     var zRewriteRequired = false
     var driveLetter = "g"
     var driveRoot = ""
@@ -184,8 +179,6 @@ struct SetupContext {
         self.dosdevices = outputApp.appendingPathComponent("Contents/SharedSupport/prefix/dosdevices")
         self.userReg = outputApp.appendingPathComponent("Contents/SharedSupport/prefix/user.reg")
         self.systemReg = outputApp.appendingPathComponent("Contents/SharedSupport/prefix/system.reg")
-        self.appMarker = outputApp.appendingPathComponent("Contents/SharedSupport/.stalker-gamma-sikarugir-setup")
-        self.markerDir = outputApp.appendingPathComponent("Contents/SharedSupport/.stalker-gamma-sikarugir-markers")
         self.appLogDir = outputApp.appendingPathComponent("Contents/SharedSupport/Logs")
         let executableURL = URL(fileURLWithPath: executablePath)
         if request.resourceRoot.isEmpty {
@@ -225,12 +218,10 @@ public final class GAMMASetupEngine {
 
         let shortRoot = zShortRoot(context: context)
         let modlist = activeModlistPath(context: context)
-        loadUserLtxResolution(context: &context)
         return Preflight(
             targetApp: request.outputApp,
             engine: request.engine,
             renderer: request.renderer,
-            moltenVKFastMath: request.moltenVKFastMath,
             programBatch: request.programBatch,
             stalkerGammaPath: stalkerGammaPath,
             stalkerGammaFound: !stalkerGammaPath.isEmpty,
@@ -248,10 +239,6 @@ public final class GAMMASetupEngine {
             modOrganizerIni: context.mo2IniPath,
             modOrganizerIniFound: fileManager.fileExists(atPath: context.mo2IniPath),
             modOrganizerGamePath: context.mo2IniGamePathWin,
-            userLtxPath: context.userLtxPath,
-            userLtxFound: fileManager.fileExists(atPath: context.userLtxPath),
-            gameResolutionWidth: context.gameResolutionWidth,
-            gameResolutionHeight: context.gameResolutionHeight,
             wineDriveLetter: context.driveLetter.uppercased(),
             wineDriveRoot: context.driveRoot,
             zRewriteRequired: context.zRewriteRequired,
@@ -295,19 +282,19 @@ public final class GAMMASetupEngine {
         try loadGammaSettings(context: &context, required: true, preflightOnly: false)
         try ensureBrewDependencies(context: context)
         try resolveSikarugirAssets(context: &context)
-        let rendererChangedOnUpdate = rendererChangedForExistingManagedApp(context: context)
 
         try runStage(.wrapper) {
             try prepareTargetApp(context: &context)
-            try markManagedApp(context: context, status: "in-progress")
             try ensureAppTemplateLayout(context: context)
             try installAppIcon(context: context)
             try ensureAppFrameworks(context: context)
             try configureAppPlist(context: context)
+            try createConfigureAlias(context: context)
         }
         try runStage(.engine) {
             try installEngine(context: context)
             try installUSVFSUpdateForEngine(context: context)
+            try installGPTK4Binaries(context: context)
         }
         try runStage(.prefix) {
             try initializePrefix(context: context)
@@ -322,14 +309,8 @@ public final class GAMMASetupEngine {
             try configureDllOverrides(context: context)
         }
         try runStage(.finalize) {
-            try configureWinebusDefaults(context: context)
-            try createDXMTConfig(context: context)
-            try createDXVKConfig(context: context)
             try createMO2Batch(context: &context)
             try createLaunchBatches(context: &context)
-            try applyCommonFixes(context: context)
-            try cleanupAnomalyCachesIfNeeded(context: context, rendererChangedOnUpdate: rendererChangedOnUpdate)
-            try markManagedApp(context: context, status: "complete")
             try normalizeAppPermissions(context: context)
             try refreshAppRegistration(context: context)
             try verifyOutputs(context: context)
@@ -343,6 +324,54 @@ public final class GAMMASetupEngine {
         context.templateName = templateName
         try prepareTargetApp(context: &context)
         try ensureAppTemplateLayout(context: context)
+    }
+
+    func configureWrapperForTesting(request: SetupRequest, templateSource: URL, templateName: String) throws {
+        var context = SetupContext(request: request, executablePath: executablePath)
+        context.templateSource = templateSource
+        context.templateName = templateName
+        try prepareTargetApp(context: &context)
+        try ensureAppTemplateLayout(context: context)
+        try configureAppPlist(context: context)
+        try createConfigureAlias(context: context)
+    }
+
+    func installUSVFSForTesting(request: SetupRequest) throws {
+        var context = SetupContext(request: request, executablePath: executablePath)
+        context.mo2Path = request.mo2Path
+        try installUSVFSUpdateForEngine(context: context)
+    }
+
+    func installGPTK4ForTesting(request: SetupRequest) throws {
+        let context = SetupContext(request: request, executablePath: executablePath)
+        try installGPTK4Binaries(context: context)
+    }
+
+    func configureDriveMappingAndMO2BatchForTesting(request: SetupRequest) throws {
+        var context = SetupContext(request: request, executablePath: executablePath)
+        context.mo2Path = absolutePath(request.mo2Path)
+        context.gammaPath = request.gammaPath.isEmpty
+            ? URL(fileURLWithPath: context.mo2Path).deletingLastPathComponent().path
+            : absolutePath(request.gammaPath)
+        context.anomalyPath = request.anomalyPath.isEmpty ? "" : absolutePath(request.anomalyPath)
+        loadModOrganizerIni(context: &context)
+        try fileManager.createDirectory(at: context.contents, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: context.driveC, withIntermediateDirectories: true)
+        try configureDriveMapping(context: &context)
+        try createMO2Batch(context: &context)
+    }
+
+    func detectedEngineForTesting(outputApp: URL) -> String? {
+        let context = SetupContext(request: SetupRequest(outputApp: outputApp.path), executablePath: executablePath)
+        return installedEngineID(context: context)
+    }
+
+    func missingDllOverridesForTesting(registry: String) -> [String] {
+        missingDllOverrides(in: currentDllOverrides(in: registry))
+    }
+
+    func payloadMatchesForTesting(source: URL, target: URL) -> Bool {
+        directoryPayloadMatches(source: source, target: target)
     }
 
     private func runStage(_ stage: SetupEngineStage, _ work: () throws -> Void) throws {
@@ -464,20 +493,19 @@ public final class GAMMASetupEngine {
                 try remove(app, context: context)
             } else if context.request.replace {
                 try remove(app, context: context)
-            } else if fileManager.fileExists(atPath: context.appMarker.path) {
-                let marker = (try? String(contentsOf: context.appMarker)) ?? ""
-                let currentEngine = marker.split(whereSeparator: \.isNewline).first { $0.hasPrefix("engine=") }?.dropFirst("engine=".count) ?? ""
-                if currentEngine != context.request.engine {
-                    reporter.log("Rebuilding managed Sikarugir wrapper at \(app.path) because the engine changed")
-                    try remove(app, context: context)
-                } else {
-                    reporter.log("Configuring existing managed Sikarugir wrapper at \(app.path)")
+            } else if isSikarugirWrapper(context: context) {
+                guard let currentEngine = installedEngineID(context: context) else {
+                    throw SetupEngineError.message("target exists but the Sikarugir engine version could not be detected: \(app.path)")
+                }
+                if currentEngine == context.request.engine {
+                    reporter.log("Configuring existing Sikarugir wrapper at \(app.path)")
                     context.updatingExistingWrapper = true
                     return
                 }
-            } else {
-                reporter.log("Rebuilding existing Sikarugir wrapper at \(app.path) because setup metadata is missing")
+                reporter.log("Rebuilding Sikarugir wrapper at \(app.path) because the engine changed")
                 try remove(app, context: context)
+            } else {
+                throw SetupEngineError.message("target exists but is not a Sikarugir wrapper created from the expected template: \(app.path)")
             }
         }
 
@@ -488,6 +516,28 @@ public final class GAMMASetupEngine {
             throw SetupEngineError.message("Sikarugir template source was not found")
         }
         try fileManager.copyItem(at: template, to: app)
+    }
+
+    private func isSikarugirWrapper(context: SetupContext) -> Bool {
+        fileManager.fileExists(atPath: context.contents.appendingPathComponent("Info.plist").path)
+            && directoryExists(context.contents.appendingPathComponent("Configure.app").path)
+            && pathEntryExists(context.contents.appendingPathComponent("MacOS"))
+            && pathEntryExists(context.contents.appendingPathComponent("Resources"))
+    }
+
+    private func installedEngineID(context: SetupContext) -> String? {
+        engineID(fromWineVersion: readText(context.wineDir.appendingPathComponent("version")))
+    }
+
+    private func engineID(fromWineVersion version: String) -> String? {
+        let normalized = version.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.contains("sikarugir 10.0") && normalized.contains("revision 6") {
+            return SetupDefaults.sikarugir10Engine
+        }
+        if normalized.contains("24.0.7") && (normalized.contains("cx") || normalized.contains("crossover")) {
+            return SetupDefaults.crossOverEngine
+        }
+        return nil
     }
 
     private func ensureAppTemplateLayout(context: SetupContext) throws {
@@ -567,47 +617,70 @@ public final class GAMMASetupEngine {
         plist["Program Name and Path"] = context.request.programBatch
         plist["Program Flags"] = ""
         plist["D3DMETAL"] = renderer == "d3dmetal" ? "1" : "0"
-        plist["MOLTENVKCX"] = "1"
-        plist["WINEMSYNC"] = context.request.wineMSync ? "1" : "0"
-        plist["WINEESYNC"] = context.request.wineESync ? "1" : "0"
+        if !context.updatingExistingWrapper {
+            plist["WINEESYNC"] = "0"
+            plist["WINEMSYNC"] = "1"
+        }
         plist["DXVK"] = renderer == "dxvk" ? "1" : "0"
         plist["DXMT"] = renderer == "dxmt" ? "1" : "0"
         plist["D9VK"] = "0"
         plist["CNC_DDRAW"] = "0"
-        plist["FASTMATH"] = context.request.moltenVKFastMath ? "1" : "0"
-        plist["METAL_HUD"] = context.request.metalHUD ? 1 : 0
-        plist["IsFnToggleEnabled"] = (context.request.enableFnToggle ?? false) ? 1 : 0
         plist["Winetricks silent"] = "1"
         plist["Winetricks disable logging"] = "1"
         plist["WINEDEBUG"] = "-all"
-        let cliCustomCommands = SetupCLICommandTools.updatingDXMTCommands(
-            plist["CLI Custom Commands"] as? String ?? "",
-            renderer: renderer,
-            metalFXSpatial: context.request.dxmtMetalFXSpatial,
-            logLevel: context.request.dxmtLogLevel
-        )
-        if cliCustomCommands.isEmpty {
-            plist.removeValue(forKey: "CLI Custom Commands")
-        } else {
-            plist["CLI Custom Commands"] = cliCustomCommands
-        }
-        var environment = plist["LSEnvironment"] as? [String: String] ?? [:]
-        for key in [
-            "MVK_CONFIG_FAST_MATH_ENABLED", "MTL_HUD_ENABLED", "DXVK_HUD",
-            "DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXMT_CONFIG_FILE", "DXMT_CONFIG",
-            "DXMT_LOG_LEVEL", "DXVK_CONFIG_FILE", "DXVK_FRAME_RATE", "DXVK_LOG_LEVEL",
-            "QTWEBENGINE_CHROMIUM_FLAGS", "QT_OPENGL", "DYLD_FALLBACK_LIBRARY_PATH", "DYLD_LIBRARY_PATH"
-        ] {
-            environment.removeValue(forKey: key)
-        }
-        plist["LSEnvironment"] = environment
         let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try out.write(to: plistURL, options: .atomic)
     }
 
+    private func createConfigureAlias(context: SetupContext) throws {
+        let configureApp = context.contents.appendingPathComponent("Configure.app")
+        guard directoryExists(configureApp.path) else {
+            throw SetupEngineError.message("missing Sikarugir Configure.app")
+        }
+        let wrapperName = context.outputApp.deletingPathExtension().lastPathComponent
+        let alias = context.outputApp
+            .deletingLastPathComponent()
+            .appendingPathComponent("Configure \(wrapperName)")
+        reporter.log("Creating Configure alias")
+        guard !context.request.dryRun else { return }
+        if pathEntryExists(alias), !configureAlias(alias, pointsTo: configureApp) {
+            throw SetupEngineError.message("Configure alias target already exists and points somewhere else: \(alias.path)")
+        }
+        try? fileManager.removeItem(at: alias)
+        let data = try configureApp.bookmarkData(
+            options: [.suitableForBookmarkFile],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        try URL.writeBookmarkData(data, to: alias)
+    }
+
+    private func configureAlias(_ alias: URL, pointsTo target: URL) -> Bool {
+        if isSymlink(alias),
+           let destination = try? fileManager.destinationOfSymbolicLink(atPath: alias.path) {
+            let resolved = destination.hasPrefix("/")
+                ? URL(fileURLWithPath: destination)
+                : alias.deletingLastPathComponent().appendingPathComponent(destination)
+            return samePath(resolved, target)
+        }
+
+        guard let data = try? URL.bookmarkData(withContentsOf: alias) else { return false }
+        var stale = false
+        guard let resolved = try? URL(
+            resolvingBookmarkData: data,
+            options: [.withoutUI],
+            relativeTo: nil,
+            bookmarkDataIsStale: &stale
+        ) else {
+            return false
+        }
+        return samePath(resolved, target)
+    }
+
     private func installEngine(context: SetupContext) throws {
-        let marker = context.markerDir.appendingPathComponent("engine-\(context.request.engine).done")
-        if fileManager.fileExists(atPath: marker.path), fileManager.isExecutableFile(atPath: context.wineBin.path), !context.request.forceDownload {
+        if installedEngineID(context: context) == context.request.engine,
+           fileManager.isExecutableFile(atPath: context.wineBin.path),
+           !context.request.forceDownload {
             return
         }
         reporter.log("Installing Sikarugir engine \(context.request.engine)")
@@ -626,23 +699,21 @@ public final class GAMMASetupEngine {
         guard fileManager.isExecutableFile(atPath: context.wineBin.path) else {
             throw SetupEngineError.message("engine did not install wine")
         }
-        try fileManager.createDirectory(at: context.markerDir, withIntermediateDirectories: true)
-        fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
     private func installUSVFSUpdateForEngine(context: SetupContext) throws {
         guard context.request.updateUSVFS else { return }
-        let marker = context.markerDir.appendingPathComponent("usvfs-\(context.request.engine).done")
-        if fileManager.fileExists(atPath: marker.path), !context.request.forceDownload {
-            return
-        }
-        reporter.log("Installing updated usvfs binaries for \(context.request.engine)")
         let source = try usvfsSource(context: context)
         let mo2Dir = URL(fileURLWithPath: context.mo2Path).deletingLastPathComponent()
         let files = ["usvfs_x64.dll", "usvfs_proxy_x64.exe", "usvfs_x86.dll", "usvfs_proxy_x86.exe"]
         for file in files where !fileManager.fileExists(atPath: source.appendingPathComponent(file).path) {
             throw SetupEngineError.message("missing updated usvfs binary: \(source.appendingPathComponent(file).path)")
         }
+        if !context.request.forceDownload,
+           files.allSatisfy({ fileManager.contentsEqual(atPath: source.appendingPathComponent($0).path, andPath: mo2Dir.appendingPathComponent($0).path) }) {
+            return
+        }
+        reporter.log("Installing updated usvfs binaries for \(context.request.engine)")
         guard !context.request.dryRun else { return }
         guard directoryExists(mo2Dir.path) else {
             throw SetupEngineError.message("missing ModOrganizer directory")
@@ -651,20 +722,38 @@ public final class GAMMASetupEngine {
             try? fileManager.removeItem(at: mo2Dir.appendingPathComponent(file))
             try fileManager.copyItem(at: source.appendingPathComponent(file), to: mo2Dir.appendingPathComponent(file))
         }
-        try fileManager.createDirectory(at: context.markerDir, withIntermediateDirectories: true)
-        fileManager.createFile(atPath: marker.path, contents: Data())
+    }
+
+    private func installGPTK4Binaries(context: SetupContext) throws {
+        guard context.request.installGPTK4Binaries else { return }
+        let source = try gptk4Source(context: context)
+        let rendererDir = context.contents.appendingPathComponent("Frameworks/renderer")
+        let target = rendererDir.appendingPathComponent("d3dmetal")
+
+        guard d3dMetalVersion(in: source) == "4.0b1" else {
+            throw SetupEngineError.message("bundled GPTK4 D3DMetal payload is not version 4.0b1")
+        }
+        if !context.request.forceDownload, directoryPayloadMatches(source: source, target: target) {
+            return
+        }
+
+        reporter.log("Installing GPTK4 D3DMetal binaries")
+        guard !context.request.dryRun else { return }
+        try fileManager.createDirectory(at: rendererDir, withIntermediateDirectories: true)
+        try? fileManager.removeItem(at: target)
+        try copyPayloadDirectory(source: source, target: target)
+        try? fileManager.removeItem(at: rendererDir.appendingPathComponent("apple_gptk"))
+        try fileManager.createSymbolicLink(atPath: rendererDir.appendingPathComponent("apple_gptk").path, withDestinationPath: "d3dmetal")
     }
 
     private func initializePrefix(context: SetupContext) throws {
-        let marker = context.markerDir.appendingPathComponent("prefix.done")
-        if fileManager.fileExists(atPath: marker.path), fileManager.fileExists(atPath: context.userReg.path), directoryExists(context.driveC.path) {
+        if fileManager.fileExists(atPath: context.userReg.path), directoryExists(context.driveC.path) {
             try normalizeWineUserProfile(context: context)
             return
         }
         reporter.log("Initializing Sikarugir Wine prefix")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: context.prefix, withIntermediateDirectories: true)
-        try fileManager.createDirectory(at: context.markerDir, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
         try runner(context: context).run(context.wineBin.path, ["wineboot", "-u"], environment: wineEnvironment(context: context), label: "Wine prefix initialization")
         if fileManager.isExecutableFile(atPath: context.wineServerBin.path) {
@@ -674,7 +763,6 @@ public final class GAMMASetupEngine {
             throw SetupEngineError.message("Wine prefix initialization did not create user.reg")
         }
         try normalizeWineUserProfile(context: context)
-        fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
     private func normalizeWineUserProfile(context: SetupContext) throws {
@@ -707,13 +795,23 @@ public final class GAMMASetupEngine {
             reporter.log("Preserving existing Wine drive mapping")
             return
         }
+        if context.request.driveMappingMode != "shorten" {
+            reporter.log("Using default Wine drive mapping")
+            try ensureDefaultWineDriveLinks(context: context)
+            return
+        }
         resolveDriveRoot(context: &context, allowRewrite: true)
         guard directoryExists(context.driveRoot) else {
             throw SetupEngineError.message("mounted disk root not found: \(context.driveRoot)")
         }
+        try ensureDefaultWineDriveLinks(context: context)
+        guard !context.request.dryRun else { return }
+        try replaceSymlink(at: context.dosdevices.appendingPathComponent("\(context.driveLetter):"), destination: context.driveRoot)
+    }
+
+    private func ensureDefaultWineDriveLinks(context: SetupContext) throws {
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: context.dosdevices, withIntermediateDirectories: true)
-        try replaceSymlink(at: context.dosdevices.appendingPathComponent("\(context.driveLetter):"), destination: context.driveRoot)
         try replaceSymlink(at: context.dosdevices.appendingPathComponent("z:"), destination: "/")
         try replaceSymlink(at: context.dosdevices.appendingPathComponent("c:"), destination: "../drive_c")
         try replaceSymlink(at: context.contents.appendingPathComponent("drive_c"), destination: "SharedSupport/prefix/drive_c")
@@ -721,23 +819,49 @@ public final class GAMMASetupEngine {
 
     private func installWinetricksDependencies(context: SetupContext) throws {
         let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
-        let groups: [(String, String, [String])] = [
-            ("required dependencies", "winetricks-required-v2.done", requiredVerbs)
-        ]
-        let pendingGroups = groups.filter {
-            !fileManager.fileExists(atPath: context.markerDir.appendingPathComponent($0.1).path)
-        }
-        let extraMarker = context.markerDir.appendingPathComponent("winetricks-extra.done")
-        let hasPendingExtra = !context.request.extraWinetricks.isEmpty && !fileManager.fileExists(atPath: extraMarker.path)
-        guard !pendingGroups.isEmpty || hasPendingExtra else { return }
+        guard missingDllOverrides(context: context).isEmpty == false else { return }
 
         let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
-        for (label, markerName, verbs) in pendingGroups {
-            try installWinetricksGroup(label: label, marker: context.markerDir.appendingPathComponent(markerName), verbs: verbs, winetricks: winetricks, context: context)
+        try installWinetricksGroup(label: "required dependencies", verbs: requiredVerbs, winetricks: winetricks, context: context)
+    }
+
+    private func missingDllOverrides(context: SetupContext) -> [String] {
+        missingDllOverrides(in: currentDllOverrides(in: readText(context.userReg)))
+    }
+
+    private func missingDllOverrides(in overrides: [String: String]) -> [String] {
+        dllOverrides.keys.sorted().compactMap { key in
+            let normalized = key.trimmingCharacters(in: CharacterSet(charactersIn: "*")).lowercased()
+            guard let actual = overrides[normalized] else { return key }
+            let expected = dllOverrides[key]?.lowercased() ?? ""
+            if actual == expected { return nil }
+            if expected == "native", actual == "native,builtin" { return nil }
+            return key
         }
-        if hasPendingExtra {
-            try installWinetricksGroup(label: "extra", marker: extraMarker, verbs: context.request.extraWinetricks, winetricks: winetricks, context: context)
+    }
+
+    private func currentDllOverrides(in registry: String) -> [String: String] {
+        var inSection = false
+        var values: [String: String] = [:]
+        for line in registry.split(whereSeparator: \.isNewline).map(String.init) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let section = registrySectionName(trimmed) {
+                inSection = section == #"Software\\Wine\\DllOverrides"#
+                continue
+            }
+            guard inSection else { continue }
+            let parts = trimmed.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            let key = parts[0]
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "*"))
+                .lowercased()
+            let value = parts[1]
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                .lowercased()
+            values[key] = value
         }
+        return values
     }
 
     private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
@@ -779,16 +903,11 @@ public final class GAMMASetupEngine {
         return managedWinetricks.path
     }
 
-    private func installWinetricksGroup(label: String, marker: URL, verbs: [String], winetricks: String, context: SetupContext) throws {
-        if fileManager.fileExists(atPath: marker.path) {
-            return
-        }
+    private func installWinetricksGroup(label: String, verbs: [String], winetricks: String, context: SetupContext) throws {
         reporter.log("Installing \(label) with winetricks")
         guard !context.request.dryRun else { return }
-        try fileManager.createDirectory(at: marker.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
         try runner(context: context).run(winetricks, ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
-        fileManager.createFile(atPath: marker.path, contents: Data())
     }
 
     private func configureWineGraphicsDriver(context: SetupContext) throws {
@@ -827,25 +946,8 @@ public final class GAMMASetupEngine {
             context: context
         )
 
-        if context.request.useWineVirtualDesktop == true {
-            reporter.log("Enabling Wine virtual desktop: \(width)x\(height)")
-            try ensureSectionKeyValues(
-                file: context.userReg,
-                section: #"Software\\Wine\\Explorer"#,
-                entries: ["Desktop": "Default"],
-                context: context
-            )
-            try ensureSectionKeyValues(
-                file: context.userReg,
-                section: #"Software\\Wine\\Explorer\\Desktops"#,
-                entries: ["Default": "\(width)x\(height)"],
-                context: context
-            )
-        } else {
-            reporter.log("Disabling Wine virtual desktop")
-            try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer"#, keys: ["Desktop"], context: context)
-            try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer\\Desktops"#, keys: ["Default"], context: context)
-        }
+        try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer"#, keys: ["Desktop"], context: context)
+        try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer\\Desktops"#, keys: ["Default"], context: context)
     }
 
     private func resetDisplayGeometry(context: SetupContext) throws {
@@ -881,87 +983,16 @@ public final class GAMMASetupEngine {
         try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: dllOverrides, context: context)
     }
 
-    private func configureWinebusDefaults(context: SetupContext) throws {
-        let section = #"System\\CurrentControlSet\\Services\\winebus"#
-        let wineDefaultLines = [
-            #""DisableHidraw"=dword:00000001"#,
-            #""DisableInput"=dword:00000001"#,
-            #""Enable SDL"=dword:00000001"#,
-            #""Map Controllers"=dword:00000001"#
-        ]
-        let hidDeviceLines = [
-            #""DisableHidraw"=dword:00000000"#,
-            #""DisableInput"=dword:00000000"#,
-            #""Enable SDL"=dword:00000000"#,
-            #""Map Controllers"=dword:00000000"#
-        ]
-        let lines = (context.request.enableHIDDevices ?? false) ? hidDeviceLines : wineDefaultLines
-
-        reporter.log((context.request.enableHIDDevices ?? false) ? "Enabling mouse input compatibility" : "Restoring Wine mouse input defaults")
-        try ensureSectionRawLines(
-            file: context.systemReg,
-            section: section,
-            lines: lines,
-            context: context
-        )
-    }
-
-    private func createDXMTConfig(context: SetupContext) throws {
-        reporter.log("Creating DXMT configuration")
-        let config = context.driveC.appendingPathComponent("dxmt.conf")
-        guard context.request.renderer == "dxmt", context.request.dxmtMetalFXSpatial, !context.request.dxmtMetalFXScaleFactor.isEmpty else {
-            if !context.request.dryRun {
-                try? fileManager.removeItem(at: config)
-            }
-            return
-        }
-        guard !context.request.dryRun else { return }
-        let text = """
-        # Generated by GAMMA Setup Tool.
-        # DXMT_METALFX_SPATIAL_SWAPCHAIN is configured through the wrapper plist.
-        d3d11.metalSpatialUpscaleFactor = \(context.request.dxmtMetalFXScaleFactor)
-
-        """
-        try text.write(to: config, atomically: true, encoding: .utf8)
-    }
-
-    private func createDXVKConfig(context: SetupContext) throws {
-        reporter.log("Creating DXVK configuration")
-        let config = context.driveC.appendingPathComponent("dxvk.conf")
-        guard context.request.renderer == "dxvk", !context.request.dxvkHUD.isEmpty else {
-            if !context.request.dryRun {
-                try? fileManager.removeItem(at: config)
-            }
-            return
-        }
-        guard !context.request.dryRun else { return }
-        let text = """
-        # Generated by GAMMA Setup Tool.
-        # Sikarugir METAL_HUD remains the wrapper-level HUD on/off switch.
-        dxvk.hud = \(context.request.dxvkHUD)
-
-        """
-        try text.write(to: config, atomically: true, encoding: .utf8)
-    }
-
     private func createMO2Batch(context: inout SetupContext) throws {
         reporter.log("Creating ModOrganizer launch batch")
         resolveDriveRoot(context: &context, allowRewrite: false)
-        let mo2WinPath = try nativeToWindowsPath(context.mo2Path, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
+        let mo2WinPath = try launchWindowsPath(nativePath: context.mo2Path, context: context)
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
         if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
             let existing = (try? String(contentsOf: batch)) ?? ""
-            let sanitized = existing
-                .components(separatedBy: .newlines)
-                .filter {
-                    !$0.hasPrefix(#"set "DXMT_METALFX_SPATIAL_SWAPCHAIN="#)
-                        && !$0.hasPrefix(#"set "DXMT_LOG_LEVEL="#)
-                }
-                .joined(separator: "\r\n")
-            if !SetupLaunchBatchTools.isDefaultModOrganizerBatch(sanitized) {
-                try (sanitized.trimmingCharacters(in: .newlines) + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
-                reporter.log("Preserving existing mo2.bat without legacy DXMT environment lines")
+            if !SetupLaunchBatchTools.isDefaultModOrganizerBatch(existing) {
+                reporter.log("Preserving existing mo2.bat")
                 return
             }
             reporter.log("Refreshing generated mo2.bat")
@@ -1013,7 +1044,18 @@ public final class GAMMASetupEngine {
            let mapped = existingMappedWindowsPath(nativePath: nativePath, context: context) {
             return mapped
         }
+        if context.request.driveMappingMode != "shorten" {
+            return try defaultWineHostWindowsPath(nativePath)
+        }
         return try nativeToWindowsPath(nativePath, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
+    }
+
+    private func defaultWineHostWindowsPath(_ nativePath: String) throws -> String {
+        let absolute = absolutePath(nativePath)
+        guard absolute.hasPrefix("/") else {
+            throw SetupEngineError.message("cannot convert native path to Wine Z: path: \(nativePath)")
+        }
+        return "Z:/" + absolute.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     }
 
     private func existingMappedWindowsPath(nativePath: String, context: SetupContext) -> String? {
@@ -1037,135 +1079,6 @@ public final class GAMMASetupEngine {
         return nil
     }
 
-    private func applyCommonFixes(context: SetupContext) throws {
-        for fix in context.request.commonFixes {
-            switch fix {
-            case "d3dmetal-reticle":
-                try installReticleFix(context: context)
-            default:
-                throw SetupEngineError.message("unknown common fix: \(fix)")
-            }
-        }
-    }
-
-    private func cleanupAnomalyCachesIfNeeded(context: SetupContext, rendererChangedOnUpdate: Bool) throws {
-        let reticleFixEnabled = context.request.commonFixes.contains("d3dmetal-reticle")
-        guard reticleFixEnabled || rendererChangedOnUpdate else { return }
-        guard !context.anomalyPath.isEmpty, directoryExists(context.anomalyPath) else { return }
-
-        let anomaly = URL(fileURLWithPath: context.anomalyPath)
-        let targets = [
-            anomaly.appendingPathComponent("appdata/shaders_cache"),
-            anomaly.appendingPathComponent("AnomalyDX11AVX.dxvk-cache"),
-            anomaly.appendingPathComponent("AnomalyDX11.dxvk-cache")
-        ]
-        let reason = rendererChangedOnUpdate ? "translation layer changed" : "reticle fix enabled"
-        for target in targets {
-            if context.request.dryRun {
-                if context.request.verbose { reporter.log("dry-run: remove \(target.path)") }
-            } else if fileManager.fileExists(atPath: target.path) {
-                try? fileManager.removeItem(at: target)
-                reporter.log("Removed Anomaly cache for \(reason): \(target.path)")
-            }
-        }
-    }
-
-    private func installReticleFix(context: SetupContext) throws {
-        let modName = "D3DMetal DXMT Reflex Reticle Fix"
-        reporter.log("Installing common fix: \(modName)")
-        let modsDir = URL(fileURLWithPath: context.gammaPath).appendingPathComponent("mods")
-        let modDir = modsDir.appendingPathComponent(modName)
-        guard !context.request.dryRun else { return }
-        guard directoryExists(modsDir.path) else {
-            throw SetupEngineError.message("MO2 mods directory not found")
-        }
-        let archive = try reticleFixArchive(context: context)
-        try extractArchiveToMod(archive: archive, modDir: modDir, context: context)
-        reporter.log("Installed \(modName) into \(modsDir.path)")
-        reporter.log("Enable \"\(modName)\" in ModOrganizer before launching the game.")
-    }
-
-    private func reticleFixArchive(context: SetupContext) throws -> URL {
-        let name = "D3DMetal DXMT Reflex Reticle Fix"
-        if !context.request.forceDownload, let bundled = bundledReticleFixArchive(context: context) {
-            return bundled
-        }
-        let out = context.cacheDir.appendingPathComponent("common-fixes/\(name).7z")
-        if fileManager.fileExists(atPath: out.path), !context.request.forceDownload {
-            return out
-        }
-        let api = "https://api.github.com/repos/elseform/gamma-macos-tool/releases/latest"
-        let json = try downloadText(label: "reticle fix release", url: api, fallback: "", context: context)
-        let data = Data(json.utf8)
-        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let assets = object["assets"] as? [[String: Any]],
-              let url = assets.compactMap({ asset -> String? in
-                  guard let name = asset["name"] as? String,
-                        let download = asset["browser_download_url"] as? String,
-                        name.range(of: #"^D3DMetal[ .]DXMT[ .]Reflex[ .]Reticle[ .]Fix.*\.7z$"#, options: [.regularExpression, .caseInsensitive]) != nil else {
-                      return nil
-                  }
-                  return download
-              }).first else {
-            throw SetupEngineError.message("latest release does not contain a D3DMetal DXMT Reflex Reticle Fix .7z asset")
-        }
-        return try downloadFile(label: name, url: url, output: out, context: context)
-    }
-
-    private func extractArchiveToMod(archive: URL, modDir: URL, context: SetupContext) throws {
-        guard let sevenZip = findTool("7zz") ?? findTool("7z") else {
-            throw SetupEngineError.message("7-Zip is required to extract \(archive.path)")
-        }
-        let tmp = context.cacheDir.appendingPathComponent("common-fixes/extracted-reticle-fix")
-        try? fileManager.removeItem(at: tmp)
-        try fileManager.createDirectory(at: tmp, withIntermediateDirectories: true)
-        try runner(context: context).run(sevenZip, ["x", "-y", archive.path, "-o\(tmp.path)"], label: "extract reticle fix")
-        try? fileManager.removeItem(at: modDir)
-        try fileManager.createDirectory(at: modDir, withIntermediateDirectories: true)
-        let gamedata = tmp.appendingPathComponent("gamedata")
-        if directoryExists(gamedata.path) {
-            try fileManager.copyItem(at: gamedata, to: modDir.appendingPathComponent("gamedata"))
-        } else {
-            for child in try fileManager.contentsOfDirectory(at: tmp, includingPropertiesForKeys: nil) {
-                try fileManager.copyItem(at: child, to: modDir.appendingPathComponent(child.lastPathComponent))
-            }
-        }
-        try? fileManager.removeItem(at: tmp)
-    }
-
-    private func markManagedApp(context: SetupContext, status: String) throws {
-        guard !context.request.dryRun else { return }
-        try fileManager.createDirectory(at: context.sharedSupport, withIntermediateDirectories: true)
-        let text = """
-        managed_by=gamma-setup-engine
-        engine=\(context.request.engine)
-        renderer=\(context.request.renderer)
-        launch_executable=\(selectedLaunchExecutable(context: context))
-        launch_uses_modorganizer_environment=\(selectedLaunchUsesModOrganizerEnvironment(context: context) ? "true" : "false")
-        wine_esync=\(managedEnabled(context.request.wineESync))
-        wine_msync=\(managedEnabled(context.request.wineMSync))
-        mouse_input=\((context.request.enableHIDDevices ?? false) ? "compatibility" : "default")
-        fn_toggle=\(managedEnabled(context.request.enableFnToggle ?? false))
-        update_usvfs=\(managedEnabled(context.request.updateUSVFS))
-        moltenvk_fast_math=\(managedEnabled(context.request.moltenVKFastMath))
-        metal_hud=\(managedEnabled(context.request.metalHUD))
-        dxmt_metalfx_spatial=\(managedEnabled(context.request.dxmtMetalFXSpatial))
-        dxmt_scale=\(context.request.dxmtMetalFXScaleFactor)
-        dxmt_log=\(context.request.dxmtLogLevel.isEmpty ? "default" : context.request.dxmtLogLevel)
-        dxvk_hud=\(context.request.dxvkHUD.isEmpty ? "default" : context.request.dxvkHUD)
-        reticle_fix=\(managedEnabled(context.request.commonFixes.contains("d3dmetal-reticle")))
-        extra_winetricks=\(context.request.extraWinetricks.joined(separator: " "))
-        display_mode=\(managedDisplayMode(context: context))
-        display_resolution=\(managedDisplayResolution(context: context))
-        wine_virtual_desktop=\((context.request.useWineVirtualDesktop == true) ? "enabled" : "disabled")
-        template=\(context.templateName)
-        status=\(status)
-        created_or_updated=\(isoTimestamp())
-
-        """
-        try text.write(to: context.appMarker, atomically: true, encoding: .utf8)
-    }
-
     private func selectedLaunchExecutable(context: SetupContext) -> String {
         if context.request.programBatch == "/mo2.bat" { return context.mo2Path }
         return selectedLaunchBatch(context: context)?.executablePath ?? context.request.programBatch
@@ -1186,69 +1099,6 @@ public final class GAMMASetupEngine {
     private func normalizedBatchPath(_ path: String) -> String {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.hasPrefix("/") ? trimmed : "/" + trimmed
-    }
-
-    private func managedEnabled(_ enabled: Bool) -> String {
-        enabled ? "enabled" : "disabled"
-    }
-
-    private func managedDisplayMode(context: SetupContext) -> String {
-        if context.request.resetWineDisplay == true {
-            return "defaultWine"
-        }
-        if context.request.displayResolutionWidth != nil, context.request.displayResolutionHeight != nil {
-            return "forced"
-        }
-        return "defaultWine"
-    }
-
-    private func managedDisplayResolution(context: SetupContext) -> String {
-        guard let width = context.request.displayResolutionWidth,
-              let height = context.request.displayResolutionHeight,
-              width > 0,
-              height > 0 else {
-            return ""
-        }
-        return "\(width)x\(height)"
-    }
-
-    private func rendererChangedForExistingManagedApp(context: SetupContext) -> Bool {
-        guard fileManager.fileExists(atPath: context.appMarker.path) else { return false }
-        let marker = (try? String(contentsOf: context.appMarker)) ?? ""
-        if let markerRenderer = markerValue("renderer", in: marker), !markerRenderer.isEmpty {
-            return markerRenderer != context.request.renderer
-        }
-        guard let currentRenderer = currentAppRenderer(context: context) else { return false }
-        return currentRenderer != context.request.renderer
-    }
-
-    private func currentAppRenderer(context: SetupContext) -> String? {
-        let plistURL = context.contents.appendingPathComponent("Info.plist")
-        guard let data = try? Data(contentsOf: plistURL),
-              let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
-            return nil
-        }
-        if boolLike(plist["DXVK"]) { return "dxvk" }
-        if boolLike(plist["DXMT"]) { return "dxmt" }
-        if boolLike(plist["D3DMETAL"]) { return "d3dmetal" }
-        return nil
-    }
-
-    private func markerValue(_ key: String, in marker: String) -> String? {
-        let prefix = "\(key)="
-        return marker
-            .split(whereSeparator: \.isNewline)
-            .first { $0.hasPrefix(prefix) }
-            .map { String($0.dropFirst(prefix.count)) }
-    }
-
-    private func boolLike(_ value: Any?) -> Bool {
-        if let bool = value as? Bool { return bool }
-        if let int = value as? Int { return int != 0 }
-        if let string = value as? String {
-            return ["1", "true", "yes", "enabled"].contains(string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
-        }
-        return false
     }
 
     private func normalizeAppPermissions(context: SetupContext) throws {
@@ -1277,7 +1127,7 @@ public final class GAMMASetupEngine {
         guard directoryExists(context.driveC.path) else { throw SetupEngineError.message("missing drive_c") }
         let batch = context.driveC.appendingPathComponent(context.request.programBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
         guard fileManager.fileExists(atPath: batch.path) else { throw SetupEngineError.message("missing selected launch batch") }
-        guard !(context.updatingExistingWrapper && context.request.driveMappingMode == "preserve") else { return }
+        guard context.request.driveMappingMode == "shorten" else { return }
         let driveLink = context.dosdevices.appendingPathComponent("\(context.driveLetter):")
         guard (try? fileManager.destinationOfSymbolicLink(atPath: driveLink.path)) == context.driveRoot else {
             throw SetupEngineError.message("Wine drive mapping was not created correctly")
@@ -1637,8 +1487,16 @@ public final class GAMMASetupEngine {
         return (try? fileManager.destinationOfSymbolicLink(atPath: url.path)) != nil
     }
 
+    private func readText(_ url: URL) -> String {
+        (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+    }
+
     private func absolutePath(_ path: String) -> String {
         NSString(string: path).expandingTildeInPath
+    }
+
+    private func samePath(_ left: URL, _ right: URL) -> Bool {
+        left.standardizedFileURL.path == right.standardizedFileURL.path
     }
 
     private func pathIsUnder(_ child: String, parent: String) -> Bool {
@@ -1736,18 +1594,6 @@ public final class GAMMASetupEngine {
         return ""
     }
 
-    private func loadUserLtxResolution(context: inout SetupContext) {
-        guard !context.anomalyPath.isEmpty else { return }
-        let userLtx = URL(fileURLWithPath: context.anomalyPath).appendingPathComponent("appdata/user.ltx")
-        context.userLtxPath = userLtx.path
-        guard let text = try? String(contentsOf: userLtx),
-              let resolution = userLtxResolution(text: text) else {
-            return
-        }
-        context.gameResolutionWidth = resolution.width
-        context.gameResolutionHeight = resolution.height
-    }
-
     private func appIconSource(context: SetupContext) -> URL {
         if !context.request.appIconSource.isEmpty {
             return URL(fileURLWithPath: context.request.appIconSource)
@@ -1758,21 +1604,6 @@ public final class GAMMASetupEngine {
             context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/Anomaly.icns")
         ]
         return candidates.first(where: { fileManager.fileExists(atPath: $0.path) }) ?? candidates[0]
-    }
-
-    private func bundledReticleFixArchive(context: SetupContext) -> URL? {
-        let dirs = [
-            context.scriptRoot.appendingPathComponent("mods"),
-            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/mods"),
-            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/mods")
-        ]
-        for dir in dirs {
-            guard let children = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
-            if let match = children.first(where: { $0.lastPathComponent.hasPrefix("D3DMetal DXMT Reflex Reticle Fix") && $0.pathExtension == "7z" }) {
-                return match
-            }
-        }
-        return nil
     }
 
     private func usvfsSource(context: SetupContext) throws -> URL {
@@ -1793,6 +1624,102 @@ public final class GAMMASetupEngine {
         }
 
         throw SetupEngineError.message("updated usvfs binaries were requested but no source was provided or bundled at Resources/usvfs")
+    }
+
+    private func gptk4Source(context: SetupContext) throws -> URL {
+        let dirs = [
+            context.scriptRoot.appendingPathComponent("gptk4/d3dmetal"),
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/gptk4/d3dmetal"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/gptk4/d3dmetal")
+        ]
+        if let match = dirs.first(where: { directoryExists($0.path) }) {
+            return match
+        }
+        throw SetupEngineError.message("GPTK4 binaries were requested but no bundled payload was found at Resources/gptk4/d3dmetal")
+    }
+
+    private func d3dMetalVersion(in directory: URL) -> String {
+        let versionURL = directory
+            .appendingPathComponent("external/D3DMetal.framework/Resources/version.plist")
+        guard let plist = NSDictionary(contentsOf: versionURL) as? [String: Any] else {
+            return ""
+        }
+        return plist["CFBundleShortVersionString"] as? String ?? ""
+    }
+
+    private func directoryPayloadMatches(source: URL, target: URL) -> Bool {
+        guard directoryExists(source.path), directoryExists(target.path),
+              let enumerator = fileManager.enumerator(
+                at: source,
+                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+              ) else {
+            return false
+        }
+
+        for case let sourceURL as URL in enumerator {
+            let relative = String(sourceURL.path.dropFirst(source.path.count))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard !relative.isEmpty else { continue }
+            let targetURL = target.appendingPathComponent(relative)
+            guard payloadEntryMatches(source: sourceURL, target: targetURL) else {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func payloadEntryMatches(source: URL, target: URL) -> Bool {
+        if isSymlink(source) {
+            return (try? fileManager.destinationOfSymbolicLink(atPath: source.path))
+                == (try? fileManager.destinationOfSymbolicLink(atPath: target.path))
+        }
+        var isDir: ObjCBool = false
+        guard fileManager.fileExists(atPath: source.path, isDirectory: &isDir) else {
+            return false
+        }
+        if isDir.boolValue {
+            return directoryExists(target.path)
+        }
+        return fileManager.fileExists(atPath: target.path)
+            && fileManager.contentsEqual(atPath: source.path, andPath: target.path)
+    }
+
+    private func copyPayloadDirectory(source: URL, target: URL) throws {
+        try fileManager.createDirectory(at: target, withIntermediateDirectories: true)
+        guard let enumerator = fileManager.enumerator(
+            at: source,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+        ) else {
+            throw SetupEngineError.message("could not enumerate payload: \(source.path)")
+        }
+
+        for case let sourceURL as URL in enumerator {
+            let relative = String(sourceURL.path.dropFirst(source.path.count))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard !relative.isEmpty else { continue }
+            let targetURL = target.appendingPathComponent(relative)
+            if isSymlink(sourceURL) {
+                guard let destination = try? fileManager.destinationOfSymbolicLink(atPath: sourceURL.path) else {
+                    throw SetupEngineError.message("could not read payload symlink: \(sourceURL.path)")
+                }
+                try fileManager.createDirectory(at: targetURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? fileManager.removeItem(at: targetURL)
+                try fileManager.createSymbolicLink(atPath: targetURL.path, withDestinationPath: destination)
+                continue
+            }
+
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: sourceURL.path, isDirectory: &isDir) else {
+                throw SetupEngineError.message("missing payload entry: \(sourceURL.path)")
+            }
+            if isDir.boolValue {
+                try fileManager.createDirectory(at: targetURL, withIntermediateDirectories: true)
+            } else {
+                try fileManager.createDirectory(at: targetURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? fileManager.removeItem(at: targetURL)
+                try fileManager.copyItem(at: sourceURL, to: targetURL)
+            }
+        }
     }
 
     private func findFirstApp(named name: String, under root: URL) -> URL? {
@@ -1822,22 +1749,6 @@ public final class GAMMASetupEngine {
         return nil
     }
 
-    private func userLtxResolution(text: String) -> (width: Int, height: Int)? {
-        for line in text.split(whereSeparator: \.isNewline).map(String.init) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let parts = trimmed.split(whereSeparator: \.isWhitespace)
-            guard parts.count >= 2, parts[0] == "vid_mode" else { continue }
-            let dimensions = parts[1].split(separator: "x", maxSplits: 1)
-            guard dimensions.count == 2,
-                  let width = Int(dimensions[0]),
-                  let height = Int(dimensions[1]) else {
-                continue
-            }
-            return (width, height)
-        }
-        return nil
-    }
-
     private func quotedRegistryKey(_ line: String) -> String? {
         guard line.hasPrefix("\""), let end = line.dropFirst().firstIndex(of: "\"") else { return nil }
         return String(line[line.index(after: line.startIndex)..<end])
@@ -1862,11 +1773,6 @@ public final class GAMMASetupEngine {
         return formatter.string(from: Date())
     }
 
-    private func isoTimestamp() -> String {
-        let formatter = ISO8601DateFormatter()
-        return formatter.string(from: Date())
-    }
-
     private func errorDescription(_ error: Error) -> String {
         if let setup = error as? SetupEngineError {
             return setup.description
@@ -1878,8 +1784,6 @@ public final class GAMMASetupEngine {
 private let dllOverrides: [String: String] = [
     "*concrt140": "native,builtin",
     "*d3dcompiler_47": "native",
-    "*d3dx11_43": "native",
-    "*d3dx9_43": "native",
     "*msvcp140": "native,builtin",
     "*msvcp140_1": "native,builtin",
     "*msvcp140_2": "native,builtin",
