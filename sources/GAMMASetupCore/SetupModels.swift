@@ -18,6 +18,23 @@ public enum SetupEngineEventType: String, Codable {
     case completed
 }
 
+public enum SetupRegistryDefaults {
+    public static let requiredDllOverrides: [String: String] = [
+        "*concrt140": "native,builtin",
+        "*d3dcompiler_47": "native",
+        "*msvcp140": "native,builtin",
+        "*msvcp140_1": "native,builtin",
+        "*msvcp140_2": "native,builtin",
+        "*msvcp140_atomic_wait": "native,builtin",
+        "*msvcp140_codecvt_ids": "native,builtin",
+        "*vcamp140": "native,builtin",
+        "*vccorlib140": "native,builtin",
+        "*vcomp140": "native,builtin",
+        "*vcruntime140": "native,builtin",
+        "*vcruntime140_1": "native,builtin",
+    ]
+}
+
 public struct SetupEngineEvent: Codable {
     public var type: SetupEngineEventType
     public var stage: SetupEngineStage?

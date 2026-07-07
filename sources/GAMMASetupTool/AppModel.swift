@@ -102,22 +102,12 @@ final class AppModel: ObservableObject {
         "vcrun2026"
     ]
 
-    let requiredDllOverrides: [String: String] = [
-        "concrt140": "builtin,native",
-        "d3dcompiler_47": "native",
-        "d3dx11_43": "native",
-        "d3dx9_43": "native",
-        "msvcp140": "native,builtin",
-        "msvcp140_1": "native,builtin",
-        "msvcp140_2": "native,builtin",
-        "msvcp140_atomic_wait": "native,builtin",
-        "msvcp140_codecvt_ids": "native,builtin",
-        "vcamp140": "native,builtin",
-        "vccorlib140": "native,builtin",
-        "vcomp140": "native,builtin",
-        "vcruntime140": "native,builtin",
-        "vcruntime140_1": "native,builtin",
-    ]
+    let requiredDllOverrides: [String: String] = SetupRegistryDefaults.requiredDllOverrides.reduce(into: [:]) { overrides, entry in
+        let key = entry.key
+            .trimmingCharacters(in: CharacterSet(charactersIn: "*"))
+            .lowercased()
+        overrides[key] = entry.value
+    }
 
     init() {
         loadSettings()

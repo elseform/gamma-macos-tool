@@ -89,6 +89,23 @@ final class SetupEngineCoreTests {
         XCTAssertContains(output, "[Existing]")
     }
 
+    func testRequiredDllOverridesMatchEnforcedWrapperRegistry() {
+        XCTAssertEqual(SetupRegistryDefaults.requiredDllOverrides, [
+            "*concrt140": "native,builtin",
+            "*d3dcompiler_47": "native",
+            "*msvcp140": "native,builtin",
+            "*msvcp140_1": "native,builtin",
+            "*msvcp140_2": "native,builtin",
+            "*msvcp140_atomic_wait": "native,builtin",
+            "*msvcp140_codecvt_ids": "native,builtin",
+            "*vcamp140": "native,builtin",
+            "*vccorlib140": "native,builtin",
+            "*vcomp140": "native,builtin",
+            "*vcruntime140": "native,builtin",
+            "*vcruntime140_1": "native,builtin",
+        ])
+    }
+
     func testEnginePreflightReportsManualMO2Fixture() throws {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("gamma-setup-engine-tests-\(UUID().uuidString)")
@@ -393,10 +410,8 @@ final class SetupEngineCoreTests {
     func testWinetricksDetectionReadsRegistryDllOverrides() {
         let registry = #"""
         [Software\\Wine\\DllOverrides]
-        "*concrt140"="builtin,native"
+        "*concrt140"="native,builtin"
         "*d3dcompiler_47"="native"
-        "*d3dx11_43"="native"
-        "*d3dx9_43"="native"
         "*msvcp140"="native,builtin"
         "*msvcp140_1"="native,builtin"
         "*msvcp140_2"="native,builtin"

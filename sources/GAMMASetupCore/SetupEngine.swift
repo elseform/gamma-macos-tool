@@ -830,10 +830,10 @@ public final class GAMMASetupEngine {
     }
 
     private func missingDllOverrides(in overrides: [String: String]) -> [String] {
-        dllOverrides.keys.sorted().compactMap { key in
+        SetupRegistryDefaults.requiredDllOverrides.keys.sorted().compactMap { key in
             let normalized = key.trimmingCharacters(in: CharacterSet(charactersIn: "*")).lowercased()
             guard let actual = overrides[normalized] else { return key }
-            let expected = dllOverrides[key]?.lowercased() ?? ""
+            let expected = SetupRegistryDefaults.requiredDllOverrides[key]?.lowercased() ?? ""
             if actual == expected { return nil }
             if expected == "native", actual == "native,builtin" { return nil }
             return key
@@ -980,7 +980,12 @@ public final class GAMMASetupEngine {
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
-        try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, entries: dllOverrides, context: context)
+        try ensureSectionKeyValues(
+            file: context.userReg,
+            section: #"Software\\Wine\\DllOverrides"#,
+            entries: SetupRegistryDefaults.requiredDllOverrides,
+            context: context
+        )
     }
 
     private func createMO2Batch(context: inout SetupContext) throws {
@@ -1780,18 +1785,3 @@ public final class GAMMASetupEngine {
         return error.localizedDescription
     }
 }
-
-private let dllOverrides: [String: String] = [
-    "*concrt140": "native,builtin",
-    "*d3dcompiler_47": "native",
-    "*msvcp140": "native,builtin",
-    "*msvcp140_1": "native,builtin",
-    "*msvcp140_2": "native,builtin",
-    "*msvcp140_atomic_wait": "native,builtin",
-    "*msvcp140_codecvt_ids": "native,builtin",
-    "*vcamp140": "native,builtin",
-    "*vccorlib140": "native,builtin",
-    "*vcomp140": "native,builtin",
-    "*vcruntime140": "native,builtin",
-    "*vcruntime140_1": "native,builtin",
-]

@@ -40,10 +40,6 @@ struct EnvironmentPage: View {
                             Divider()
                             CheckRow(label: "ModOrganizer drive repair", status: "Needed", ok: false, warning: true, detail: "Z: paths need repair before setup can continue.")
                         }
-                        Text("GAMMA installation not found, please pick ModOrganizer.exe to proceed.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
@@ -89,7 +85,7 @@ struct EnvironmentPage: View {
     private func modOrganizerRow(label: String) -> some View {
         CheckRow(
             label: label,
-            status: model.selectedModOrganizerExecutableFound ? "" : "Select",
+            status: "",
             ok: model.selectedModOrganizerExecutableFound,
             warning: true,
             detail: model.selectedModOrganizerDetail
