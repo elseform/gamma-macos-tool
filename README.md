@@ -10,7 +10,7 @@ GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to al
 
 ## Description
 
-The tool auto-detects a `stalker-gamma-cli` installation and creates an `.app` wrapper that is ready to run. If you installed G.A.M.M.A. another way, you will be asked to select a folder that contains `ModOrganizer.exe`. Keep in mind that the tool does not perform any validation of the G.A.M.M.A. installation itself.
+The tool asks for the folder that contains `ModOrganizer.exe`, then creates an `.app` wrapper that is ready to run. Keep in mind that the tool does not perform any validation of the G.A.M.M.A. installation itself.
 
 There are several options to tweak, but changing them is not required. You can just go through the flow with the defaults; that was the goal.
 
@@ -20,11 +20,11 @@ You can re-run the setup for an already-created wrapper as many times as you wan
 
 ## What It Does
 
-The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creates a native macOS app wrapper that launches G.A.M.M.A. through `ModOrganizer.exe`.
+The app uses your selected `ModOrganizer.exe` path, then creates a native macOS app wrapper that launches G.A.M.M.A. through ModOrganizer.
 
 The guided flow handles:
 
-- Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
+- ModOrganizer folder selection.
 - Required winetricks dependencies.
 - Wine prefix options + Optional fixes
 
@@ -50,24 +50,13 @@ macOS may require approving the app in System Settings because the release is no
 
 The Display section is for choosing whether Wine should use its default display behavior or expose a specific resolution to Windows apps. This is mainly useful when using BetterDisplay or another HiDPI display mode where macOS may show a 1080p desktop while the backing pixel mode is larger.
 
-The tool detects:
+The tool detects the current macOS display mode, including HiDPI/backing resolution when available.
 
-- the current macOS display mode, including HiDPI/backing resolution when available
-- the current game resolution, read only for context, from the detected Anomaly path:
+`Default Wine` is the default for new wrappers and keeps Sikarugir's normal display behavior. `Forced` writes Wine's Retina mode and DPI settings so Wine presents the selected resolution as a plain Windows display.
 
-```text
-<anomalyPath>/appdata/user.ltx
-```
+If setup is re-run after using `Forced`, choosing `Default Wine` removes the Wine display keys managed by the setup tool.
 
-`anomalyPath` is resolved from `ModOrganizer.ini`.
-
-`Forced` is the default for new wrappers. It writes Wine's Retina mode and DPI settings so Wine presents the selected resolution as a plain Windows display.
-
-`Default Wine` keeps the same Wine display behavior the wrapper used before this setting existed. If setup is re-run after using `Forced`, choosing `Default Wine` removes the Wine display keys managed by the setup tool.
-
-For a BetterDisplay `1080p HiDPI` desktop with the game also set to `1920 x 1080`, use `Forced` with the detected `1920 x 1080` option.
-
-The setup tool never writes `user.ltx`; change in-game resolution from the game itself.
+For a BetterDisplay `1080p HiDPI` desktop, use `Forced` with the detected `1920 x 1080` option only when you want Wine to expose that exact display mode.
 
 For deeper technical notes on macOS scaling, Wine DPI behavior, and monitor geometry, see [DPI awareness, monitor geometry](https://github.com/elseform/gamma-setup-tool/wiki/DPI-awareness,-monitor-geometry).
 
@@ -111,11 +100,11 @@ sources/GAMMASetupTool/
 
 The app is split into:
 
-- `AppModel.swift`: preflight state, setup execution, process streaming, and option serialization.
+- `AppModel.swift`: setup state, process streaming, and option serialization.
 - `Components.swift`: reusable SwiftUI rows, tips, icons, and wizard step metadata.
 - `ContentView.swift`: wizard layout and screens.
 - `GAMMASetupToolApp.swift`: app entry point.
-- `sources/GAMMASetupCore/`: shared setup engine models, path helpers, preflight logic, and installation services.
+- `sources/GAMMASetupCore/`: shared setup engine models, path helpers, CLI preflight support, and installation services.
 - `sources/GAMMASetupEngine/`: the setup backend launched by the GUI.
 
 The Swift package builds both the GUI and the `gamma-setup-engine` backend.
@@ -124,27 +113,26 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 
 `gamma-setup-engine` performs these operations:
 
-- Installs or verifies Homebrew tap `sikarugir-app/sikarugir`, Sikarugir Creator, and `winetricks`.
-- Reads `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json`.
-- Finds the active GAMMA profile and its `ModOrganizer.exe`.
-- Reads `<gammaPath>/ModOrganizer.ini` to preserve the expected short Wine drive mapping.
+- Installs or verifies Homebrew tap `sikarugir-app/sikarugir` and Sikarugir Creator during wrapper installation, before wrapper creation.
+- Uses the selected `ModOrganizer.exe`; the CLI can still read `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json` as a fallback.
+- Reads `<gammaPath>/ModOrganizer.ini` for context and uses Wine's default `Z:` host-path mapping by default.
 - Creates a Sikarugir app wrapper.
 - Downloads or reuses cached Sikarugir template and engine archives.
 - Extracts the engine into the wrapper.
 - Initializes the Sikarugir Wine prefix inside the wrapper.
-- Enables D3DMetal by default, or DXMT/DXVK when selected.
-- Keeps MoltenVK-CX, MSync, and ESync enabled.
-- Applies mouse/raw-input compatibility overrides when selected, or restores Wine defaults when unchecked.
-- Detects game resolution from `<anomalyPath>/appdata/user.ltx` for display context only.
+- Uses Wine Sikarugir 10.0 and D3DMetal by default, or DXMT/DXVK when selected.
+- Sets `WINEESYNC=0` and `WINEMSYNC=1` on newly created wrappers. Existing-wrapper updates preserve current plist values for removed Sikarugir Configure settings.
 - When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
-- Creates a short Wine drive mapping for the detected macOS install location.
+- Creates a Finder alias named `Configure <wrapper name>` beside the wrapper, targeting the wrapper's `Contents/Configure.app`.
+- Creates a short Wine drive mapping only when Shorten mapping is selected.
+- Updates ModOrganizer's `usvfs` binaries from bundled files when selected.
+- Installs bundled GPTK4 D3DMetal binaries by default.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
-- Uses the installed `winetricks` CLI when it supports every required verb; otherwise downloads a current script into the managed wrapper without modifying the Homebrew installation.
-- Installs any extra winetricks verbs requested by the user.
-- Applies DLL overrides for DirectX and Visual C++ runtime DLLs as `native,builtin`.
+- Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
+- Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring Wine's built-in `concrt140` before the native runtime.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
-- Marks the wrapper as managed by this tool.
+- Detects existing wrapper state from wrapper files such as `Info.plist`, Wine registry files, `wine/version`, bundled payloads, batch files, and symlinks. Old marker files are left untouched but ignored.
 
 ### Logs And Cache
 
@@ -167,6 +155,14 @@ Downloaded Sikarugir assets are cached in:
 ```text
 ~/Library/Caches/stalker-gamma-sikarugir-setup
 ```
+
+The shared `winetricks` script and its installer payloads are cached beside the setup tool's `settings.json`:
+
+```text
+~/Library/Application Support/gamma-setup-tool/cache/winetricks
+```
+
+New wrappers still install the required components into separate Wine prefixes, but reuse payloads from this cache instead of downloading them again.
 
 If Sikarugir Creator has already downloaded the template or engine, the setup engine reuses those local assets from:
 

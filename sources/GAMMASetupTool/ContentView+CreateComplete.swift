@@ -103,8 +103,8 @@ struct CreatePage: View {
 
     private var installStages: some View {
         VStack(alignment: .leading, spacing: 5) {
-            ForEach(Array(installStageRows.enumerated()), id: \.offset) { index, row in
-                installStageRow(index: index, row: row)
+            ForEach(Array(installStageRows.enumerated()), id: \.offset) { _, row in
+                installStageRow(row: row)
             }
         }
         .transaction { transaction in
@@ -112,20 +112,32 @@ struct CreatePage: View {
         }
     }
 
-    private var installStageRows: [(title: String, detail: String)] {
-        [
-            (model.wrapperStageTitle, ""),
-            ("Engine", model.engineLabel),
-            ("Prefix", "Initialize Wine prefix"),
-            ("Drive mapping", model.plannedWineDriveMapping),
-            ("Winetricks", model.requiredWinetricksSummary),
-            ("Finalize", "")
+    private var installStageRows: [(stage: Int, title: String, detail: String)] {
+        var rows: [(stage: Int, title: String, detail: String)] = [
+            (0, "Sikarugir", "Install tap and app if needed"),
+            (1, model.wrapperStageTitle, ""),
+            (2, "Engine", model.engineLabel)
         ]
+        if model.updateUSVFS {
+            rows.append((2, "ModOrganizer usvfs", "Update binaries"))
+        }
+        if model.installGPTK4Binaries {
+            rows.append((2, "GPTK4 binaries", "Install or update bundled files"))
+        }
+        rows.append((3, "Prefix", "Initialize Wine prefix"))
+        if model.driveMappingMode == "shorten" {
+            rows.append((4, "Drive mapping", model.plannedWineDriveMapping))
+        }
+        rows += [
+            (5, "Winetricks", model.requiredWinetricksSummary),
+            (6, "Finalize", "")
+        ]
+        return rows
     }
 
-    private func installStageRow(index: Int, row: (title: String, detail: String)) -> some View {
+    private func installStageRow(row: (stage: Int, title: String, detail: String)) -> some View {
         HStack(spacing: 8) {
-            stageIcon(for: index)
+            stageIcon(for: row.stage)
             Text(row.title)
                 .font(.caption.weight(.semibold))
             if !row.detail.isEmpty {
@@ -208,6 +220,10 @@ struct CompletePage: View {
                         }
                     }
                     .font(.callout)
+
+                    Text("Run created app to open MO2.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(width: Layout.completeMaxWidth, alignment: .topLeading)

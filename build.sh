@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-APP_VERSION="0.69"
+APP_VERSION="0.75"
 BUILD_DIR="$ROOT_DIR/dist"
 INTERMEDIATES_DIR="$BUILD_DIR/intermediates"
 APP_DIR="$BUILD_DIR/GAMMA Setup Tool.app"
@@ -79,13 +79,15 @@ cp "$INTERMEDIATE_ENGINE_BINARY" "$ENGINE_BINARY"
 chmod +x "$ENGINE_BINARY"
 
 cp "$SOURCE_RESOURCES_DIR/Anomaly.icns" "$RESOURCES_DIR/GAMMASetupTool.icns"
-mkdir -p "$RESOURCES_DIR/mods"
 cp "$SOURCE_RESOURCES_DIR/Anomaly.icns" "$RESOURCES_DIR/Anomaly.icns"
 cp "$SOURCE_RESOURCES_DIR/MO2.icns" "$RESOURCES_DIR/MO2.icns"
-cp "$SOURCE_RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z" "$RESOURCES_DIR/mods/D3DMetal DXMT Reflex Reticle Fix v2.7z"
 if [[ -d "$SOURCE_RESOURCES_DIR/usvfs" ]]; then
   rm -rf "$RESOURCES_DIR/usvfs"
   cp -R "$SOURCE_RESOURCES_DIR/usvfs" "$RESOURCES_DIR/usvfs"
+fi
+if [[ -d "$SOURCE_RESOURCES_DIR/gptk4" ]]; then
+  rm -rf "$RESOURCES_DIR/gptk4"
+  cp -R "$SOURCE_RESOURCES_DIR/gptk4" "$RESOURCES_DIR/gptk4"
 fi
 cp "$SOURCE_RESOURCES_DIR/github.svg" "$RESOURCES_DIR/github.svg"
 cp "$SOURCE_RESOURCES_DIR/discord.svg" "$RESOURCES_DIR/discord.svg"

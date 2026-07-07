@@ -34,105 +34,37 @@ extension AppModel {
         let info = contents.appendingPathComponent("Info.plist")
         let plist = NSDictionary(contentsOf: info) as? [String: Any] ?? [:]
         let plistProgramBatch = (plist["Program Name and Path"] as? String).map(normalizedBatchPath) ?? "/mo2.bat"
-        let activeBatch = readText(driveC.appendingPathComponent(plistProgramBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/"))))
-        let dxvkConf = readText(driveC.appendingPathComponent("dxvk.conf"))
-        let dxmtConf = readText(driveC.appendingPathComponent("dxmt.conf"))
-        let systemReg = readText(prefix.appendingPathComponent("system.reg"))
+        let batchURL = driveC.appendingPathComponent(plistProgramBatch.trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+        let activeBatch = readText(batchURL)
         let userReg = readText(prefix.appendingPathComponent("user.reg"))
-        let marker = readText(sharedSupport.appendingPathComponent(".stalker-gamma-sikarugir-setup"))
-        let cliCustomCommands = plist["CLI Custom Commands"] as? String ?? ""
 
         var values: [String: String] = [:]
-        values["engine"] = engineLabel(from: marker)
+        values["engine"] = engineLabel(fromWineVersion: readText(sharedSupport.appendingPathComponent("wine/version")))
         values["programBatch"] = plistProgramBatch
-        let legacyLaunchExecutable = plistProgramBatch == "/mo2.bat" ? (preflight?.mo2Path ?? plistProgramBatch) : plistProgramBatch
-        values["launchExecutable"] = markerValue("launch_executable", in: marker) ?? legacyLaunchExecutable
-        values["launchUsesModOrganizerEnvironment"] = markerValue("launch_uses_modorganizer_environment", in: marker) ?? "false"
-        let detectedRenderer = rendererName(from: plist, marker: marker)
-        values["renderer"] = detectedRenderer
-        if let esync = enabledValue(plist["WINEESYNC"]) {
-            values["esync"] = esync
-        } else if let markerESync = markerEnabledValue("wine_esync", in: marker) {
-            values["esync"] = markerESync
+        values["renderer"] = rendererName(from: plist)
+        values["launchUsesModOrganizerEnvironment"] = activeBatch.localizedCaseInsensitiveContains("QT_OPENGL") ? "true" : "false"
+
+        if plistProgramBatch == "/mo2.bat" {
+            values["launchExecutable"] = preflight?.mo2Path ?? nativeLaunchExecutable(from: activeBatch, prefix: prefix) ?? plistProgramBatch
+        } else {
+            values["launchExecutable"] = nativeLaunchExecutable(from: activeBatch, prefix: prefix) ?? plistProgramBatch
         }
-        if let msync = enabledValue(plist["WINEMSYNC"]) {
-            values["msync"] = msync
-        } else if let markerMSync = markerEnabledValue("wine_msync", in: marker) {
-            values["msync"] = markerMSync
-        }
-        if !systemReg.isEmpty {
-            values["hidDevices"] = hidDeviceOverridesEnabled(in: systemReg) ? "Compatibility mode" : "Wine default"
-        } else if let mouseInput = markerValue("mouse_input", in: marker) ?? markerValue("controller_input", in: marker) {
-            values["hidDevices"] = mouseInput == "compatibility" ? "Compatibility mode" : "Wine default"
-        }
-        if let fnToggle = enabledValue(plist["IsFnToggleEnabled"]) {
-            values["fnToggle"] = fnToggle
-        } else if let markerFnToggle = markerEnabledValue("fn_toggle", in: marker) {
-            values["fnToggle"] = markerFnToggle
-        }
-        if let fastMath = enabledValue(plist["FASTMATH"]) {
-            values["fastMath"] = fastMath
-        } else if let markerFastMath = markerEnabledValue("moltenvk_fast_math", in: marker) {
-            values["fastMath"] = markerFastMath
-        }
-        if let hud = enabledValue(plist["METAL_HUD"]) {
-            values["hud"] = hud
-        } else if let markerHUD = markerEnabledValue("metal_hud", in: marker) {
-            values["hud"] = markerHUD
-        }
-        if cliCustomCommands.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") {
-            values["dxmtSpatial"] = "Enabled"
-        } else if let markerSpatial = markerEnabledValue("dxmt_metalfx_spatial", in: marker) {
-            values["dxmtSpatial"] = markerSpatial
-        } else if !activeBatch.isEmpty {
-            values["dxmtSpatial"] = activeBatch.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1") ? "Enabled" : "Disabled"
-        }
-        if let plistLog = SetupCLICommandTools.value(for: "DXMT_LOG_LEVEL", in: cliCustomCommands) {
-            values["dxmtLog"] = plistLog
-        } else if let markerLog = markerValue("dxmt_log", in: marker), !markerLog.isEmpty {
-            values["dxmtLog"] = markerLog == "default" ? "Default" : markerLog
-        } else if !activeBatch.isEmpty {
-            values["dxmtLog"] = batchValue(activeBatch, key: "DXMT_LOG_LEVEL") ?? "Default"
-        }
-        if let markerScale = markerValue("dxmt_scale", in: marker), !markerScale.isEmpty {
-            values["dxmtScale"] = markerScale
-        } else if !dxmtConf.isEmpty {
-            values["dxmtScale"] = configValue(dxmtConf, key: "d3d11.metalSpatialUpscaleFactor") ?? "Default (2.0)"
-        } else if detectedRenderer == "DXMT" {
-            values["dxmtScale"] = "Default (2.0)"
-        }
-        if let markerDXVKHud = markerValue("dxvk_hud", in: marker), !markerDXVKHud.isEmpty {
-            values["dxvkHud"] = markerDXVKHud == "default" ? "Default" : markerDXVKHud
-        } else if !dxvkConf.isEmpty {
-            values["dxvkHud"] = configValue(dxvkConf, key: "dxvk.hud") ?? "Default"
-        } else if detectedRenderer == "DXVK" {
-            values["dxvkHud"] = "Default"
-        }
-        if let reticleFix = markerEnabledValue("reticle_fix", in: marker) {
-            values["reticleFix"] = reticleFix
-        }
-        if let extraWinetricks = markerValue("extra_winetricks", in: marker) {
-            values["extraWinetricks"] = extraWinetricks
-        }
+
         if !userReg.isEmpty {
-            values["wineVirtualDesktop"] = wineVirtualDesktopEnabled(in: userReg) ? "Enabled" : "Disabled"
             if managedWineDisplayEnabled(in: userReg) {
                 values["displayMode"] = "forced"
-            } else if let displayMode = markerValue("display_mode", in: marker), !displayMode.isEmpty {
-                values["displayMode"] = displayMode
-            }
-
-            if let virtualDesktopResolution = wineVirtualDesktopResolution(in: userReg) {
-                values["displayResolution"] = virtualDesktopResolution
-                values["wineDisplay"] = displayResolutionLabel(from: virtualDesktopResolution)
-            } else if managedWineDisplayEnabled(in: userReg), let preflightResolution = preflightGameResolution {
-                values["displayResolution"] = preflightResolution
-                values["wineDisplay"] = displayResolutionLabel(from: preflightResolution)
-            } else if let displayResolution = markerValue("display_resolution", in: marker), !displayResolution.isEmpty {
-                values["displayResolution"] = displayResolution
-                values["wineDisplay"] = displayResolutionLabel(from: displayResolution)
+                if let virtualDesktopResolution = wineVirtualDesktopResolution(in: userReg) {
+                    values["displayResolution"] = virtualDesktopResolution
+                    values["wineDisplay"] = displayResolutionLabel(from: virtualDesktopResolution)
+                } else {
+                    values["wineDisplay"] = "Forced"
+                }
+            } else {
+                values["displayMode"] = "defaultWine"
+                values["wineDisplay"] = "Default Wine"
             }
         }
+
         if let preflight {
             let currentLetter = driveLetter(from: preflight.wineDriveLetter)
             let driveLink = prefix.appendingPathComponent("dosdevices/\(currentLetter.lowercased()):")
@@ -144,6 +76,9 @@ extension AppModel {
                 values["driveMapping"] = "Missing"
             }
         }
+
+        values["usvfs"] = usvfsBinariesMatchInstalledWrapper() ? "Update binaries" : "Missing or stale"
+        values["gptk4"] = gptk4PayloadMatchesInstalledWrapper(app: app) ? "Install" : "Not installed"
         return values
     }
 
@@ -185,20 +120,10 @@ extension AppModel {
         let defaults = SetupConfiguration()
         engine = defaults.engine
         renderer = defaults.renderer
-        wineESync = defaults.wineESync
-        wineMSync = defaults.wineMSync
-        enableHIDDevices = defaults.enableHIDDevices
-        enableFnToggle = defaults.enableFnToggle
-        moltenVKFastMath = defaults.moltenVKFastMath
-        metalHUD = defaults.metalHUD
-        dxmtMetalFXSpatial = defaults.dxmtMetalFXSpatial
-        dxmtMetalFXScaleFactor = defaults.dxmtMetalFXScaleFactor
-        dxmtLogLevel = defaults.dxmtLogLevel
-        dxvkHUD = defaults.dxvkHUD
+        updateUSVFS = defaults.updateUSVFS
+        installGPTK4Binaries = defaults.installGPTK4Binaries
         programBatch = defaults.programBatch
         launchBatches = defaults.launchBatches
-        extraWinetricks = defaults.extraWinetricks
-        applyReticleFix = defaults.applyReticleFix
         driveMappingMode = defaults.driveMappingMode
         displayMode = defaults.displayMode
         displayResolutionMode = defaults.displayResolutionMode
@@ -213,13 +138,7 @@ extension AppModel {
         if let renderer = settings["renderer"], renderer != "Unknown" {
             return true
         }
-        if settings["hidDevices"] != nil {
-            return true
-        }
-        if settings["fnToggle"] != nil {
-            return true
-        }
-        if settings["reticleFix"] != nil || settings["extraWinetricks"] != nil {
+        if settings["programBatch"] != nil {
             return true
         }
         return false
@@ -238,7 +157,6 @@ extension AppModel {
         switch settings["renderer"] {
         case "DXVK":
             renderer = "dxvk"
-            applyReticleFix = false
         case "DXMT":
             renderer = "dxmt"
         case "D3DMetal":
@@ -247,53 +165,14 @@ extension AppModel {
             break
         }
 
-        if let fastMath = settings["fastMath"] {
-            moltenVKFastMath = fastMath == "Enabled"
-        }
-        if let esync = settings["esync"] {
-            wineESync = esync == "Enabled"
-        }
-        if let msync = settings["msync"] {
-            wineMSync = msync == "Enabled"
-        }
-        if let hidDevices = settings["hidDevices"] {
-            enableHIDDevices = hidDevices == "Compatibility mode" || hidDevices == "Enabled"
-        }
-        if let fnToggle = settings["fnToggle"] {
-            enableFnToggle = fnToggle == "Enabled"
-        }
-        if let hud = settings["hud"] {
-            metalHUD = hud == "Enabled"
-        }
-        if let spatial = settings["dxmtSpatial"] {
-            dxmtMetalFXSpatial = spatial == "Enabled"
-        }
-        if let scale = settings["dxmtScale"], !scale.hasPrefix("Default") {
-            dxmtMetalFXScaleFactor = scale
-        } else if settings["dxmtScale"] != nil {
-            dxmtMetalFXScaleFactor = ""
-        }
-        if let logLevel = settings["dxmtLog"], logLevel != "Default" {
-            dxmtLogLevel = logLevel.lowercased()
-        } else if settings["dxmtLog"] != nil {
-            dxmtLogLevel = "default"
-        }
-        if let hud = settings["dxvkHud"], hud != "Default" {
-            dxvkHUD = hud
-        } else if settings["dxvkHud"] != nil {
-            dxvkHUD = "default"
-        }
         if let mode = settings["displayMode"] {
-            displayMode = (mode == "forced" || mode == "setCustom") ? "forced" : "defaultWine"
+            displayMode = mode == "forced" ? "forced" : "defaultWine"
         }
         if let resolution = settings["displayResolution"] {
             applyDisplayResolution(resolution)
         }
-        if let reticleFix = settings["reticleFix"] {
-            applyReticleFix = reticleFix == "Enabled"
-        }
-        if let detectedExtraWinetricks = settings["extraWinetricks"] {
-            extraWinetricks = detectedExtraWinetricks
+        if let gptk4 = settings["gptk4"] {
+            installGPTK4Binaries = gptk4 == "Install"
         }
         if let detectedProgramBatch = settings["programBatch"] {
             programBatch = normalizedBatchPath(detectedProgramBatch)
@@ -343,19 +222,7 @@ extension AppModel {
         return candidate
     }
 
-    // MARK: - Registry And Marker Parsing
-
-    var winetricksMarkersInstalled: Bool {
-        let markers = URL(fileURLWithPath: outputAppPath)
-            .appendingPathComponent("Contents/SharedSupport/.stalker-gamma-sikarugir-markers")
-        if FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-required-v2.done").path) {
-            return true
-        }
-        // Accept legacy per-verb markers from wrappers set up before the consolidated marker was introduced
-        return FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-corefonts.done").path)
-            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-vcrun2022.done").path)
-            && FileManager.default.fileExists(atPath: markers.appendingPathComponent("winetricks-directx.done").path)
-    }
+    // MARK: - Registry And File Parsing
 
     func currentUserRegistryText() -> String? {
         let app = URL(fileURLWithPath: outputAppPath)
@@ -376,7 +243,6 @@ extension AppModel {
         return requiredDllOverrides.compactMap { name, expected in
             guard let actual = overrides[name.lowercased()] else { return name }
             if actual == expected { return nil }
-            // "native,builtin" satisfies a "native" requirement — old wrappers used the stricter mode
             if expected == "native", actual == "native,builtin" { return nil }
             return name
         }
@@ -408,33 +274,6 @@ extension AppModel {
         return values
     }
 
-    private func hidDeviceOverridesEnabled(in registry: String) -> Bool {
-        var inSection = false
-        var values: [String: String] = [:]
-
-        for line in registry.split(whereSeparator: \.isNewline) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if let section = registrySectionName(trimmed) {
-                inSection = section == #"System\\CurrentControlSet\\Services\\winebus"#
-                continue
-            }
-            guard inSection else { continue }
-            let parts = trimmed.split(separator: "=", maxSplits: 1)
-            guard parts.count == 2 else { continue }
-            let key = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-            values[key] = String(parts[1]).lowercased()
-        }
-
-        return values["DisableHidraw"] == "dword:00000000"
-            && values["DisableInput"] == "dword:00000000"
-            && values["Enable SDL"] == "dword:00000000"
-            && values["Map Controllers"] == "dword:00000000"
-    }
-
-    private func wineVirtualDesktopEnabled(in registry: String) -> Bool {
-        registryValue(in: registry, section: #"Software\\Wine\\Explorer"#, key: "Desktop") == "Default"
-    }
-
     private func wineVirtualDesktopResolution(in registry: String) -> String? {
         registryValue(in: registry, section: #"Software\\Wine\\Explorer\\Desktops"#, key: "Default")
     }
@@ -443,14 +282,6 @@ extension AppModel {
         registryValue(in: registry, section: #"Software\\Wine\\Mac Driver"#, key: "RetinaMode") == "n"
             && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "LogPixels") == "dword:00000060"
             && registryValue(in: registry, section: #"Control Panel\\Desktop"#, key: "Win8DpiScaling") == "dword:00000000"
-    }
-
-    private var preflightGameResolution: String? {
-        guard let width = preflight?.gameResolutionWidth,
-              let height = preflight?.gameResolutionHeight else {
-            return nil
-        }
-        return "\(width)x\(height)"
     }
 
     private func applyDisplayResolution(_ resolution: String) {
@@ -467,7 +298,9 @@ extension AppModel {
                   Int(parts[1]) != nil else {
                 return
             }
-            if normalized == preflightGameResolution {
+            if let detectedDisplay,
+               Int(parts[0]) == detectedDisplay.backingWidth,
+               Int(parts[1]) == detectedDisplay.backingHeight {
                 displayResolutionMode = "detected"
             } else {
                 displayResolutionMode = "custom"
@@ -520,22 +353,14 @@ extension AppModel {
 
     func updateDetectedDisplayDefaults() {
         detectedDisplay = MacDisplaySettings.detectMainDisplay()
-        if displayResolutionMode == "detected",
-           preflight?.gameResolutionWidth == nil || preflight?.gameResolutionHeight == nil {
-            displayResolutionMode = "1920x1080"
-            return
-        }
-        guard displayMode == "forced",
-              displayResolutionMode == "1920x1080",
-              preflight?.gameResolutionWidth != nil,
-              preflight?.gameResolutionHeight != nil else {
-            return
-        }
-        displayResolutionMode = "detected"
     }
 
     private func readText(_ url: URL) -> String {
         (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+    }
+
+    private func isSymlink(_ url: URL) -> Bool {
+        (try? url.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
     }
 
     private func boolLike(_ value: Any?) -> Bool {
@@ -545,92 +370,165 @@ extension AppModel {
         return false
     }
 
-    private func enabledValue(_ value: Any?) -> String? {
-        guard value != nil else { return nil }
-        return boolLike(value) ? "Enabled" : "Disabled"
-    }
-
-    private func rendererName(from plist: [String: Any], marker: String) -> String {
+    private func rendererName(from plist: [String: Any]) -> String {
         if boolLike(plist["DXVK"]) { return "DXVK" }
         if boolLike(plist["DXMT"]) { return "DXMT" }
         if boolLike(plist["D3DMETAL"]) { return "D3DMetal" }
-        switch markerValue("renderer", in: marker) {
-        case "dxvk":
-            return "DXVK"
-        case "dxmt":
-            return "DXMT"
-        case "d3dmetal":
-            return "D3DMetal"
-        case let value? where !value.isEmpty:
-            return value
-        default:
-            break
-        }
         return "Unknown"
     }
 
-    private func engineLabel(from marker: String) -> String {
-        for line in marker.split(whereSeparator: \.isNewline) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("engine=") else { continue }
-            let value = String(trimmed.dropFirst("engine=".count))
-            if value == SetupConfiguration.sikarugir10Engine {
-                return "Wine Sikarugir 10.0"
-            }
-            if value == SetupConfiguration.crossOverEngine {
-                return "Wine CX 24.0.7"
-            }
-            return value
+    private func engineLabel(fromWineVersion version: String) -> String {
+        let normalized = version.lowercased()
+        if normalized.contains("sikarugir 10.0") && normalized.contains("revision 6") {
+            return "Wine Sikarugir 10.0"
         }
-        return "Unknown"
+        if normalized.contains("24.0.7") && (normalized.contains("cx") || normalized.contains("crossover")) {
+            return "Wine CX 24.0.7"
+        }
+        return version.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Unknown" : version.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func markerValue(_ key: String, in marker: String) -> String? {
-        let prefix = "\(key)="
-        return marker
-            .split(whereSeparator: \.isNewline)
-            .first { $0.hasPrefix(prefix) }
-            .map { String($0.dropFirst(prefix.count)) }
+    private func nativeLaunchExecutable(from batch: String, prefix: URL) -> String? {
+        guard let windowsPath = windowsExecutablePath(from: batch) else { return nil }
+        return nativePath(fromWindowsPath: windowsPath, prefix: prefix)
     }
 
-    private func markerEnabledValue(_ key: String, in marker: String) -> String? {
-        guard let value = markerValue(key, in: marker) else { return nil }
-        switch value.lowercased() {
-        case "enabled", "true", "1":
-            return "Enabled"
-        case "disabled", "false", "0":
-            return "Disabled"
-        default:
+    private func windowsExecutablePath(from batch: String) -> String? {
+        for line in batch.split(whereSeparator: \.isNewline).map(String.init).reversed() {
+            guard line.localizedCaseInsensitiveContains("start") else { continue }
+            let quoted = quotedSegments(in: line)
+            if let exe = quoted.last(where: { $0.lowercased().hasSuffix(".exe") }) {
+                return exe
+            }
+        }
+        return nil
+    }
+
+    private func quotedSegments(in text: String) -> [String] {
+        var result: [String] = []
+        var current = ""
+        var insideQuote = false
+        for character in text {
+            if character == "\"" {
+                if insideQuote {
+                    result.append(current)
+                    current = ""
+                }
+                insideQuote.toggle()
+            } else if insideQuote {
+                current.append(character)
+            }
+        }
+        return result
+    }
+
+    private func nativePath(fromWindowsPath path: String, prefix: URL) -> String? {
+        let normalized = path.replacingOccurrences(of: "\\", with: "/")
+        guard normalized.count >= 3,
+              normalized[normalized.index(after: normalized.startIndex)] == ":" else {
             return nil
         }
+        let letter = String(normalized.prefix(1)).lowercased()
+        let relative = String(normalized.dropFirst(2)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if letter == "c" {
+            return prefix.appendingPathComponent("drive_c").appendingPathComponent(relative).path
+        }
+        let link = prefix.appendingPathComponent("dosdevices/\(letter):")
+        guard let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: link.path) else {
+            return nil
+        }
+        return URL(fileURLWithPath: destination).appendingPathComponent(relative).path
     }
 
-    private func configValue(_ text: String, key: String) -> String? {
-        for line in text.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard trimmed.hasPrefix("\(key)") else { continue }
-            let parts = trimmed.split(separator: "=", maxSplits: 1)
-            if parts.count == 2 {
-                return parts[1].trimmingCharacters(in: .whitespaces)
+    private func usvfsBinariesMatchInstalledWrapper() -> Bool {
+        guard let preflight,
+              let source = bundledResourceDirectory("usvfs") else {
+            return false
+        }
+        let mo2Dir = URL(fileURLWithPath: preflight.mo2Path).deletingLastPathComponent()
+        for file in ["usvfs_x64.dll", "usvfs_proxy_x64.exe", "usvfs_x86.dll", "usvfs_proxy_x86.exe"] {
+            let target = mo2Dir.appendingPathComponent(file)
+            let bundled = source.appendingPathComponent(file)
+            guard FileManager.default.fileExists(atPath: target.path),
+                  FileManager.default.contentsEqual(atPath: target.path, andPath: bundled.path) else {
+                return false
             }
         }
-        return nil
+        return true
     }
 
-    private func batchValue(_ text: String, key: String) -> String? {
-        let trimSet = CharacterSet.whitespaces.union(CharacterSet(charactersIn: "\""))
-        for line in text.split(whereSeparator: \.isNewline) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let plainPrefix = "set \(key)="
-            if trimmed.lowercased().hasPrefix(plainPrefix.lowercased()) {
-                return String(trimmed.dropFirst(plainPrefix.count)).trimmingCharacters(in: trimSet)
-            }
-            let quotedPrefix = #"set "\#(key)="#
-            if trimmed.lowercased().hasPrefix(quotedPrefix.lowercased()) {
-                return String(trimmed.dropFirst(quotedPrefix.count)).trimmingCharacters(in: trimSet)
+    private func d3dMetalVersion(in app: URL) -> String {
+        let versionURL = app
+            .appendingPathComponent("Contents/Frameworks/renderer/d3dmetal/external/D3DMetal.framework/Resources/version.plist")
+        guard let plist = NSDictionary(contentsOf: versionURL) as? [String: Any] else {
+            return ""
+        }
+        return plist["CFBundleShortVersionString"] as? String ?? ""
+    }
+
+    private func gptk4PayloadMatchesInstalledWrapper(app: URL) -> Bool {
+        guard d3dMetalVersion(in: app) == "4.0b1",
+              let source = bundledResourceDirectory("gptk4/d3dmetal") else {
+            return false
+        }
+        let target = app.appendingPathComponent("Contents/Frameworks/renderer/d3dmetal")
+        return directoryPayloadMatches(source: source, target: target)
+    }
+
+    private func directoryPayloadMatches(source: URL, target: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: source.path),
+              FileManager.default.fileExists(atPath: target.path),
+              let enumerator = FileManager.default.enumerator(
+                at: source,
+                includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+              ) else {
+            return false
+        }
+
+        for case let sourceURL as URL in enumerator {
+            let relative = String(sourceURL.path.dropFirst(source.path.count))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            guard !relative.isEmpty else { continue }
+            let targetURL = target.appendingPathComponent(relative)
+            guard payloadEntryMatches(source: sourceURL, target: targetURL) else {
+                return false
             }
         }
-        return nil
+        return true
+    }
+
+    private func payloadEntryMatches(source: URL, target: URL) -> Bool {
+        if isSymlink(source) {
+            return (try? FileManager.default.destinationOfSymbolicLink(atPath: source.path))
+                == (try? FileManager.default.destinationOfSymbolicLink(atPath: target.path))
+        }
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: source.path, isDirectory: &isDir) else {
+            return false
+        }
+        if isDir.boolValue {
+            return FileManager.default.fileExists(atPath: target.path, isDirectory: &isDir) && isDir.boolValue
+        }
+        return FileManager.default.fileExists(atPath: target.path)
+            && FileManager.default.contentsEqual(atPath: source.path, andPath: target.path)
+    }
+
+    private func bundledResourceDirectory(_ name: String) -> URL? {
+        if let url = AppResources.bundle.resourceURL?.appendingPathComponent(name),
+           FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+        if let url = Bundle.main.resourceURL?.appendingPathComponent(name),
+           FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+        let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        let candidates = [
+            cwd.appendingPathComponent(name),
+            cwd.appendingPathComponent("sources/GAMMASetupTool/Resources/\(name)"),
+            cwd.appendingPathComponent("../../sources/GAMMASetupTool/Resources/\(name)")
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     private func driveLetter(from value: String) -> String {

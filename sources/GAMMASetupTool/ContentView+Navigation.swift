@@ -7,12 +7,12 @@ extension ContentView {
         switch step {
         case .welcome:
             return (
-                "Welcome",
-                "Choose whether to create a new wrapper or update an existing one."
+                "Setup",
+                "Create new wrapper or update."
             )
         case .wrapperName:
             return (
-                "Name wrapper",
+                "Application name",
                 "The wrapper will be created under ~/Applications."
             )
         case .existingWrapper:
@@ -21,15 +21,9 @@ extension ContentView {
                 "Choose the Sikarugir wrapper you want to update or refresh."
             )
         case .environment:
-            if flowIntent == .update {
-                return (
-                    "Select ModOrganizer",
-                    "Choose the ModOrganizer folder used by this wrapper."
-                )
-            }
             return (
-                "Check environment",
-                "Verify required tools and select your ModOrganizer folder before continuing."
+                "Locate GAMMA installation",
+                "Pick ModOrganizer.exe's location if autodetection failed."
             )
         case .installChoice:
             return (
@@ -83,10 +77,7 @@ extension ContentView {
         case .existingWrapper:
             ExistingWrapperPage(model: model)
         case .environment:
-            EnvironmentPage(
-                model: model,
-                mode: flowIntent == .update ? .modOrganizerOnly : .create
-            )
+            EnvironmentPage(model: model)
         case .installChoice:
             InstallChoicePage(
                 defaultDisabled: !model.driveMappingReady,
@@ -109,7 +100,7 @@ extension ContentView {
     // MARK: - Footer
 
     private var footerVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.69"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.75"
     }
 
     var footer: some View {
@@ -250,9 +241,9 @@ extension ContentView {
             return [.welcome, .wrapperName, .environment, .installChoice]
         case .update:
             if model.selectedModOrganizerExecutableFound && step != .environment {
-                return [.welcome, .existingWrapper, .setup, .create]
+                return [.welcome, .setup, .create]
             }
-            return [.welcome, .existingWrapper, .environment, .setup, .create]
+            return [.welcome, .environment, .setup, .create]
         case nil:
             return [.welcome]
         }
@@ -290,10 +281,7 @@ extension ContentView {
     }
 
     private var canContinueFromEnvironment: Bool {
-        if flowIntent == .update {
-            return model.selectedModOrganizerExecutableFound
-        }
-        return model.createFlowEnvironmentOK
+        model.selectedModOrganizerExecutableFound
     }
 
     private func continueToNextStep() {
@@ -331,10 +319,17 @@ extension ContentView {
     }
 
     private func startUpdateFlow() {
+        model.selectedExistingWrapperPath = ""
+        guard model.chooseExistingWrapper() else {
+            flowIntent = nil
+            installMode = nil
+            step = .welcome
+            return
+        }
+
         flowIntent = .update
         installMode = .advanced
-        model.selectedExistingWrapperPath = ""
-        step = .existingWrapper
+        step = model.selectedModOrganizerExecutableFound ? .setup : .environment
     }
 
     private func continueFromExistingWrapper() {
@@ -343,7 +338,7 @@ extension ContentView {
     }
 
     private func selectDefaultInstall() {
-        guard model.driveMappingReady else { return }
+        guard model.selectedModOrganizerExecutableFound, model.driveMappingReady else { return }
         installMode = .defaultInstall
         step = .create
     }

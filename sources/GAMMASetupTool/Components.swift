@@ -157,11 +157,6 @@ enum SetupInstallMode {
     case advanced
 }
 
-enum EnvironmentPageMode {
-    case create
-    case modOrganizerOnly
-}
-
 enum WizardStep: Int, CaseIterable, Identifiable {
     case welcome
     case wrapperName
@@ -179,7 +174,7 @@ enum WizardStep: Int, CaseIterable, Identifiable {
         case .welcome: return "Welcome"
         case .wrapperName: return "Name"
         case .existingWrapper: return "Wrapper"
-        case .environment: return "Environment"
+        case .environment: return "ModOrganizer"
         case .installChoice: return "Install"
         case .setup: return "Setup"
         case .create: return "Create"
@@ -192,7 +187,7 @@ enum WizardStep: Int, CaseIterable, Identifiable {
         case .welcome: return "sparkles"
         case .wrapperName: return "text.cursor"
         case .existingWrapper: return "app"
-        case .environment: return "checkmark.shield"
+        case .environment: return "folder"
         case .installChoice: return "list.bullet.rectangle"
         case .setup: return "slider.horizontal.3"
         case .create: return "play.circle"

@@ -15,29 +15,19 @@ struct SetupConfiguration {
     var installDirectory = SetupConfiguration.defaultInstallDirectory
     var engine = SetupConfiguration.defaultEngine
     var renderer = "d3dmetal"
-    var wineESync = true
-    var wineMSync = true
-    var updateUSVFS = false
-    var enableHIDDevices = false
-    var enableFnToggle = false
-    var moltenVKFastMath = false
-    var metalHUD = false
-    var dxmtMetalFXSpatial = false
-    var dxmtMetalFXScaleFactor = ""
-    var dxmtLogLevel = "default"
-    var dxvkHUD = "default"
+    var updateUSVFS = true
+    var installGPTK4Binaries = true
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
-    var extraWinetricks = ""
-    var applyReticleFix = true
     var saveVerboseLog = true
     var driveMappingMode = "preserve"
-    var displayMode = "forced"
+    var displayMode = "defaultWine"
     var displayResolutionMode = "detected"
     var customDisplayResolutionWidth = ""
     var customDisplayResolutionHeight = ""
     var manualModOrganizerPath = ""
     var preflight: Preflight?
+    var detectedDisplay: MacDisplaySettings?
     var outputAppExists = false
 
     var outputAppPath: String {
@@ -94,20 +84,11 @@ struct SetupConfiguration {
     }
 
     var environmentOK: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && preflight.sikarugirInstalled
-            && preflight.winetricksFound
-            && preflight.gammaFound
-            && preflight.mo2Found
-            && preflight.modOrganizerIniFound
+        selectedModOrganizerExecutableFound
     }
 
     var requiredToolsOK: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && preflight.sikarugirInstalled
-            && preflight.winetricksFound
+        true
     }
 
     var selectedModOrganizerExecutableFound: Bool {
@@ -115,13 +96,11 @@ struct SetupConfiguration {
     }
 
     var createFlowEnvironmentOK: Bool {
-        requiredToolsOK && selectedModOrganizerExecutableFound
+        selectedModOrganizerExecutableFound
     }
 
     var canInstallComponents: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && (!preflight.sikarugirTapInstalled || !preflight.sikarugirInstalled || !preflight.winetricksFound)
+        false
     }
 
     var plannedWineDriveMapping: String {
@@ -129,7 +108,7 @@ struct SetupConfiguration {
         if driveMappingMode == "shorten", preflight.zShortenAvailable {
             return "\(preflight.shortWineDriveLetter): -> \(preflight.shortWineDriveRoot)"
         }
-        return "\(preflight.wineDriveLetter): -> \(preflight.wineDriveRoot)"
+        return "Z: -> /"
     }
 
     var plannedModOrganizerGamePath: String {
@@ -162,7 +141,7 @@ struct SetupConfiguration {
     }
 
     var driveMappingReady: Bool {
-        guard let preflight else { return false }
+        guard let preflight else { return true }
         return !preflight.zRewriteRequired || willRewriteModOrganizerIni
     }
 
@@ -170,11 +149,12 @@ struct SetupConfiguration {
         guard displayMode == "forced" else { return nil }
         switch displayResolutionMode {
         case "detected":
-            guard let width = preflight?.gameResolutionWidth,
-                  let height = preflight?.gameResolutionHeight else {
+            guard let display = detectedDisplay,
+                  display.backingWidth > 0,
+                  display.backingHeight > 0 else {
                 return nil
             }
-            return (width, height)
+            return (display.backingWidth, display.backingHeight)
         case "1920x1080":
             return (1920, 1080)
         case "2560x1440":
@@ -203,12 +183,6 @@ struct SetupConfiguration {
 
     var setupRequest: SetupRequest {
         let modOrganizerPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        let metalFXScaleFactor = dxmtMetalFXScaleFactor.trimmingCharacters(in: .whitespacesAndNewlines)
-        let extra = extraWinetricks
-            .replacingOccurrences(of: ",", with: " ")
-            .split(whereSeparator: \.isWhitespace)
-            .map(String.init)
-        let fixes = renderer != "dxvk" && applyReticleFix ? ["d3dmetal-reticle"] : []
         let resolution = selectedDisplayResolution
 
         return SetupRequest(
@@ -216,26 +190,14 @@ struct SetupConfiguration {
             outputApp: outputAppPath,
             engine: engine,
             renderer: renderer,
-            wineESync: wineESync,
-            wineMSync: wineMSync,
             updateUSVFS: updateUSVFS,
-            enableHIDDevices: enableHIDDevices,
-            enableFnToggle: enableFnToggle,
-            moltenVKFastMath: moltenVKFastMath,
-            metalHUD: metalHUD,
-            dxmtMetalFXSpatial: renderer == "dxmt" && dxmtMetalFXSpatial,
-            dxmtMetalFXScaleFactor: renderer == "dxmt" && dxmtMetalFXSpatial ? metalFXScaleFactor : "",
-            dxmtLogLevel: renderer == "dxmt" && dxmtLogLevel != "default" ? dxmtLogLevel : "",
-            dxvkHUD: renderer == "dxvk" && metalHUD && dxvkHUD != "default" ? dxvkHUD : "",
+            installGPTK4Binaries: installGPTK4Binaries,
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,
             driveMappingMode: willRewriteModOrganizerIni ? "shorten" : driveMappingMode,
-            extraWinetricks: extra,
-            commonFixes: fixes,
             displayResolutionWidth: resolution?.width,
             displayResolutionHeight: resolution?.height,
-            useWineVirtualDesktop: false,
             resetWineDisplay: displayMode == "defaultWine",
             writeLog: saveVerboseLog,
             verbose: saveVerboseLog

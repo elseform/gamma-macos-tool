@@ -8,7 +8,7 @@ struct WelcomePage: View {
         VStack(alignment: .leading, spacing: 14) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Placeholder welcome text. Replace this with a short explanation of what the setup tool will do.")
+                    Text("Select operation:")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -17,22 +17,22 @@ struct WelcomePage: View {
                         Button {
                             createAction()
                         } label: {
-                            Label("Create new wrapper", systemImage: "plus.app")
+                            Label("Create", systemImage: "plus.app")
                         }
                         .controlSize(.large)
 
                         Button {
                             updateAction()
                         } label: {
-                            Label("Update or refresh wrapper", systemImage: "arrow.triangle.2.circlepath")
+                            Label("Update", systemImage: "arrow.triangle.2.circlepath")
                         }
                         .controlSize(.large)
                     }
                 }
             }
-            .frame(width: Layout.wizardContentWidth, alignment: .topLeading)
+            .frame(width: Layout.wizardContentWidth, alignment: .leading)
         }
-        .frame(width: Layout.wizardContentWidth, alignment: .topLeading)
+        .frame(width: Layout.wizardContentWidth, alignment: .leading)
     }
 }
 
@@ -43,7 +43,7 @@ struct WrapperNamePage: View {
         VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                    CardHeading(title: "Wrapper name")
+                    CardHeading(title: "Application name")
                     TextField("stalker-gamma", text: $model.appName)
                         .textFieldStyle(.roundedBorder)
                     if !model.wrapperNameValidationMessage.isEmpty {
@@ -59,9 +59,9 @@ struct WrapperNamePage: View {
                         .textSelection(.enabled)
                 }
             }
-            .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+            .frame(width: Layout.environmentPanelWidth, alignment: .leading)
         }
-        .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+        .frame(width: Layout.environmentPanelWidth, alignment: .leading)
     }
 }
 
@@ -109,7 +109,7 @@ struct InstallChoicePage: View {
         VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Placeholder install choice text. Replace this with the final explanation of default and advanced setup.")
+                    Text("Default installation option creates wrapper with recommended settings. Advanced installation has some knobs to tweak: Wine engine, translation layer, etc.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

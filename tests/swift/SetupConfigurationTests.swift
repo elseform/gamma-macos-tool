@@ -35,37 +35,46 @@ final class SetupConfigurationTests {
         XCTAssertEqual(SetupConfiguration(renderer: "dxvk").rendererLabel, "DXVK")
     }
 
-    func testEnvironmentOKRequiresAllRequiredInputs() {
-        XCTAssertTrue(SetupConfiguration(preflight: .fixture()).environmentOK)
+    func testEnvironmentOKRequiresSelectedModOrganizerOnly() throws {
+        let temp = try makeTempDir("gamma-environment")
+        let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
+        FileManager.default.createFile(atPath: mo2.path, contents: Data())
 
-        var missingMO2Ini = Preflight.fixture()
-        missingMO2Ini.modOrganizerIniFound = false
+        var missingTools = Preflight.fixture()
+        missingTools.homebrewFound = false
+        missingTools.sikarugirTapInstalled = false
+        missingTools.sikarugirInstalled = false
+        missingTools.winetricksFound = false
+        missingTools.gammaFound = false
+        missingTools.mo2Found = false
+        missingTools.modOrganizerIniFound = false
 
-        XCTAssertFalse(SetupConfiguration(preflight: missingMO2Ini).environmentOK)
+        let config = SetupConfiguration(
+            manualModOrganizerPath: mo2.path,
+            preflight: missingTools
+        )
 
-        var missingCli = Preflight.fixture()
-        missingCli.stalkerGammaFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingCli).environmentOK)
-
-        var missingSettings = Preflight.fixture()
-        missingSettings.settingsFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingSettings).environmentOK)
-
-        var missingAnomaly = Preflight.fixture()
-        missingAnomaly.anomalyFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingAnomaly).environmentOK)
-
-        XCTAssertFalse(SetupConfiguration().environmentOK)
+        XCTAssertTrue(config.environmentOK)
+        XCTAssertTrue(config.createFlowEnvironmentOK)
+        XCTAssertFalse(SetupConfiguration(preflight: .fixture()).environmentOK)
+        XCTAssertFalse(SetupConfiguration(manualModOrganizerPath: mo2.path + ".missing").environmentOK)
+        try? FileManager.default.removeItem(at: temp)
     }
 
-    func testCanInstallComponentsOnlyWhenBrewManagedDependenciesAreMissing() {
+    func testCanInstallComponentsIsDisabledForWizard() {
         XCTAssertFalse(SetupConfiguration(preflight: .fixture()).canInstallComponents)
 
         var missingWinetricks = Preflight.fixture()
         missingWinetricks.winetricksFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingWinetricks).canInstallComponents)
+        missingWinetricks.winetricksPath = ""
+        XCTAssertFalse(SetupConfiguration(preflight: missingWinetricks).canInstallComponents)
 
-        var missingHomebrew = missingWinetricks
+        var missingSikarugir = Preflight.fixture()
+        missingSikarugir.sikarugirTapInstalled = false
+        missingSikarugir.sikarugirInstalled = false
+        XCTAssertFalse(SetupConfiguration(preflight: missingSikarugir).canInstallComponents)
+
+        var missingHomebrew = missingSikarugir
         missingHomebrew.homebrewFound = false
         XCTAssertFalse(SetupConfiguration(preflight: missingHomebrew).canInstallComponents)
     }
@@ -81,8 +90,6 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.outputApp, "/Applications/GAMMA.app")
         XCTAssertEqual(config.setupRequest.engine, "WS12WineSikarugir10.0_6")
         XCTAssertEqual(config.setupRequest.renderer, "dxmt")
-        XCTAssertTrue(config.setupRequest.wineESync)
-        XCTAssertTrue(config.setupRequest.wineMSync)
     }
 
     func testDefaultsMatchPlaytestedSikarugirWrapper() {
@@ -90,38 +97,21 @@ final class SetupConfigurationTests {
 
         XCTAssertEqual(config.engine, SetupConfiguration.sikarugir10Engine)
         XCTAssertEqual(config.renderer, "d3dmetal")
-        XCTAssertTrue(config.wineESync)
-        XCTAssertTrue(config.wineMSync)
-        XCTAssertFalse(config.enableHIDDevices)
-        XCTAssertFalse(config.enableFnToggle)
-        XCTAssertFalse(config.moltenVKFastMath)
-        XCTAssertFalse(config.metalHUD)
-        XCTAssertEqual(config.displayMode, "forced")
-    }
-
-    func testSetupRequestIncludesWineSyncOptions() {
-        let config = SetupConfiguration(wineESync: false, wineMSync: false)
-
-        XCTAssertFalse(config.setupRequest.wineESync)
-        XCTAssertFalse(config.setupRequest.wineMSync)
-    }
-
-    func testSetupRequestIncludesHIDDevicesOption() {
-        XCTAssertEqual(SetupConfiguration().setupRequest.enableHIDDevices, false)
-        XCTAssertEqual(SetupConfiguration(enableHIDDevices: true).setupRequest.enableHIDDevices, true)
-    }
-
-    func testSetupRequestIncludesFnToggleOption() {
-        XCTAssertEqual(SetupConfiguration().setupRequest.enableFnToggle, false)
-        XCTAssertEqual(SetupConfiguration(enableFnToggle: true).setupRequest.enableFnToggle, true)
+        XCTAssertTrue(config.updateUSVFS)
+        XCTAssertTrue(config.installGPTK4Binaries)
+        XCTAssertEqual(config.driveMappingMode, "preserve")
+        XCTAssertEqual(config.displayMode, "defaultWine")
     }
 
     func testSetupRequestIncludesUSVFSUpdateOption() {
-        XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.defaultEngine).setupRequest.updateUSVFS)
-        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.defaultEngine, updateUSVFS: true).setupRequest.updateUSVFS)
-        XCTAssertFalse(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.updateUSVFS)
-        XCTAssertTrue(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine, updateUSVFS: true).setupRequest.updateUSVFS)
+        XCTAssertTrue(SetupConfiguration().setupRequest.updateUSVFS)
+        XCTAssertFalse(SetupConfiguration(updateUSVFS: false).setupRequest.updateUSVFS)
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).setupRequest.usvfsSource, "")
+    }
+
+    func testSetupRequestIncludesGPTK4Option() {
+        XCTAssertTrue(SetupConfiguration().setupRequest.installGPTK4Binaries)
+        XCTAssertFalse(SetupConfiguration(installGPTK4Binaries: false).setupRequest.installGPTK4Binaries)
     }
 
     func testSetupRequestIncludesManualModOrganizerWhenProvided() {
@@ -130,7 +120,7 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
     }
 
-    func testCreateFlowEnvironmentRequiresSelectedModOrganizerButNotAutomaticGammaDiscovery() throws {
+    func testCreateFlowRequiresSelectedModOrganizerButNotAutomaticGammaDiscovery() throws {
         let temp = try makeTempDir("gamma-create-flow")
         let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
         FileManager.default.createFile(atPath: mo2.path, contents: Data())
@@ -147,7 +137,7 @@ final class SetupConfigurationTests {
             preflight: preflight
         )
 
-        XCTAssertFalse(config.environmentOK)
+        XCTAssertTrue(config.environmentOK)
         XCTAssertTrue(config.createFlowEnvironmentOK)
         XCTAssertEqual(config.setupRequest.mo2Path, mo2.path)
         try? FileManager.default.removeItem(at: temp)
@@ -204,7 +194,6 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.displayResolutionLabel, "1920 x 1080")
         XCTAssertEqual(config.setupRequest.displayResolutionWidth, 1920)
         XCTAssertEqual(config.setupRequest.displayResolutionHeight, 1080)
-        XCTAssertEqual(config.setupRequest.useWineVirtualDesktop, false)
         XCTAssertEqual(config.setupRequest.resetWineDisplay, false)
     }
 
@@ -213,42 +202,11 @@ final class SetupConfigurationTests {
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
     }
 
-    func testD3DMetalSetupRequestOptions() {
-        let config = SetupConfiguration(
-            moltenVKFastMath: true,
-            metalHUD: true,
-            extraWinetricks: "  quartz dinput8  ",
-            applyReticleFix: true,
-            saveVerboseLog: true
-        )
+    func testSetupRequestIncludesVerboseLogOption() {
+        let config = SetupConfiguration(saveVerboseLog: true)
 
-        XCTAssertEqual(config.setupRequest.extraWinetricks, ["quartz", "dinput8"])
-        XCTAssertTrue(config.setupRequest.moltenVKFastMath)
-        XCTAssertTrue(config.setupRequest.metalHUD)
         XCTAssertTrue(config.setupRequest.writeLog)
         XCTAssertTrue(config.setupRequest.verbose)
-        XCTAssertEqual(config.setupRequest.commonFixes, ["d3dmetal-reticle"])
-    }
-
-    func testDXMTSetupRequestOptions() {
-        let config = SetupConfiguration(
-            renderer: "dxmt",
-            dxmtMetalFXSpatial: true,
-            dxmtMetalFXScaleFactor: " 1.5 ",
-            dxmtLogLevel: "debug"
-        )
-
-        XCTAssertTrue(config.setupRequest.dxmtMetalFXSpatial)
-        XCTAssertEqual(config.setupRequest.dxmtMetalFXScaleFactor, "1.5")
-        XCTAssertEqual(config.setupRequest.dxmtLogLevel, "debug")
-    }
-
-    func testDXVKSetupRequestOptionsRequireHUDToggleForHUDContents() {
-        let noHUDToggle = SetupConfiguration(renderer: "dxvk", dxvkHUD: "fps")
-        XCTAssertEqual(noHUDToggle.setupRequest.dxvkHUD, "")
-
-        let withHUDToggle = SetupConfiguration(renderer: "dxvk", metalHUD: true, dxvkHUD: "fps")
-        XCTAssertEqual(withHUDToggle.setupRequest.dxvkHUD, "fps")
     }
 
     func testDriveMappingShortenMode() {
@@ -274,6 +232,10 @@ final class SetupConfigurationTests {
         XCTAssertTrue(shorten.willRewriteModOrganizerIni)
         XCTAssertTrue(shorten.driveMappingReady)
         XCTAssertEqual(shorten.setupRequest.driveMappingMode, "shorten")
+    }
+
+    func testDriveMappingIsReadyWhenPreflightContextIsAbsent() {
+        XCTAssertTrue(SetupConfiguration().driveMappingReady)
     }
 
     func testEnvironmentMessagesForMissingInputs() {
@@ -306,7 +268,6 @@ private extension Preflight {
             targetApp: "/Applications/stalker-gamma.app",
             engine: "WS12WineCX24.0.7_7",
             renderer: "d3dmetal",
-            moltenVKFastMath: false,
             programBatch: "/mo2.bat",
             stalkerGammaPath: "/opt/homebrew/bin/stalker-gamma",
             stalkerGammaFound: true,

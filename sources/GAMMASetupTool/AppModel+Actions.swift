@@ -18,7 +18,7 @@ extension AppModel {
         panel.directoryURL = URL(fileURLWithPath: installDirectory)
         if panel.runModal() == .OK, let url = panel.url {
             installDirectory = url.path
-            Task { await refreshPreflight() }
+            targetAppPathDidChange()
         }
     }
 
@@ -48,7 +48,6 @@ extension AppModel {
         if programBatch == "/mo2.bat" {
             launchBatches.removeAll()
         }
-        Task { await refreshPreflight() }
         return detected != nil
     }
 
@@ -61,12 +60,11 @@ extension AppModel {
         let panel = NSOpenPanel()
         panel.title = "Select Existing Wrapper"
         panel.canChooseFiles = true
-        panel.canChooseDirectories = true
+        panel.canChooseDirectories = false
         panel.canCreateDirectories = false
         panel.allowsMultipleSelection = false
-        if let appType = UTType(filenameExtension: "app") {
-            panel.allowedContentTypes = [appType]
-        }
+        panel.treatsFilePackagesAsDirectories = false
+        panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: installDirectory)
         guard panel.runModal() == .OK, let url = panel.url else { return false }
         return selectExistingWrapper(at: url)
@@ -90,7 +88,6 @@ extension AppModel {
             manualModOrganizerPath = ""
             modOrganizerSelectionError = "Select the ModOrganizer folder used by this wrapper."
         }
-        Task { await refreshPreflight() }
         return true
     }
 
@@ -148,30 +145,9 @@ extension AppModel {
         programBatch = batch.batchPath
     }
 
-    // MARK: - Setup Flow
-
-    func refreshPreflight() async {
-        preflightError = ""
-        do {
-            let result = try await runEngine(command: "preflight", request: engineRequest(), stream: false)
-            guard result.exitCode == 0 else {
-                preflight = nil
-                preflightError = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
-                return
-            }
-            preflight = try JSONDecoder().decode(Preflight.self, from: Data(result.output.utf8))
-            updateDetectedDisplayDefaults()
-            applyExistingWrapperSettingsIfNeeded()
-        } catch {
-            preflight = nil
-            preflightError = error.localizedDescription
-        }
-    }
-
     func create() async -> Bool {
         let startedWithExistingWrapper = outputAppExists
         isRunning = true
-        isInstallingComponents = false
         createModeOverride = plannedCreateModeLabel
         currentSettingsOverride = startedWithExistingWrapper ? currentManagedSettings() : nil
         frozenSetupSummaryItems = makeSetupSummaryItems(current: [:], includeCurrent: false)
@@ -197,7 +173,6 @@ extension AppModel {
                 logText += "\nerror: setup exited while running \(installStageName(at: installStageIndex)). Attach this log in Discord.\n"
             }
             if result.exitCode == 0 {
-                await refreshPreflight()
                 currentSettingsOverride = nil
                 createModeOverride = nil
                 frozenSetupSummaryItems = nil
@@ -222,7 +197,6 @@ extension AppModel {
         savedLogPath = ""
         statusText = "Ready"
         progress = 0
-        isInstallingComponents = false
         createModeOverride = nil
         currentSettingsOverride = nil
         frozenSetupSummaryItems = nil
@@ -253,76 +227,4 @@ extension AppModel {
         }
     }
 
-    func installComponents() async {
-        isInstallingComponents = true
-        isRunning = false
-        installingComponent = nil
-        progress = 0
-        logText = ""
-        savedLogPath = ""
-        statusText = "Installing components"
-        pendingEngineEventText = ""
-        do {
-            let result = try await runEngine(command: "install-dependencies", request: engineRequest(), stream: true)
-            if result.exitCode == 0 {
-                progress = 1
-                statusText = "Rechecking environment"
-                await refreshPreflight()
-                isInstallingComponents = false
-                installingComponent = nil
-                logText = ""
-                statusText = "Ready"
-                progress = 0
-                showOutput = false
-            } else {
-                isInstallingComponents = false
-                installingComponent = nil
-                statusText = "Install failed"
-            }
-        } catch {
-            isInstallingComponents = false
-            installingComponent = nil
-            logText += "\n\(error.localizedDescription)"
-            statusText = "Install failed"
-        }
-    }
-
-    func installComponent(_ component: SetupComponent) async {
-        isInstallingComponents = true
-        isRunning = false
-        installingComponent = component
-        progress = 0
-        logText = ""
-        savedLogPath = ""
-        statusText = "Installing \(component.rawValue)"
-        pendingEngineEventText = ""
-        do {
-            let result = try await runEngine(
-                command: "install-dependency",
-                request: engineRequest(),
-                extraArguments: ["--name", component.rawValue],
-                stream: true
-            )
-            if result.exitCode == 0 {
-                progress = 1
-                statusText = "Rechecking environment"
-                await refreshPreflight()
-                isInstallingComponents = false
-                installingComponent = nil
-                logText = ""
-                statusText = "Ready"
-                progress = 0
-                showOutput = false
-            } else {
-                isInstallingComponents = false
-                installingComponent = nil
-                statusText = "Install failed"
-            }
-        } catch {
-            isInstallingComponents = false
-            installingComponent = nil
-            logText += "\n\(error.localizedDescription)"
-            statusText = "Install failed"
-        }
-    }
 }

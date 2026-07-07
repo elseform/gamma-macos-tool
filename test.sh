@@ -14,6 +14,7 @@ swiftc \
   -module-cache-path "$MODULE_CACHE_DIR" \
   "$ROOT_DIR/sources/GAMMASetupCore/"*.swift \
   "$ROOT_DIR/sources/GAMMASetupTool/AppSettingsStore.swift" \
+  "$ROOT_DIR/sources/GAMMASetupTool/MacDisplaySettings.swift" \
   "$ROOT_DIR/sources/GAMMASetupTool/SetupConfiguration.swift" \
   "$ROOT_DIR/sources/GAMMASetupTool/SetupStatusTone.swift" \
   "$ROOT_DIR/tests/swift/AppSettingsStoreTests.swift" \

@@ -149,68 +149,76 @@ extension AppModel {
 
     private func installStageIndex(for stage: SetupEngineStage) -> Int? {
         switch stage {
-        case .wrapper: return 0
-        case .engine: return 1
-        case .prefix: return 2
-        case .driveMapping: return 3
-        case .winetricks: return 4
-        case .finalize: return 5
+        case .dependencies: return 0
+        case .wrapper: return 1
+        case .engine: return 2
+        case .prefix: return 3
+        case .driveMapping: return 4
+        case .winetricks: return 5
+        case .finalize: return 6
         }
     }
 
     private func inferredInstallStageIndex(from status: String) -> Int {
         let status = status.lowercased()
+        if status.contains("installing sikarugir homebrew tap")
+            || status.contains("installing sikarugir creator")
+            || status.contains("sikarugir template")
+            || status.contains("downloading sikarugir engine") {
+            return 0
+        }
         if status.contains("creating sikarugir wrapper")
             || status.contains("rebuilding")
             || status.contains("configuring existing")
             || status.contains("installing anomaly app icon")
             || status.contains("restoring sikarugir app frameworks")
-            || status.contains("configuring sikarugir app plist") {
-            return 0
-        }
-        if status.contains("installing sikarugir engine") || status.contains("usvfs") {
+            || status.contains("configuring sikarugir app plist")
+            || status.contains("configure alias") {
             return 1
+        }
+        if status.contains("installing sikarugir engine")
+            || status.contains("usvfs")
+            || status.contains("gptk4") {
+            return 2
         }
         if status.contains("initializing sikarugir wine prefix")
             || status.contains("configuring wine macos graphics driver") {
-            return 2
+            return 3
         }
         if status.contains("configuring wine drive mapping")
             || status.contains("modorganizer.ini") {
-            return 3
+            return 4
         }
         if status.contains("winetricks")
             || status.contains("vcrun2026")
             || status.contains("directx")
             || status.contains("dll overrides") {
-            return 4
+            return 5
         }
-        if status.contains("wine hid")
-            || status.contains("creating dxmt")
-            || status.contains("creating dxvk")
-            || status.contains("modorganizer launch batch")
-            || status.contains("common fix")
+        if status.contains("modorganizer launch batch")
+            || status.contains("launch batches")
             || status.contains("normalizing")
             || status.contains("registering")
             || status.contains("summary")
             || status.contains("touching") {
-            return 5
+            return 6
         }
         return installStageIndex
     }
 
     var installStageCount: Int {
-        6
+        7
     }
 
     func installStageName(at index: Int) -> String {
         switch index {
-        case 0: return "wrapper creation"
-        case 1: return "engine installation"
-        case 2: return "prefix initialization"
-        case 3: return "drive mapping"
-        case 4: return "winetricks"
-        case 5: return "finalization"
+        case 0: return "Sikarugir installation"
+        case 1: return "wrapper creation"
+        case 2: return "engine installation"
+        case 3: return "prefix initialization"
+        case 4: return "drive mapping"
+        case 5: return "winetricks"
+        case 6: return "finalization"
         default: return "setup"
         }
     }
