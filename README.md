@@ -10,7 +10,7 @@ GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to al
 
 ## Description
 
-The tool auto-detects a `stalker-gamma-cli` installation and creates an `.app` wrapper that is ready to run. If you installed G.A.M.M.A. another way, you will be asked to select a folder that contains `ModOrganizer.exe`. Keep in mind that the tool does not perform any validation of the G.A.M.M.A. installation itself.
+The tool asks for the folder that contains `ModOrganizer.exe`, then creates an `.app` wrapper that is ready to run. Keep in mind that the tool does not perform any validation of the G.A.M.M.A. installation itself.
 
 There are several options to tweak, but changing them is not required. You can just go through the flow with the defaults; that was the goal.
 
@@ -20,11 +20,11 @@ You can re-run the setup for an already-created wrapper as many times as you wan
 
 ## What It Does
 
-The app reads your `stalker-gamma-cli` config and `ModOrganizer.ini`, then creates a native macOS app wrapper that launches G.A.M.M.A. through `ModOrganizer.exe`.
+The app uses your selected `ModOrganizer.exe` path, then creates a native macOS app wrapper that launches G.A.M.M.A. through ModOrganizer.
 
 The guided flow handles:
 
-- Environment checks for `stalker-gamma-cli`, Homebrew, Sikarugir, `winetricks`, Anomaly, GAMMA, and ModOrganizer files.
+- ModOrganizer folder selection.
 - Required winetricks dependencies.
 - Wine prefix options + Optional fixes
 
@@ -100,11 +100,11 @@ sources/GAMMASetupTool/
 
 The app is split into:
 
-- `AppModel.swift`: preflight state, setup execution, process streaming, and option serialization.
+- `AppModel.swift`: setup state, process streaming, and option serialization.
 - `Components.swift`: reusable SwiftUI rows, tips, icons, and wizard step metadata.
 - `ContentView.swift`: wizard layout and screens.
 - `GAMMASetupToolApp.swift`: app entry point.
-- `sources/GAMMASetupCore/`: shared setup engine models, path helpers, preflight logic, and installation services.
+- `sources/GAMMASetupCore/`: shared setup engine models, path helpers, CLI preflight support, and installation services.
 - `sources/GAMMASetupEngine/`: the setup backend launched by the GUI.
 
 The Swift package builds both the GUI and the `gamma-setup-engine` backend.
@@ -113,9 +113,8 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 
 `gamma-setup-engine` performs these operations:
 
-- Installs or verifies Homebrew tap `sikarugir-app/sikarugir`, Sikarugir Creator, and `winetricks`.
-- Reads `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json`.
-- Finds the active GAMMA profile and its `ModOrganizer.exe`.
+- Installs or verifies Homebrew tap `sikarugir-app/sikarugir` and Sikarugir Creator during wrapper installation, before wrapper creation.
+- Uses the selected `ModOrganizer.exe`; the CLI can still read `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json` as a fallback.
 - Reads `<gammaPath>/ModOrganizer.ini` for context and uses Wine's default `Z:` host-path mapping by default.
 - Creates a Sikarugir app wrapper.
 - Downloads or reuses cached Sikarugir template and engine archives.
@@ -130,7 +129,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Updates ModOrganizer's `usvfs` binaries from bundled files when selected.
 - Installs bundled GPTK4 D3DMetal binaries by default.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
-- Uses the installed `winetricks` CLI when it supports every required verb; otherwise downloads a current script into the managed wrapper without modifying the Homebrew installation.
+- Uses the wrapper-local `winetricks` script when it supports every required verb, falls back to a compatible installed CLI when available, and otherwise downloads a current script into the managed wrapper without modifying the Homebrew installation.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring Wine's built-in `concrt140` before the native runtime.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
 - Detects existing wrapper state from wrapper files such as `Info.plist`, Wine registry files, `wine/version`, bundled payloads, batch files, and symlinks. Old marker files are left untouched but ignored.

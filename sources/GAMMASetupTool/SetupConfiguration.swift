@@ -84,20 +84,11 @@ struct SetupConfiguration {
     }
 
     var environmentOK: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && preflight.sikarugirInstalled
-            && preflight.winetricksFound
-            && preflight.gammaFound
-            && preflight.mo2Found
-            && preflight.modOrganizerIniFound
+        selectedModOrganizerExecutableFound
     }
 
     var requiredToolsOK: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && preflight.sikarugirInstalled
-            && preflight.winetricksFound
+        true
     }
 
     var selectedModOrganizerExecutableFound: Bool {
@@ -105,13 +96,11 @@ struct SetupConfiguration {
     }
 
     var createFlowEnvironmentOK: Bool {
-        requiredToolsOK && selectedModOrganizerExecutableFound
+        selectedModOrganizerExecutableFound
     }
 
     var canInstallComponents: Bool {
-        guard let preflight else { return false }
-        return preflight.homebrewFound
-            && (!preflight.sikarugirTapInstalled || !preflight.sikarugirInstalled || !preflight.winetricksFound)
+        false
     }
 
     var plannedWineDriveMapping: String {
@@ -152,7 +141,7 @@ struct SetupConfiguration {
     }
 
     var driveMappingReady: Bool {
-        guard let preflight else { return false }
+        guard let preflight else { return true }
         return !preflight.zRewriteRequired || willRewriteModOrganizerIni
     }
 

@@ -114,22 +114,23 @@ struct CreatePage: View {
 
     private var installStageRows: [(stage: Int, title: String, detail: String)] {
         var rows: [(stage: Int, title: String, detail: String)] = [
-            (0, model.wrapperStageTitle, ""),
-            (1, "Engine", model.engineLabel)
+            (0, "Sikarugir", "Install tap and app if needed"),
+            (1, model.wrapperStageTitle, ""),
+            (2, "Engine", model.engineLabel)
         ]
         if model.updateUSVFS {
-            rows.append((1, "ModOrganizer usvfs", "Update binaries"))
+            rows.append((2, "ModOrganizer usvfs", "Update binaries"))
         }
         if model.installGPTK4Binaries {
-            rows.append((1, "GPTK4 binaries", "Install or update bundled files"))
+            rows.append((2, "GPTK4 binaries", "Install or update bundled files"))
         }
-        rows.append((2, "Prefix", "Initialize Wine prefix"))
+        rows.append((3, "Prefix", "Initialize Wine prefix"))
         if model.driveMappingMode == "shorten" {
-            rows.append((3, "Drive mapping", model.plannedWineDriveMapping))
+            rows.append((4, "Drive mapping", model.plannedWineDriveMapping))
         }
         rows += [
-            (4, "Winetricks", model.requiredWinetricksSummary),
-            (5, "Finalize", "")
+            (5, "Winetricks", model.requiredWinetricksSummary),
+            (6, "Finalize", "")
         ]
         return rows
     }

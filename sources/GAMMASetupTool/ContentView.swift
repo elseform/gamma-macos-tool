@@ -31,16 +31,11 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.18), value: step)
         .task {
             guard !isXcodePreview else { return }
-            await model.refreshPreflight()
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 10_000_000_000)
-                if !model.isRunning {
-                    await model.refreshPreflight()
-                }
-            }
+            model.updateDetectedDisplayDefaults()
+            model.applyExistingWrapperSettingsIfNeeded()
         }
         .onChange(of: model.isRunning) { isRunning in
-            if isRunning && !model.isInstallingComponents {
+            if isRunning {
                 step = .create
                 furthestUnlockedStep = maxStep(furthestUnlockedStep, .create)
             }

@@ -11,11 +11,6 @@ struct ToolResult {
     let exitCode: Int32
 }
 
-enum SetupComponent: String {
-    case sikarugir
-    case winetricks
-}
-
 struct SetupSummaryItem: Identifiable {
     var id: String { label }
     let label: String
@@ -79,8 +74,6 @@ final class AppModel: ObservableObject {
     @Published var savedLogPath = ""
     @Published var statusText = "Ready"
     @Published var isRunning = false
-    @Published var isInstallingComponents = false
-    @Published var installingComponent: SetupComponent?
     @Published var showOutput = false
     @Published var progress = 0.0
     @Published var createModeOverride: String?

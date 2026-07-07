@@ -35,37 +35,46 @@ final class SetupConfigurationTests {
         XCTAssertEqual(SetupConfiguration(renderer: "dxvk").rendererLabel, "DXVK")
     }
 
-    func testEnvironmentOKRequiresAllRequiredInputs() {
-        XCTAssertTrue(SetupConfiguration(preflight: .fixture()).environmentOK)
+    func testEnvironmentOKRequiresSelectedModOrganizerOnly() throws {
+        let temp = try makeTempDir("gamma-environment")
+        let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
+        FileManager.default.createFile(atPath: mo2.path, contents: Data())
 
-        var missingMO2Ini = Preflight.fixture()
-        missingMO2Ini.modOrganizerIniFound = false
+        var missingTools = Preflight.fixture()
+        missingTools.homebrewFound = false
+        missingTools.sikarugirTapInstalled = false
+        missingTools.sikarugirInstalled = false
+        missingTools.winetricksFound = false
+        missingTools.gammaFound = false
+        missingTools.mo2Found = false
+        missingTools.modOrganizerIniFound = false
 
-        XCTAssertFalse(SetupConfiguration(preflight: missingMO2Ini).environmentOK)
+        let config = SetupConfiguration(
+            manualModOrganizerPath: mo2.path,
+            preflight: missingTools
+        )
 
-        var missingCli = Preflight.fixture()
-        missingCli.stalkerGammaFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingCli).environmentOK)
-
-        var missingSettings = Preflight.fixture()
-        missingSettings.settingsFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingSettings).environmentOK)
-
-        var missingAnomaly = Preflight.fixture()
-        missingAnomaly.anomalyFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingAnomaly).environmentOK)
-
-        XCTAssertFalse(SetupConfiguration().environmentOK)
+        XCTAssertTrue(config.environmentOK)
+        XCTAssertTrue(config.createFlowEnvironmentOK)
+        XCTAssertFalse(SetupConfiguration(preflight: .fixture()).environmentOK)
+        XCTAssertFalse(SetupConfiguration(manualModOrganizerPath: mo2.path + ".missing").environmentOK)
+        try? FileManager.default.removeItem(at: temp)
     }
 
-    func testCanInstallComponentsOnlyWhenBrewManagedDependenciesAreMissing() {
+    func testCanInstallComponentsIsDisabledForWizard() {
         XCTAssertFalse(SetupConfiguration(preflight: .fixture()).canInstallComponents)
 
         var missingWinetricks = Preflight.fixture()
         missingWinetricks.winetricksFound = false
-        XCTAssertTrue(SetupConfiguration(preflight: missingWinetricks).canInstallComponents)
+        missingWinetricks.winetricksPath = ""
+        XCTAssertFalse(SetupConfiguration(preflight: missingWinetricks).canInstallComponents)
 
-        var missingHomebrew = missingWinetricks
+        var missingSikarugir = Preflight.fixture()
+        missingSikarugir.sikarugirTapInstalled = false
+        missingSikarugir.sikarugirInstalled = false
+        XCTAssertFalse(SetupConfiguration(preflight: missingSikarugir).canInstallComponents)
+
+        var missingHomebrew = missingSikarugir
         missingHomebrew.homebrewFound = false
         XCTAssertFalse(SetupConfiguration(preflight: missingHomebrew).canInstallComponents)
     }
@@ -111,7 +120,7 @@ final class SetupConfigurationTests {
         XCTAssertEqual(config.setupRequest.mo2Path, "/Games/GAMMA/ModOrganizer.exe")
     }
 
-    func testCreateFlowEnvironmentRequiresSelectedModOrganizerButNotAutomaticGammaDiscovery() throws {
+    func testCreateFlowRequiresSelectedModOrganizerButNotAutomaticGammaDiscovery() throws {
         let temp = try makeTempDir("gamma-create-flow")
         let mo2 = temp.appendingPathComponent("ModOrganizer.exe")
         FileManager.default.createFile(atPath: mo2.path, contents: Data())
@@ -128,7 +137,7 @@ final class SetupConfigurationTests {
             preflight: preflight
         )
 
-        XCTAssertFalse(config.environmentOK)
+        XCTAssertTrue(config.environmentOK)
         XCTAssertTrue(config.createFlowEnvironmentOK)
         XCTAssertEqual(config.setupRequest.mo2Path, mo2.path)
         try? FileManager.default.removeItem(at: temp)
@@ -223,6 +232,10 @@ final class SetupConfigurationTests {
         XCTAssertTrue(shorten.willRewriteModOrganizerIni)
         XCTAssertTrue(shorten.driveMappingReady)
         XCTAssertEqual(shorten.setupRequest.driveMappingMode, "shorten")
+    }
+
+    func testDriveMappingIsReadyWhenPreflightContextIsAbsent() {
+        XCTAssertTrue(SetupConfiguration().driveMappingReady)
     }
 
     func testEnvironmentMessagesForMissingInputs() {

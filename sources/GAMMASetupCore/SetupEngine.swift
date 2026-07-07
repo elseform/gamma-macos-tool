@@ -269,8 +269,7 @@ public final class GAMMASetupEngine {
             try ensureSikarugir(context: context)
             reporter.completed(success: true, message: "Sikarugir is installed.")
         case "winetricks":
-            try ensureWinetricks(context: context)
-            reporter.completed(success: true, message: "winetricks is installed.")
+            reporter.completed(success: true, message: "winetricks is resolved during wrapper setup.")
         default:
             throw SetupEngineError.message("unknown install dependency: \(name)")
         }
@@ -280,9 +279,11 @@ public final class GAMMASetupEngine {
         var context = SetupContext(request: request, executablePath: executablePath)
         try setupLogIfNeeded(context: context)
         try loadGammaSettings(context: &context, required: true, preflightOnly: false)
-        try ensureBrewDependencies(context: context)
-        try resolveSikarugirAssets(context: &context)
 
+        try runStage(.dependencies) {
+            try ensureBrewDependencies(context: context)
+            try resolveSikarugirAssets(context: &context)
+        }
         try runStage(.wrapper) {
             try prepareTargetApp(context: &context)
             try ensureAppTemplateLayout(context: context)
@@ -399,12 +400,11 @@ public final class GAMMASetupEngine {
 
     private func ensureBrewDependencies(context: SetupContext) throws {
         try ensureSikarugir(context: context)
-        try ensureWinetricks(context: context)
     }
 
     private func ensureHomebrew() throws -> String {
         guard let brew = findTool("brew") else {
-            throw SetupEngineError.message("Homebrew is required to install Sikarugir and winetricks")
+            throw SetupEngineError.message("Homebrew is required to install Sikarugir")
         }
         return brew
     }
@@ -419,14 +419,6 @@ public final class GAMMASetupEngine {
         if (try? runner(context: context).run(brew, ["list", "--cask", "sikarugir"])) == nil {
             reporter.log("Installing Sikarugir Creator")
             try runner(context: context).run(brew, ["install", "--cask", "sikarugir"])
-        }
-    }
-
-    private func ensureWinetricks(context: SetupContext) throws {
-        _ = try ensureHomebrew()
-        if findTool("winetricks") == nil {
-            reporter.log("Installing winetricks")
-            try runner(context: context).run(try ensureHomebrew(), ["install", "winetricks"])
         }
     }
 

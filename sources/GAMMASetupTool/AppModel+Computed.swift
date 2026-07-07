@@ -301,13 +301,9 @@ extension AppModel {
     }
 
     var environmentMessage: String {
-        guard let preflight else { return "Checking environment..." }
-        if !preflight.homebrewFound {
-            return "Install Homebrew first; it is required for Sikarugir and winetricks."
-        }
         if !selectedModOrganizerExecutableFound {
             return "Select the ModOrganizer folder."
         }
-        return "Install Homebrew-managed setup components, then recheck."
+        return ""
     }
 }

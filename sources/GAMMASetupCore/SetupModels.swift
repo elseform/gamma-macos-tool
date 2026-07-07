@@ -1,6 +1,7 @@
 import Foundation
 
 public enum SetupEngineStage: String, Codable, CaseIterable {
+    case dependencies
     case wrapper
     case engine
     case prefix
