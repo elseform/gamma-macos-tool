@@ -39,7 +39,7 @@ extension AppModel {
         let userReg = readText(prefix.appendingPathComponent("user.reg"))
 
         var values: [String: String] = [:]
-        values["engine"] = engineLabel(fromWineVersion: readText(sharedSupport.appendingPathComponent("wine/version")))
+        values["engine"] = currentWrapperEngineLabel()
         values["programBatch"] = plistProgramBatch
         values["renderer"] = rendererName(from: plist)
         values["launchUsesModOrganizerEnvironment"] = activeBatch.localizedCaseInsensitiveContains("QT_OPENGL") ? "true" : "false"
@@ -83,6 +83,12 @@ extension AppModel {
     }
 
     // MARK: - Existing Wrapper Detection
+
+    func currentWrapperEngineLabel() -> String {
+        let version = URL(fileURLWithPath: outputAppPath)
+            .appendingPathComponent("Contents/SharedSupport/wine/version")
+        return engineLabel(fromWineVersion: readText(version))
+    }
 
     func applyExistingWrapperSettingsIfNeeded() {
         guard outputAppExists else {

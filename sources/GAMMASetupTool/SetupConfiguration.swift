@@ -10,6 +10,14 @@ struct SetupConfiguration {
     static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
+    static let supportedExistingEngineLabels: Set<String> = [
+        "Wine CX 24.0.7",
+        "Wine Sikarugir 10.0"
+    ]
+
+    static func supportsExistingEngineLabel(_ label: String) -> Bool {
+        supportedExistingEngineLabels.contains(label)
+    }
 
     var appName = "stalker-gamma"
     var installDirectory = SetupConfiguration.defaultInstallDirectory
@@ -104,45 +112,23 @@ struct SetupConfiguration {
     }
 
     var plannedWineDriveMapping: String {
-        guard let preflight else { return "" }
-        if driveMappingMode == "shorten", preflight.zShortenAvailable {
-            return "\(preflight.shortWineDriveLetter): -> \(preflight.shortWineDriveRoot)"
+        if driveMappingMode == "shorten", !optionalGDriveRoot.isEmpty {
+            return "G: -> \(optionalGDriveRoot)"
         }
         return "Z: -> /"
     }
 
-    var plannedModOrganizerGamePath: String {
-        guard let preflight else { return "" }
-        guard willRewriteModOrganizerIni else { return preflight.modOrganizerGamePath }
-
-        let rootRelative = preflight.shortWineDriveRoot
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .split(separator: "/")
-            .map(String.init)
-        let gameRelative = windowsPathRelative(preflight.modOrganizerGamePath)
-
-        guard !rootRelative.isEmpty,
-              gameRelative.count >= rootRelative.count,
-              zip(rootRelative, gameRelative).allSatisfy({ $0.0.caseInsensitiveCompare($0.1) == .orderedSame }) else {
-            return preflight.modOrganizerGamePath
-        }
-
-        let suffix = gameRelative.dropFirst(rootRelative.count)
-        let drive = preflight.shortWineDriveLetter.uppercased()
-        if suffix.isEmpty {
-            return "\(drive):\\"
-        }
-        return "\(drive):\\" + suffix.joined(separator: "\\")
-    }
-
-    var willRewriteModOrganizerIni: Bool {
-        guard let preflight else { return false }
-        return driveMappingMode == "shorten" && preflight.zShortenAvailable
+    var optionalGDriveRoot: String {
+        let selected = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !selected.isEmpty else { return "" }
+        return URL(fileURLWithPath: selected)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .standardizedFileURL.path
     }
 
     var driveMappingReady: Bool {
-        guard let preflight else { return true }
-        return !preflight.zRewriteRequired || willRewriteModOrganizerIni
+        driveMappingMode != "shorten" || !optionalGDriveRoot.isEmpty
     }
 
     var selectedDisplayResolution: (width: Int, height: Int)? {
@@ -195,7 +181,7 @@ struct SetupConfiguration {
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,
-            driveMappingMode: willRewriteModOrganizerIni ? "shorten" : driveMappingMode,
+            driveMappingMode: driveMappingMode,
             displayResolutionWidth: resolution?.width,
             displayResolutionHeight: resolution?.height,
             resetWineDisplay: displayMode == "defaultWine",
@@ -204,16 +190,4 @@ struct SetupConfiguration {
         )
     }
 
-    private func windowsPathRelative(_ path: String) -> [String] {
-        let separators = CharacterSet(charactersIn: "\\/")
-        var value = path
-        if value.count >= 2, value[value.index(after: value.startIndex)] == ":" {
-            value = String(value.dropFirst(2))
-        }
-        return value
-            .split(whereSeparator: { character in
-                character.unicodeScalars.allSatisfy { separators.contains($0) }
-            })
-            .map(String.init)
-    }
 }

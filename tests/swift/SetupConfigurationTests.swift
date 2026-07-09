@@ -200,6 +200,10 @@ final class SetupConfigurationTests {
     func testEngineLabels() {
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.crossOverEngine).engineLabel, "Wine CX 24.0.7")
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
+        XCTAssertTrue(SetupConfiguration.supportsExistingEngineLabel("Wine CX 24.0.7"))
+        XCTAssertTrue(SetupConfiguration.supportsExistingEngineLabel("Wine Sikarugir 10.0"))
+        XCTAssertFalse(SetupConfiguration.supportsExistingEngineLabel("Wine Experimental 11"))
+        XCTAssertFalse(SetupConfiguration.supportsExistingEngineLabel("Unknown"))
     }
 
     func testSetupRequestIncludesVerboseLogOption() {
@@ -210,28 +214,25 @@ final class SetupConfigurationTests {
     }
 
     func testDriveMappingShortenMode() {
-        var preflight = Preflight.fixture()
-        preflight.zRewriteRequired = true
-        preflight.zShortenAvailable = true
-        preflight.modOrganizerGamePath = "Z:\\Users\\me\\Games\\Anomaly"
-        preflight.wineDriveLetter = "Z"
-        preflight.wineDriveRoot = "/"
-        preflight.shortWineDriveLetter = "G"
-        preflight.shortWineDriveRoot = "/Users/me/Games"
-
-        let preserve = SetupConfiguration(driveMappingMode: "preserve", preflight: preflight)
+        let mo2Path = "/Users/me/Games/GAMMA/ModOrganizer.exe"
+        let preserve = SetupConfiguration(
+            driveMappingMode: "preserve",
+            manualModOrganizerPath: mo2Path
+        )
         XCTAssertEqual(preserve.plannedWineDriveMapping, "Z: -> /")
-        XCTAssertEqual(preserve.plannedModOrganizerGamePath, "Z:\\Users\\me\\Games\\Anomaly")
-        XCTAssertFalse(preserve.willRewriteModOrganizerIni)
-        XCTAssertFalse(preserve.driveMappingReady)
+        XCTAssertTrue(preserve.driveMappingReady)
         XCTAssertEqual(preserve.setupRequest.driveMappingMode, "preserve")
 
-        let shorten = SetupConfiguration(driveMappingMode: "shorten", preflight: preflight)
+        let shorten = SetupConfiguration(
+            driveMappingMode: "shorten",
+            manualModOrganizerPath: mo2Path
+        )
         XCTAssertEqual(shorten.plannedWineDriveMapping, "G: -> /Users/me/Games")
-        XCTAssertEqual(shorten.plannedModOrganizerGamePath, "G:\\Anomaly")
-        XCTAssertTrue(shorten.willRewriteModOrganizerIni)
+        XCTAssertEqual(shorten.optionalGDriveRoot, "/Users/me/Games")
         XCTAssertTrue(shorten.driveMappingReady)
         XCTAssertEqual(shorten.setupRequest.driveMappingMode, "shorten")
+
+        XCTAssertFalse(SetupConfiguration(driveMappingMode: "shorten").driveMappingReady)
     }
 
     func testDriveMappingIsReadyWhenPreflightContextIsAbsent() {
