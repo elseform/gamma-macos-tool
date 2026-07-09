@@ -115,7 +115,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 
 - Installs or verifies Homebrew tap `sikarugir-app/sikarugir` and Sikarugir Creator during wrapper installation, before wrapper creation.
 - Uses the selected `ModOrganizer.exe`; the CLI can still read `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json` as a fallback.
-- Reads `<gammaPath>/ModOrganizer.ini` for context and uses Wine's default `Z:` host-path mapping by default.
+- Reads `<gammaPath>/ModOrganizer.ini` for context only and never modifies it. Default installation uses Wine's standard `Z:` host-path mapping.
 - Creates a Sikarugir app wrapper.
 - Downloads or reuses cached Sikarugir template and engine archives.
 - Extracts the engine into the wrapper.
@@ -125,12 +125,12 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a Finder alias named `Configure <wrapper name>` beside the wrapper, targeting the wrapper's `Contents/Configure.app`.
-- Creates a short Wine drive mapping only when Shorten mapping is selected.
+- Advanced installation can add `G:` at the directory containing the selected GAMMA folder when existing ModOrganizer paths require it.
 - Updates ModOrganizer's `usvfs` binaries from bundled files when selected.
 - Installs bundled GPTK4 D3DMetal binaries by default.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
 - Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
-- Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring Wine's built-in `concrt140` before the native runtime.
+- Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring native `concrt140` with Wine's built-in implementation as fallback.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
 - Detects existing wrapper state from wrapper files such as `Info.plist`, Wine registry files, `wine/version`, bundled payloads, batch files, and symlinks. Old marker files are left untouched but ignored.
 

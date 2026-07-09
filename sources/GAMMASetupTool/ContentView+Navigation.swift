@@ -339,6 +339,7 @@ extension ContentView {
 
     private func selectDefaultInstall() {
         guard model.selectedModOrganizerExecutableFound, model.driveMappingReady else { return }
+        model.driveMappingMode = "preserve"
         installMode = .defaultInstall
         step = .create
     }

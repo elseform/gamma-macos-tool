@@ -94,6 +94,7 @@ extension AppModel {
     func prepareNewWrapperFlow() {
         appName = "stalker-gamma"
         installDirectory = SetupConfiguration.defaultInstallDirectory
+        driveMappingMode = "preserve"
         selectedExistingWrapperPath = ""
         modOrganizerSelectionError = ""
         targetAppPathDidChange()

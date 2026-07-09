@@ -18,6 +18,21 @@ final class SetupEngineCoreTests {
             listOutput: output
         ))
         XCTAssertFalse(WinetricksTools.supports(["vcrun2022"], listOutput: output))
+
+        let installed = """
+        corefonts
+        d3dx9_43
+        d3dx11_43
+        d3dcompiler_47
+        vcrun2022
+        """
+        XCTAssertEqual(
+            WinetricksTools.missingVerbs(
+                ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"],
+                installedOutput: installed
+            ),
+            ["vcrun2026"]
+        )
     }
 
     func testWinetricksCachesAreSharedAcrossWrappers() {
@@ -149,8 +164,9 @@ final class SetupEngineCoreTests {
         XCTAssertEqual(report.gammaPath, gamma.path)
         XCTAssertEqual(report.mo2Path, gamma.appendingPathComponent("ModOrganizer.exe").path)
         XCTAssertEqual(report.modOrganizerGamePath, "G:/Anomaly")
-        XCTAssertEqual(report.wineDriveLetter, "G")
-        XCTAssertEqual(report.wineDriveRoot, temp.path)
+        XCTAssertEqual(report.wineDriveLetter, "Z")
+        XCTAssertEqual(report.wineDriveRoot, "/")
+        XCTAssertEqual(report.shortWineDriveRoot, temp.path)
         try? FileManager.default.removeItem(at: temp)
     }
 
@@ -212,7 +228,7 @@ final class SetupEngineCoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
-    func testEnginePreflightDetectsZRewriteRequirement() throws {
+    func testEnginePreflightReportsOptionalGRootWithoutRequiringRewrite() throws {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("gamma-setup-engine-z-rewrite-\(UUID().uuidString)")
         let gamma = temp.appendingPathComponent("GAMMA")
@@ -235,7 +251,7 @@ final class SetupEngineCoreTests {
 
         XCTAssertEqual(report.wineDriveLetter, "Z")
         XCTAssertEqual(report.wineDriveRoot, "/")
-        XCTAssertTrue(report.zRewriteRequired)
+        XCTAssertFalse(report.zRewriteRequired)
         XCTAssertTrue(report.zShortenAvailable)
         XCTAssertEqual(report.shortWineDriveRoot, temp.path)
         try? FileManager.default.removeItem(at: temp)
@@ -327,10 +343,12 @@ final class SetupEngineCoreTests {
         try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: anomaly, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
-        try """
+        let originalINI = """
         [General]
         gamePath=G:\\Anomaly
-        """.write(to: gamma.appendingPathComponent("ModOrganizer.ini"), atomically: true, encoding: .utf8)
+        """
+        let iniURL = gamma.appendingPathComponent("ModOrganizer.ini")
+        try originalINI.write(to: iniURL, atomically: true, encoding: .utf8)
 
         let request = SetupRequest(
             outputApp: app.path,
@@ -350,6 +368,39 @@ final class SetupEngineCoreTests {
         let batch = try String(contentsOf: app.appendingPathComponent("Contents/SharedSupport/prefix/drive_c/mo2.bat"))
         XCTAssertContains(batch, #"cd /d "\#(gammaWindows)""#)
         XCTAssertContains(batch, #"start "" "\#(mo2Windows)""#)
+        XCTAssertEqual(try String(contentsOf: iniURL), originalINI)
+        try? FileManager.default.removeItem(at: temp)
+    }
+
+    func testAdvancedInstallCreatesGMappingWithoutChangingModOrganizerINI() throws {
+        let temp = try makeTempDir("gamma-advanced-drive")
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let gamma = temp.appendingPathComponent("GAMMA")
+        try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
+        let originalINI = """
+        [General]
+        gamePath=G:\\Anomaly
+        """
+        let iniURL = gamma.appendingPathComponent("ModOrganizer.ini")
+        try originalINI.write(to: iniURL, atomically: true, encoding: .utf8)
+
+        let request = SetupRequest(
+            outputApp: app.path,
+            mo2Path: gamma.appendingPathComponent("ModOrganizer.exe").path,
+            gammaPath: gamma.path,
+            driveMappingMode: "shorten"
+        )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
+        try engine.configureDriveMappingAndMO2BatchForTesting(request: request)
+
+        let dosdevices = app.appendingPathComponent("Contents/SharedSupport/prefix/dosdevices")
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: dosdevices.appendingPathComponent("g:").path), temp.path)
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: dosdevices.appendingPathComponent("z:").path), "/")
+        let batch = try String(contentsOf: app.appendingPathComponent("Contents/SharedSupport/prefix/drive_c/mo2.bat"))
+        XCTAssertContains(batch, #"cd /d "G:\GAMMA""#)
+        XCTAssertContains(batch, #"start "" "G:\GAMMA\ModOrganizer.exe""#)
+        XCTAssertEqual(try String(contentsOf: iniURL), originalINI)
         try? FileManager.default.removeItem(at: temp)
     }
 

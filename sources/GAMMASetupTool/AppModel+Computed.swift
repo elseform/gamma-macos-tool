@@ -14,15 +14,7 @@ extension AppModel {
     }
 
     var winetricksWrapperState: WinetricksWrapperState {
-        guard outputAppExists else { return .planned }
-        guard let registry = currentUserRegistryText(), !registry.isEmpty else {
-            return .planned
-        }
-        let overrides = currentDllOverrides(in: registry)
-        if overrides.isEmpty {
-            return .planned
-        }
-        return missingDllOverrides(in: overrides).isEmpty ? .installed : .needsUpdate
+        outputAppExists ? .needsUpdate : .planned
     }
 
     // MARK: - Configuration
@@ -83,6 +75,9 @@ extension AppModel {
     }
 
     var plannedCreateModeLabel: String {
+        if unsupportedExistingWrapperEngine != nil {
+            return "Unsupported wrapper"
+        }
         if outputAppExists {
             return engineRecreateWarning == nil ? "Update existing wrapper" : "Recreate wrapper"
         }
@@ -95,18 +90,26 @@ extension AppModel {
             return "Update wrapper"
         case "Recreate wrapper":
             return "Recreate wrapper"
+        case "Unsupported wrapper":
+            return "Unsupported wrapper"
         default:
             return "Create wrapper"
         }
     }
 
+    var unsupportedExistingWrapperEngine: String? {
+        guard outputAppExists else { return nil }
+        let current = currentWrapperEngineLabel()
+        return SetupConfiguration.supportsExistingEngineLabel(current) ? nil : current
+    }
+
     var engineRecreateWarning: String? {
         guard outputAppExists else { return nil }
-        let current = currentManagedSettings()["engine"] ?? "Unknown"
-        guard current != engineLabel else { return nil }
-        if current == "Unknown" {
-            return "Unknown engine state. Wrapper will be recreated."
+        if let unsupportedExistingWrapperEngine {
+            return "Unsupported engine: \(unsupportedExistingWrapperEngine). This wrapper cannot be updated."
         }
+        let current = currentWrapperEngineLabel()
+        guard current != engineLabel else { return nil }
         return "Engine change requires full recreation of wrapper."
     }
 
@@ -148,7 +151,9 @@ extension AppModel {
     }
 
     var setupReady: Bool {
-        configuration.createFlowEnvironmentOK && driveMappingReady
+        configuration.createFlowEnvironmentOK
+            && driveMappingReady
+            && unsupportedExistingWrapperEngine == nil
     }
 
     var selectedModOrganizerExecutableFound: Bool {
@@ -183,6 +188,8 @@ extension AppModel {
             return "Update GAMMA wrapper"
         case "Recreate wrapper":
             return "Recreate GAMMA wrapper"
+        case "Unsupported wrapper":
+            return "Unsupported wrapper"
         default:
             return "Create GAMMA wrapper"
         }
@@ -252,11 +259,8 @@ extension AppModel {
         add("Engine", engineLabel, currentKey: "engine")
         add("Renderer", rendererLabel, currentKey: "renderer")
 
-        if preflight != nil, driveMappingMode == "shorten" {
+        if driveMappingMode == "shorten" {
             add("Drive mapping", plannedWineDriveMapping, currentKey: "driveMapping")
-            if willRewriteModOrganizerIni {
-                add("ModOrganizer.ini", "Rewrite Z: paths to short mapping")
-            }
         }
 
         if selectedDisplayResolution != nil {
@@ -275,10 +279,6 @@ extension AppModel {
 
     var plannedWineDriveMapping: String {
         configuration.plannedWineDriveMapping
-    }
-
-    var willRewriteModOrganizerIni: Bool {
-        configuration.willRewriteModOrganizerIni
     }
 
     var driveMappingReady: Bool {

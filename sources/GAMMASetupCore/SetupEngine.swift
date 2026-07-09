@@ -220,7 +220,7 @@ public final class GAMMASetupEngine {
     public func preflight(request: SetupRequest) throws -> Preflight {
         var context = SetupContext(request: request, executablePath: executablePath)
         try loadGammaSettings(context: &context, required: false, preflightOnly: true)
-        resolveDriveRoot(context: &context, allowRewrite: false)
+        resolveDriveRoot(context: &context)
 
         let brewPath = findTool("brew") ?? ""
         let winetricksPath = findTool("winetricks") ?? ""
@@ -807,16 +807,12 @@ public final class GAMMASetupEngine {
 
     private func configureDriveMapping(context: inout SetupContext) throws {
         reporter.log("Configuring Wine drive mapping")
-        if context.updatingExistingWrapper, context.request.driveMappingMode == "preserve" {
-            reporter.log("Preserving existing Wine drive mapping")
-            return
-        }
         if context.request.driveMappingMode != "shorten" {
             reporter.log("Using default Wine drive mapping")
             try ensureDefaultWineDriveLinks(context: context)
             return
         }
-        resolveDriveRoot(context: &context, allowRewrite: true)
+        resolveDriveRoot(context: &context)
         guard directoryExists(context.driveRoot) else {
             throw SetupEngineError.message("mounted disk root not found: \(context.driveRoot)")
         }
@@ -835,14 +831,25 @@ public final class GAMMASetupEngine {
 
     private func installWinetricksDependencies(context: SetupContext) throws {
         let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
-        guard missingDllOverrides(context: context).isEmpty == false else { return }
-
         let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
-        try installWinetricksGroup(label: "required dependencies", verbs: requiredVerbs, winetricks: winetricks, context: context)
-    }
-
-    private func missingDllOverrides(context: SetupContext) -> [String] {
-        missingDllOverrides(in: currentDllOverrides(in: readText(context.userReg)))
+        let installedOutput: String
+        do {
+            installedOutput = try runner(context: context).run(
+                winetricks,
+                ["list-installed"],
+                environment: wineEnvironment(context: context),
+                label: "query installed winetricks"
+            ).output
+        } catch {
+            reporter.log("Could not query installed winetricks; required components will be verified by installation", severity: "warning")
+            installedOutput = ""
+        }
+        let missing = WinetricksTools.missingVerbs(requiredVerbs, installedOutput: installedOutput)
+        guard !missing.isEmpty else {
+            reporter.log("Required winetricks components are already installed")
+            return
+        }
+        try installWinetricksGroup(label: "missing required dependencies", verbs: missing, winetricks: winetricks, context: context)
     }
 
     private func missingDllOverrides(in overrides: [String: String]) -> [String] {
@@ -1007,7 +1014,7 @@ public final class GAMMASetupEngine {
 
     private func createMO2Batch(context: inout SetupContext) throws {
         reporter.log("Creating ModOrganizer launch batch")
-        resolveDriveRoot(context: &context, allowRewrite: false)
+        resolveDriveRoot(context: &context)
         let mo2WinPath = try launchWindowsPath(nativePath: context.mo2Path, context: context)
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
@@ -1028,7 +1035,7 @@ public final class GAMMASetupEngine {
         let launchBatches = context.request.launchBatches ?? []
         guard !launchBatches.isEmpty else { return }
         reporter.log("Creating launch batches")
-        resolveDriveRoot(context: &context, allowRewrite: false)
+        resolveDriveRoot(context: &context)
         for launch in launchBatches {
             let batchPath = launch.batchPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             guard !batchPath.isEmpty else { continue }
@@ -1062,14 +1069,13 @@ public final class GAMMASetupEngine {
             let rel = String(nativePath[driveCIndex.upperBound...]).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             return "C:/\(rel)"
         }
-        if context.updatingExistingWrapper,
-           let mapped = existingMappedWindowsPath(nativePath: nativePath, context: context) {
-            return mapped
-        }
         if context.request.driveMappingMode != "shorten" {
             return try defaultWineHostWindowsPath(nativePath)
         }
-        return try nativeToWindowsPath(nativePath, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
+        if pathIsUnder(nativePath, parent: context.driveRoot) {
+            return try nativeToWindowsPath(nativePath, driveRoot: context.driveRoot, driveLetter: context.driveLetter)
+        }
+        return try defaultWineHostWindowsPath(nativePath)
     }
 
     private func defaultWineHostWindowsPath(_ nativePath: String) throws -> String {
@@ -1078,27 +1084,6 @@ public final class GAMMASetupEngine {
             throw SetupEngineError.message("cannot convert native path to Wine Z: path: \(nativePath)")
         }
         return "Z:/" + absolute.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    }
-
-    private func existingMappedWindowsPath(nativePath: String, context: SetupContext) -> String? {
-        guard let entries = try? fileManager.contentsOfDirectory(at: context.dosdevices, includingPropertiesForKeys: nil) else {
-            return nil
-        }
-        let mappings = entries.compactMap { url -> (letter: String, root: String)? in
-            let name = url.lastPathComponent
-            guard name.count == 2, name.hasSuffix(":"),
-                  let letter = name.first,
-                  let destination = try? fileManager.destinationOfSymbolicLink(atPath: url.path),
-                  destination != "../drive_c" else {
-                return nil
-            }
-            return (String(letter).uppercased(), destination)
-        }
-        for mapping in mappings.sorted(by: { $0.root.count > $1.root.count }) where pathIsUnder(nativePath, parent: mapping.root) {
-            let rel = mapping.root == "/" ? nativePath.trimmingCharacters(in: CharacterSet(charactersIn: "/")) : String(nativePath.dropFirst(mapping.root.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            return "\(mapping.letter):/\(rel)"
-        }
-        return nil
     }
 
     private func selectedLaunchExecutable(context: SetupContext) -> String {
@@ -1249,55 +1234,17 @@ public final class GAMMASetupEngine {
         }
     }
 
-    private func resolveDriveRoot(context: inout SetupContext, allowRewrite: Bool) {
-        if !context.mo2IniDriveRoot.isEmpty {
-            context.driveRoot = context.mo2IniDriveRoot
-        } else if !context.anomalyPath.isEmpty, directoryExists(context.anomalyPath) {
-            context.driveRoot = commonParent(context.gammaPath, context.anomalyPath)
-        } else if !context.gammaPath.isEmpty {
-            context.driveRoot = URL(fileURLWithPath: context.gammaPath).deletingLastPathComponent().path
-        }
-        if context.driveRoot == "/", context.mo2IniDriveLetter != "z" {
-            if pathIsUnder(context.gammaPath, parent: NSHomeDirectory()) && (context.anomalyPath.isEmpty || pathIsUnder(context.anomalyPath, parent: NSHomeDirectory())) {
-                context.driveRoot = NSHomeDirectory()
-            } else if !context.gammaPath.isEmpty {
-                context.driveRoot = URL(fileURLWithPath: context.gammaPath).deletingLastPathComponent().path
-            }
-        }
-
-        if context.mo2IniDriveLetter == "z", context.driveRoot == "/", context.request.driveMappingMode != "shorten" {
-            context.driveLetter = "z"
-            context.zRewriteRequired = true
-        } else if context.mo2IniDriveLetter == "z" {
-            let target = context.driveRoot
-            if allowRewrite, context.request.driveMappingMode == "shorten" {
-                try? rewriteModOrganizerIniDrive(context: &context, from: "z", to: "g", mountedRoot: target)
-            }
+    private func resolveDriveRoot(context: inout SetupContext) {
+        if context.request.driveMappingMode == "shorten", !context.gammaPath.isEmpty {
+            context.driveRoot = URL(fileURLWithPath: context.gammaPath)
+                .deletingLastPathComponent()
+                .standardizedFileURL.path
             context.driveLetter = "g"
-            context.mo2IniDriveRoot = target
-        } else if !context.mo2IniDriveLetter.isEmpty {
-            context.driveLetter = context.mo2IniDriveLetter
+        } else {
+            context.driveRoot = "/"
+            context.driveLetter = "z"
         }
-        context.driveLetter = context.driveLetter.lowercased()
-    }
-
-    private func rewriteModOrganizerIniDrive(context: inout SetupContext, from: String, to: String, mountedRoot: String) throws {
-        guard fileManager.fileExists(atPath: context.mo2IniPath) else {
-            throw SetupEngineError.message("ModOrganizer.ini not found: \(context.mo2IniPath)")
-        }
-        guard !context.request.dryRun else { return }
-        let rootRel = mountedRoot.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        var text = try String(contentsOfFile: context.mo2IniPath)
-        if !rootRel.isEmpty {
-            let parts = rootRel.split(separator: "/").map { NSRegularExpression.escapedPattern(for: String($0)) }
-            let sep = #"(?:(?:\\\\)|\\|/)+"#
-            let rootPattern = parts.joined(separator: sep)
-            let pattern = "\(NSRegularExpression.escapedPattern(for: from + ":"))\(sep)\(rootPattern)\(sep)?"
-            text = text.replacingOccurrences(of: pattern, with: to.uppercased() + #":\\"#, options: [.regularExpression, .caseInsensitive])
-        }
-        text = text.replacingOccurrences(of: "\(from):", with: "\(to.uppercased()):", options: [.caseInsensitive])
-        try text.write(toFile: context.mo2IniPath, atomically: true, encoding: .utf8)
-        loadModOrganizerIni(context: &context)
+        context.zRewriteRequired = false
     }
 
     private func wineEnvironment(context: SetupContext) -> [String: String] {
@@ -1590,15 +1537,8 @@ public final class GAMMASetupEngine {
     }
 
     private func zShortRoot(context: SetupContext) -> String {
-        guard context.mo2IniDriveLetter == "z",
-              !context.gammaPath.isEmpty,
-              directoryExists(context.gammaPath),
-              !context.anomalyPath.isEmpty,
-              directoryExists(context.anomalyPath) else {
-            return ""
-        }
-        let root = commonParent(context.gammaPath, context.anomalyPath)
-        return root == "/" ? "" : root
+        guard !context.gammaPath.isEmpty, directoryExists(context.gammaPath) else { return "" }
+        return URL(fileURLWithPath: context.gammaPath).deletingLastPathComponent().standardizedFileURL.path
     }
 
     private func activeModlistPath(context: SetupContext) -> String {

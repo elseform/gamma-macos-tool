@@ -64,6 +64,12 @@ struct SetupPage: View {
                 .pickerStyle(.segmented)
             }
 
+            if let unsupported = model.unsupportedExistingWrapperEngine {
+                Text("This wrapper uses an unsupported engine (\(unsupported)) and cannot be updated by this tool.")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -172,43 +178,39 @@ struct SetupPage: View {
 
     @ViewBuilder
     private var driveMappingControls: some View {
-        if let preflight = model.preflight {
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 7) {
-                if preflight.zShortenAvailable {
-                    GridRow {
-                        Text("Drive mapping")
-                        Picker("Drive mapping", selection: $model.driveMappingMode) {
-                            Text("Default Wine").tag("preserve")
-                            Text("Shorten mapping").tag("shorten")
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                    }
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 7) {
+            GridRow {
+                Text("Drive mapping")
+                Picker("Drive mapping", selection: $model.driveMappingMode) {
+                    Text("Default Z:").tag("preserve")
+                    Text("Add G:").tag("shorten")
                 }
-                GridRow {
-                    Text("Drive mapping")
-                    Text(model.plannedWineDriveMapping)
-                        .font(.system(.callout, design: .monospaced))
-                        .foregroundStyle(.green)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.72)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
             }
-
-            if model.willRewriteModOrganizerIni {
-                Text("Paths in ModOrganizer.ini will be rewritten.")
-                    .font(.caption)
-                    .foregroundStyle(.yellow)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if preflight.zRewriteRequired {
-                Text(preflight.zShortenAvailable ? "Z: paths cannot be preserved; select Shorten mapping or update the ini manually." : "Z: paths need manual repair.")
-                    .font(.caption)
-                    .foregroundStyle(.yellow)
-                    .fixedSize(horizontal: false, vertical: true)
+            GridRow {
+                Text("Mapping")
+                Text(model.plannedWineDriveMapping)
+                    .font(.system(.callout, design: .monospaced))
+                    .foregroundStyle(.green)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
             }
         }
+
+        Text(driveMappingExplanation)
+            .font(.caption)
+            .foregroundStyle(model.driveMappingMode == "shorten" ? .yellow : .secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var driveMappingExplanation: String {
+        if model.driveMappingMode == "shorten" {
+            return "Creates G: at the folder containing the selected GAMMA folder. ModOrganizer.ini is not modified; use this only when its existing paths already use G:."
+        }
+        return "Uses Wine's default Z: host mapping. ModOrganizer.ini is not modified. Choose Add G: if its existing paths already use G:."
     }
 
     // MARK: - Winetricks

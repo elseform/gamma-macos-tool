@@ -94,6 +94,11 @@ public enum WinetricksTools {
         let available = listedVerbs(listOutput)
         return requiredVerbs.allSatisfy(available.contains)
     }
+
+    public static func missingVerbs(_ requiredVerbs: [String], installedOutput: String) -> [String] {
+        let installed = listedVerbs(installedOutput)
+        return requiredVerbs.filter { !installed.contains($0) }
+    }
 }
 
 public enum SetupLaunchBatchTools {
