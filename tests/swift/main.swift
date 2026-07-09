@@ -87,6 +87,7 @@ run("testEnvironmentMessagesForMissingInputs", config.testEnvironmentMessagesFor
 let engine = SetupEngineCoreTests()
 run("testAppendWordsSplitsSpacesAndCommas", engine.testAppendWordsSplitsSpacesAndCommas)
 run("testWinetricksVerbSupportRequiresEveryExactVerb", engine.testWinetricksVerbSupportRequiresEveryExactVerb)
+run("testWinetricksCachesAreSharedAcrossWrappers", engine.testWinetricksCachesAreSharedAcrossWrappers)
 run("testPathHelpers", engine.testPathHelpers)
 run("testRegistryKeyValueEditorUpdatesSection", engine.testRegistryKeyValueEditorUpdatesSection)
 run("testRegistryRawLineEditorUpdatesSection", engine.testRegistryRawLineEditorUpdatesSection)

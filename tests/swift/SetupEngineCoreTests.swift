@@ -20,6 +20,24 @@ final class SetupEngineCoreTests {
         XCTAssertFalse(WinetricksTools.supports(["vcrun2022"], listOutput: output))
     }
 
+    func testWinetricksCachesAreSharedAcrossWrappers() {
+        let engine = GAMMASetupEngine(
+            executablePath: "/tmp/gamma-setup-engine",
+            reporter: JSONEventReporter(streamEvents: false)
+        )
+        let first = engine.winetricksCachePathsForTesting(
+            request: SetupRequest(outputApp: "/tmp/first-wrapper.app")
+        )
+        let second = engine.winetricksCachePathsForTesting(
+            request: SetupRequest(outputApp: "/tmp/second-wrapper.app")
+        )
+
+        XCTAssertEqual(first, second)
+        XCTAssertTrue(first["script"]?.hasSuffix("/Library/Application Support/gamma-setup-tool/cache/winetricks/winetricks") == true)
+        XCTAssertTrue(first["downloads"]?.hasSuffix("/Library/Application Support/gamma-setup-tool/cache/winetricks/downloads") == true)
+        XCTAssertFalse(first.values.contains { $0.contains("first-wrapper.app") || $0.contains("second-wrapper.app") })
+    }
+
     func testPathHelpers() throws {
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root/child", parent: "/tmp/root"))
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root", parent: "/tmp/root"))

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-APP_VERSION="0.69"
+APP_VERSION="0.75"
 BUILD_DIR="$ROOT_DIR/dist"
 INTERMEDIATES_DIR="$BUILD_DIR/intermediates"
 APP_DIR="$BUILD_DIR/GAMMA Setup Tool.app"

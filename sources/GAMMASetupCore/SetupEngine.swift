@@ -164,6 +164,22 @@ struct SetupContext {
     var driveRoot = ""
     var updatingExistingWrapper = false
 
+    var appSupportDirectory: URL {
+        URL(
+            fileURLWithPath: NSString(
+                string: "~/Library/Application Support/gamma-setup-tool"
+            ).expandingTildeInPath
+        )
+    }
+
+    var managedWinetricks: URL {
+        appSupportDirectory.appendingPathComponent("cache/winetricks/winetricks")
+    }
+
+    var winetricksDownloadCache: URL {
+        appSupportDirectory.appendingPathComponent("cache/winetricks/downloads")
+    }
+
     init(request: SetupRequest, executablePath: String) {
         let outputApp = URL(fileURLWithPath: request.outputApp)
         self.request = request
@@ -369,6 +385,14 @@ public final class GAMMASetupEngine {
 
     func missingDllOverridesForTesting(registry: String) -> [String] {
         missingDllOverrides(in: currentDllOverrides(in: registry))
+    }
+
+    func winetricksCachePathsForTesting(request: SetupRequest) -> [String: String] {
+        let context = SetupContext(request: request, executablePath: executablePath)
+        return [
+            "script": context.managedWinetricks.path,
+            "downloads": wineEnvironment(context: context)["W_CACHE"] ?? ""
+        ]
     }
 
     func payloadMatchesForTesting(source: URL, target: URL) -> Bool {
@@ -857,7 +881,7 @@ public final class GAMMASetupEngine {
     }
 
     private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
-        let managedWinetricks = context.sharedSupport.appendingPathComponent("gamma-setup-winetricks")
+        let managedWinetricks = context.managedWinetricks
         let candidates = [managedWinetricks.path, findTool("winetricks")].compactMap { $0 }
         let validationRunner = ProcessRunner(dryRun: context.request.dryRun, verbose: false, reporter: reporter)
         for candidate in candidates where fileManager.isExecutableFile(atPath: candidate) {
@@ -874,7 +898,7 @@ public final class GAMMASetupEngine {
             }
         }
 
-        reporter.log("Installed winetricks does not support all required verbs; downloading a current wrapper-local script")
+        reporter.log("Installed winetricks does not support all required verbs; downloading a current shared script")
         if !context.request.dryRun {
             try? fileManager.removeItem(at: managedWinetricks)
         }
@@ -897,6 +921,7 @@ public final class GAMMASetupEngine {
 
     private func installWinetricksGroup(label: String, verbs: [String], winetricks: String, context: SetupContext) throws {
         reporter.log("Installing \(label) with winetricks")
+        reporter.log("Using shared winetricks download cache at \(context.winetricksDownloadCache.path)")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: context.appLogDir, withIntermediateDirectories: true)
         try runner(context: context).run(winetricks, ["-q"] + verbs, environment: wineEnvironment(context: context), label: "\(label) winetricks")
@@ -1282,7 +1307,8 @@ public final class GAMMASetupEngine {
             "WINEARCH": "win64",
             "PATH": "\(context.wineDir.path)/bin:/opt/homebrew/bin:/usr/local/bin:" + (ProcessInfo.processInfo.environment["PATH"] ?? ""),
             "DYLD_FALLBACK_LIBRARY_PATH": libraryPath,
-            "WINETRICKS_FALLBACK_LIBRARY_PATH": libraryPath
+            "WINETRICKS_FALLBACK_LIBRARY_PATH": libraryPath,
+            "W_CACHE": context.winetricksDownloadCache.path
         ]
     }
 

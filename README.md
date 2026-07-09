@@ -129,7 +129,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Updates ModOrganizer's `usvfs` binaries from bundled files when selected.
 - Installs bundled GPTK4 D3DMetal binaries by default.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
-- Uses the wrapper-local `winetricks` script when it supports every required verb, falls back to a compatible installed CLI when available, and otherwise downloads a current script into the managed wrapper without modifying the Homebrew installation.
+- Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring Wine's built-in `concrt140` before the native runtime.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
 - Detects existing wrapper state from wrapper files such as `Info.plist`, Wine registry files, `wine/version`, bundled payloads, batch files, and symlinks. Old marker files are left untouched but ignored.
@@ -155,6 +155,14 @@ Downloaded Sikarugir assets are cached in:
 ```text
 ~/Library/Caches/stalker-gamma-sikarugir-setup
 ```
+
+The shared `winetricks` script and its installer payloads are cached beside the setup tool's `settings.json`:
+
+```text
+~/Library/Application Support/gamma-setup-tool/cache/winetricks
+```
+
+New wrappers still install the required components into separate Wine prefixes, but reuse payloads from this cache instead of downloading them again.
 
 If Sikarugir Creator has already downloaded the template or engine, the setup engine reuses those local assets from:
 
