@@ -241,9 +241,9 @@ extension ContentView {
             return [.welcome, .wrapperName, .environment, .installChoice]
         case .update:
             if model.selectedModOrganizerExecutableFound && step != .environment {
-                return [.welcome, .existingWrapper, .setup, .create]
+                return [.welcome, .setup, .create]
             }
-            return [.welcome, .existingWrapper, .environment, .setup, .create]
+            return [.welcome, .environment, .setup, .create]
         case nil:
             return [.welcome]
         }
@@ -319,10 +319,17 @@ extension ContentView {
     }
 
     private func startUpdateFlow() {
+        model.selectedExistingWrapperPath = ""
+        guard model.chooseExistingWrapper() else {
+            flowIntent = nil
+            installMode = nil
+            step = .welcome
+            return
+        }
+
         flowIntent = .update
         installMode = .advanced
-        model.selectedExistingWrapperPath = ""
-        step = .existingWrapper
+        step = model.selectedModOrganizerExecutableFound ? .setup : .environment
     }
 
     private func continueFromExistingWrapper() {

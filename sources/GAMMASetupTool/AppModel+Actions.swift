@@ -60,12 +60,11 @@ extension AppModel {
         let panel = NSOpenPanel()
         panel.title = "Select Existing Wrapper"
         panel.canChooseFiles = true
-        panel.canChooseDirectories = true
+        panel.canChooseDirectories = false
         panel.canCreateDirectories = false
         panel.allowsMultipleSelection = false
-        if let appType = UTType(filenameExtension: "app") {
-            panel.allowedContentTypes = [appType]
-        }
+        panel.treatsFilePackagesAsDirectories = false
+        panel.allowedContentTypes = [.applicationBundle]
         panel.directoryURL = URL(fileURLWithPath: installDirectory)
         guard panel.runModal() == .OK, let url = panel.url else { return false }
         return selectExistingWrapper(at: url)
