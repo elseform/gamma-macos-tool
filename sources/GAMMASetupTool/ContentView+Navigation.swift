@@ -8,17 +8,12 @@ extension ContentView {
         case .welcome:
             return (
                 "Setup",
-                "Create new wrapper or update."
+                "Create a new wrapper."
             )
         case .wrapperName:
             return (
                 "Application name",
                 "The wrapper will be created under ~/Applications."
-            )
-        case .existingWrapper:
-            return (
-                "Select wrapper",
-                "Choose the Sikarugir wrapper you want to update or refresh."
             )
         case .environment:
             return (
@@ -68,14 +63,9 @@ extension ContentView {
     var currentStepView: some View {
         switch step {
         case .welcome:
-            WelcomePage(
-                createAction: startCreateFlow,
-                updateAction: startUpdateFlow
-            )
+            WelcomePage(createAction: startCreateFlow)
         case .wrapperName:
             WrapperNamePage(model: model)
-        case .existingWrapper:
-            ExistingWrapperPage(model: model)
         case .environment:
             EnvironmentPage(model: model)
         case .installChoice:
@@ -174,14 +164,6 @@ extension ContentView {
             }
             .keyboardShortcut(.return, modifiers: [.command])
             .disabled(!model.wrapperNameIsValid || model.isRunning)
-        case .existingWrapper:
-            Button {
-                continueFromExistingWrapper()
-            } label: {
-                Label("Continue", systemImage: "arrow.right.circle")
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!model.hasSelectedExistingWrapper || model.isRunning)
         case .environment:
             Button {
                 continueFromEnvironment()
@@ -230,23 +212,13 @@ extension ContentView {
         if step == .complete {
             return []
         }
-        switch flowIntent {
-        case .create:
-            if installMode == .defaultInstall {
-                return [.welcome, .wrapperName, .environment, .installChoice, .create]
-            }
-            if installMode == .advanced {
-                return [.welcome, .wrapperName, .environment, .installChoice, .setup, .create]
-            }
-            return [.welcome, .wrapperName, .environment, .installChoice]
-        case .update:
-            if model.selectedModOrganizerExecutableFound && step != .environment {
-                return [.welcome, .setup, .create]
-            }
-            return [.welcome, .environment, .setup, .create]
-        case nil:
-            return [.welcome]
+        if installMode == .defaultInstall {
+            return [.welcome, .wrapperName, .environment, .installChoice, .create]
         }
+        if installMode == .advanced {
+            return [.welcome, .wrapperName, .environment, .installChoice, .setup, .create]
+        }
+        return [.welcome, .wrapperName, .environment, .installChoice]
     }
 
     private var currentStepIndex: Int? {
@@ -293,11 +265,7 @@ extension ContentView {
     private func continueFromEnvironment() {
         guard canContinueFromEnvironment else { return }
         environmentCompleted = true
-        if flowIntent == .update {
-            step = .setup
-        } else {
-            step = .installChoice
-        }
+        step = .installChoice
     }
 
     private func startCreate() {
@@ -312,34 +280,15 @@ extension ContentView {
     }
 
     private func startCreateFlow() {
-        flowIntent = .create
         installMode = nil
         model.prepareNewWrapperFlow()
         step = .wrapperName
     }
 
-    private func startUpdateFlow() {
-        model.selectedExistingWrapperPath = ""
-        guard model.chooseExistingWrapper() else {
-            flowIntent = nil
-            installMode = nil
-            step = .welcome
-            return
-        }
-
-        flowIntent = .update
-        installMode = .advanced
-        step = model.selectedModOrganizerExecutableFound ? .setup : .environment
-    }
-
-    private func continueFromExistingWrapper() {
-        guard model.hasSelectedExistingWrapper else { return }
-        step = model.selectedModOrganizerExecutableFound ? .setup : .environment
-    }
-
     private func selectDefaultInstall() {
         guard model.selectedModOrganizerExecutableFound, model.driveMappingReady else { return }
         model.driveMappingMode = "preserve"
+        model.useDefaultLaunchConfiguration()
         installMode = .defaultInstall
         step = .create
     }

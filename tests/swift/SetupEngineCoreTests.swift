@@ -307,23 +307,64 @@ final class SetupEngineCoreTests {
         let gameLines = SetupLaunchBatchTools.commandLines(
             executableWindowsPath: #"G:\Anomaly\bin\AnomalyDX11AVX.exe"#,
             workingDirectoryWindowsPath: #"G:\Anomaly\bin"#,
-            usesModOrganizerEnvironment: false
+            usesModOrganizerEnvironment: false,
+            launchArguments: "  --dxgi-old  "
         )
         XCTAssertFalse(gameLines.contains { $0.contains("QT_OPENGL") })
+        XCTAssertEqual(gameLines.last, #"start "" /D "G:\Anomaly\bin" "G:\Anomaly\bin\AnomalyDX11AVX.exe" --dxgi-old"#)
 
         let mo2Lines = SetupLaunchBatchTools.commandLines(
             executableWindowsPath: #"G:\GAMMA\ModOrganizer.exe"#,
             workingDirectoryWindowsPath: #"G:\GAMMA"#,
-            usesModOrganizerEnvironment: true
+            usesModOrganizerEnvironment: true,
+            launchArguments: #"--profile "Default""#
         )
         XCTAssertTrue(mo2Lines.contains(#"set "QT_OPENGL=software""#))
+        XCTAssertTrue(mo2Lines.contains(#"set "QT_QUICK_BACKEND=software""#))
+        XCTAssertTrue(mo2Lines.contains(#"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#))
+        XCTAssertEqual(mo2Lines.last, #"start "" /D "G:\GAMMA" "G:\GAMMA\ModOrganizer.exe" --profile "Default""#)
+
+        let noArguments = SetupLaunchBatchTools.commandLines(
+            executableWindowsPath: #"G:\Anomaly\bin\Anomaly.exe"#,
+            workingDirectoryWindowsPath: #"G:\Anomaly\bin"#,
+            usesModOrganizerEnvironment: false,
+            launchArguments: "   "
+        )
+        XCTAssertEqual(noArguments.last, #"start "" /D "G:\Anomaly\bin" "G:\Anomaly\bin\Anomaly.exe""#)
     }
 
     func testModOrganizerBatchUsesWindowsWorkingDirectory() {
-        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: "G:/g/ModOrganizer.exe")
+        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(
+            executableWindowsPath: "G:/g/ModOrganizer.exe",
+            launchArguments: "--portable"
+        )
         XCTAssertContains(lines.joined(separator: "\n"), #"cd /d "G:\g""#)
-        XCTAssertContains(lines.joined(separator: "\n"), #"start "" "G:\g\ModOrganizer.exe""#)
+        XCTAssertContains(lines.joined(separator: "\n"), #"start "" "G:\g\ModOrganizer.exe" --portable"#)
         XCTAssertFalse(lines.joined(separator: "\n").contains("Contents\\Resources"))
+    }
+
+    func testLaunchArgumentsRejectLineBreaks() throws {
+        let temp = try makeTempDir("gamma-launch-flags")
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let gamma = temp.appendingPathComponent("GAMMA")
+        try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
+        let request = SetupRequest(
+            outputApp: app.path,
+            mo2Path: gamma.appendingPathComponent("ModOrganizer.exe").path,
+            launchArguments: "--first\r\nstart unwanted.exe"
+        )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path)
+        var rejected = false
+        do {
+            try engine.configureDriveMappingAndMO2BatchForTesting(request: request)
+        } catch SetupEngineError.message(let message) {
+            rejected = message.contains("single line")
+        } catch {
+            rejected = false
+        }
+        XCTAssertTrue(rejected)
+        try? FileManager.default.removeItem(at: temp)
     }
 
     func testDefaultModOrganizerBatchDetectionIsNarrow() {
@@ -404,75 +445,82 @@ final class SetupEngineCoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
-    func testOldMarkerFilesAreIgnoredWhenDetectingExistingWrapper() throws {
-        let temp = try makeTempDir("gamma-marker-ignored")
-        let template = try makeWrapperTemplate(root: temp)
+    func testCustomLaunchBatchesUseMappedGAndFallbackZPaths() throws {
+        let temp = try makeTempDir("gamma-custom-launch-mapped")
+        let outside = try makeTempDir("gamma-custom-launch-outside")
         let app = temp.appendingPathComponent("stalker-gamma.app")
-        try makeExistingWrapper(
-            at: app,
-            engineVersion: "wine sikarugir 10.0 (revision 6)",
-            plist: [
-                "WINEESYNC": "0",
-                "WINEMSYNC": "1",
-                "IsFnToggleEnabled": "1",
-                "MOLTENVKCX": "1",
-                "FASTMATH": "1",
-                "METAL_HUD": "1"
-            ]
-        )
-        let sentinel = app.appendingPathComponent("Contents/Resources/user-file")
-        try "keep".write(to: sentinel, atomically: true, encoding: .utf8)
-        let marker = app.appendingPathComponent(".stalker-gamma-sikarugir-setup")
-        let markerDir = app.appendingPathComponent(".stalker-gamma-sikarugir-markers")
-        try "engine=WS12WineCX24.0.7_7\n".write(to: marker, atomically: true, encoding: .utf8)
-        try FileManager.default.createDirectory(at: markerDir, withIntermediateDirectories: true)
-        try "old".write(to: markerDir.appendingPathComponent("engine"), atomically: true, encoding: .utf8)
+        let gamma = temp.appendingPathComponent("GAMMA")
+        let mappedBin = temp.appendingPathComponent("flatgold/bin")
+        let outsideBin = outside.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: mappedBin, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outsideBin, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
+        let mappedExecutable = mappedBin.appendingPathComponent("AnomalyDX11AVX.exe")
+        let outsideExecutable = outsideBin.appendingPathComponent("AnomalyDX11.exe")
+        FileManager.default.createFile(atPath: mappedExecutable.path, contents: Data())
+        FileManager.default.createFile(atPath: outsideExecutable.path, contents: Data())
 
-        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
-        XCTAssertEqual(engine.detectedEngineForTesting(outputApp: app), SetupDefaults.sikarugir10Engine)
-        try engine.configureWrapperForTesting(
-            request: SetupRequest(outputApp: app.path, engine: SetupDefaults.sikarugir10Engine, updateUSVFS: false),
-            templateSource: template,
-            templateName: "Template-1.0.11"
+        let request = SetupRequest(
+            outputApp: app.path,
+            mo2Path: gamma.appendingPathComponent("ModOrganizer.exe").path,
+            programBatch: "/Mapped.bat",
+            launchBatches: [
+                LaunchBatch(
+                    batchPath: "/Mapped.bat",
+                    executablePath: mappedExecutable.path,
+                    workingDirectory: mappedBin.path
+                ),
+                LaunchBatch(
+                    batchPath: "/Outside.bat",
+                    executablePath: outsideExecutable.path,
+                    workingDirectory: outsideBin.path
+                )
+            ],
+            launchArguments: "--dxgi-old",
+            driveMappingMode: "shorten"
         )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path)
+        try engine.configureDriveMappingAndMO2BatchForTesting(request: request)
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: sentinel.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: markerDir.appendingPathComponent("engine").path))
-        let plist = try readPlist(app.appendingPathComponent("Contents/Info.plist"))
-        XCTAssertEqual(plist["WINEESYNC"] as? String, "0")
-        XCTAssertEqual(plist["WINEMSYNC"] as? String, "1")
-        XCTAssertEqual(plist["IsFnToggleEnabled"] as? String, "1")
-        XCTAssertEqual(plist["MOLTENVKCX"] as? String, "1")
-        XCTAssertEqual(plist["FASTMATH"] as? String, "1")
-        XCTAssertEqual(plist["METAL_HUD"] as? String, "1")
+        let driveC = app.appendingPathComponent("Contents/SharedSupport/prefix/drive_c")
+        let mappedBatch = try String(contentsOf: driveC.appendingPathComponent("Mapped.bat"))
+        XCTAssertContains(mappedBatch, #"start "" /D "G:\flatgold\bin" "G:\flatgold\bin\AnomalyDX11AVX.exe" --dxgi-old"#)
+        let modOrganizerBatch = try String(contentsOf: driveC.appendingPathComponent("mo2.bat"))
+        XCTAssertFalse(modOrganizerBatch.contains("--dxgi-old"))
+
+        let outsideWindowsDirectory = "Z:" + outsideBin.path.replacingOccurrences(of: "/", with: "\\")
+        let outsideWindowsExecutable = "Z:" + outsideExecutable.path.replacingOccurrences(of: "/", with: "\\")
+        let outsideBatch = try String(contentsOf: driveC.appendingPathComponent("Outside.bat"))
+        XCTAssertContains(outsideBatch, #"start "" /D "\#(outsideWindowsDirectory)" "\#(outsideWindowsExecutable)""#)
+        XCTAssertFalse(outsideBatch.contains("--dxgi-old"))
+
         try? FileManager.default.removeItem(at: temp)
+        try? FileManager.default.removeItem(at: outside)
     }
 
-    func testEngineChangeRecreatesExistingWrapperFromWineVersion() throws {
-        let temp = try makeTempDir("gamma-engine-recreate")
+    func testExistingTargetIsRejectedWithoutReplacement() throws {
+        let temp = try makeTempDir("gamma-existing-target")
         let template = try makeWrapperTemplate(root: temp)
-        let templateSentinel = template.appendingPathComponent("Contents/Resources/template-file")
-        try "template".write(to: templateSentinel, atomically: true, encoding: .utf8)
         let app = temp.appendingPathComponent("stalker-gamma.app")
-        try makeExistingWrapper(at: app, engineVersion: "wine cx 24.0.7")
-        let oldSentinel = app.appendingPathComponent("Contents/Resources/old-file")
-        try "old".write(to: oldSentinel, atomically: true, encoding: .utf8)
-        try "engine=WS12WineSikarugir10.0_6\n".write(
-            to: app.appendingPathComponent(".stalker-gamma-sikarugir-setup"),
-            atomically: true,
-            encoding: .utf8
-        )
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+        let sentinel = app.appendingPathComponent("user-file")
+        try "keep".write(to: sentinel, atomically: true, encoding: .utf8)
 
         let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
-        try engine.configureWrapperForTesting(
-            request: SetupRequest(outputApp: app.path, engine: SetupDefaults.sikarugir10Engine, updateUSVFS: false),
-            templateSource: template,
-            templateName: "Template-1.0.11"
-        )
+        var errorDescription = ""
+        do {
+            try engine.configureWrapperForTesting(
+                request: SetupRequest(outputApp: app.path, updateUSVFS: false),
+                templateSource: template,
+                templateName: "Template-1.0.11"
+            )
+        } catch {
+            errorDescription = String(describing: error)
+        }
 
-        XCTAssertFalse(FileManager.default.fileExists(atPath: oldSentinel.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: app.appendingPathComponent("Contents/Resources/template-file").path))
+        XCTAssertContains(errorDescription, "target already exists")
+        XCTAssertEqual(try String(contentsOf: sentinel), "keep")
         try? FileManager.default.removeItem(at: temp)
     }
 
@@ -626,33 +674,6 @@ final class SetupEngineCoreTests {
         return template
     }
 
-    private func makeExistingWrapper(
-        at app: URL,
-        engineVersion: String,
-        plist: [String: Any] = [:]
-    ) throws {
-        let contents = app.appendingPathComponent("Contents")
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("Configure.app"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("MacOS"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("Resources"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("SharedSupport/wine"), withIntermediateDirectories: true)
-        var values: [String: Any] = [
-            "Program Name and Path": "/mo2.bat",
-            "D3DMETAL": "1",
-            "DXVK": "0",
-            "DXMT": "0"
-        ]
-        for (key, value) in plist {
-            values[key] = value
-        }
-        try writePlist(values, to: contents.appendingPathComponent("Info.plist"))
-        try engineVersion.write(
-            to: contents.appendingPathComponent("SharedSupport/wine/version"),
-            atomically: true,
-            encoding: .utf8
-        )
-    }
-
     private func makeD3DMetalPayload(at root: URL, version: String, marker: String) throws {
         try FileManager.default.createDirectory(
             at: root.appendingPathComponent("external/D3DMetal.framework/Resources"),
@@ -680,11 +701,6 @@ final class SetupEngineCoreTests {
         let data = try PropertyListSerialization.data(fromPropertyList: values, format: .xml, options: 0)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-    }
-
-    private func readPlist(_ url: URL) throws -> [String: Any] {
-        let data = try Data(contentsOf: url)
-        return try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
     }
 
     private func bookmarkTarget(_ alias: URL) -> URL? {

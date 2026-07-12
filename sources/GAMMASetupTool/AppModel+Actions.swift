@@ -7,6 +7,24 @@ import GAMMASetupCore
 #endif
 
 extension AppModel {
+    // MARK: - Saved Settings
+
+    private var settingsURL: URL? {
+        AppSettingsStore.defaultSettingsURL()
+    }
+
+    func loadSettings() {
+        manualModOrganizerPath = AppSettingsStore.loadManualModOrganizerPath(from: settingsURL)
+    }
+
+    func saveSettings(gammaPath: String) {
+        do {
+            try AppSettingsStore.save(gammaPath: gammaPath, to: settingsURL)
+        } catch {
+            preflightError = "Could not save settings: \(error.localizedDescription)"
+        }
+    }
+
     // MARK: - Selection
 
     func chooseInstallDirectory() {
@@ -18,7 +36,6 @@ extension AppModel {
         panel.directoryURL = URL(fileURLWithPath: installDirectory)
         if panel.runModal() == .OK, let url = panel.url {
             installDirectory = url.path
-            targetAppPathDidChange()
         }
     }
 
@@ -55,49 +72,12 @@ extension AppModel {
         _ = chooseModOrganizerFolder()
     }
 
-    @discardableResult
-    func chooseExistingWrapper() -> Bool {
-        let panel = NSOpenPanel()
-        panel.title = "Select Existing Wrapper"
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.canCreateDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.treatsFilePackagesAsDirectories = false
-        panel.allowedContentTypes = [.applicationBundle]
-        panel.directoryURL = URL(fileURLWithPath: installDirectory)
-        guard panel.runModal() == .OK, let url = panel.url else { return false }
-        return selectExistingWrapper(at: url)
-    }
-
-    @discardableResult
-    func selectExistingWrapper(at url: URL) -> Bool {
-        guard let selection = AppSettingsStore.wrapperSelection(from: url) else {
-            return false
-        }
-        installDirectory = selection.installDirectory
-        appName = selection.appName
-        selectedExistingWrapperPath = URL(fileURLWithPath: outputAppPath).standardizedFileURL.path
-        targetAppPathDidChange()
-
-        if let inferred = inferredModOrganizerPathFromCurrentWrapper() {
-            manualModOrganizerPath = inferred
-            modOrganizerSelectionError = ""
-            saveSettings(gammaPath: URL(fileURLWithPath: inferred).deletingLastPathComponent().path)
-        } else {
-            manualModOrganizerPath = ""
-            modOrganizerSelectionError = "Select the ModOrganizer folder used by this wrapper."
-        }
-        return true
-    }
-
     func prepareNewWrapperFlow() {
         appName = "stalker-gamma"
         installDirectory = SetupConfiguration.defaultInstallDirectory
         driveMappingMode = "preserve"
-        selectedExistingWrapperPath = ""
+        useDefaultLaunchConfiguration()
         modOrganizerSelectionError = ""
-        targetAppPathDidChange()
     }
 
     func chooseLaunchExecutable() {
@@ -119,23 +99,31 @@ extension AppModel {
         let detectedModOrganizerPath = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
         if let detectedModOrganizerPath,
            URL(fileURLWithPath: detectedModOrganizerPath).standardizedFileURL == url.standardizedFileURL {
-            programBatch = "/mo2.bat"
-            launchBatches.removeAll()
+            useModOrganizerLaunch()
         } else {
             setLaunchExecutable(url.path)
         }
+    }
+
+    func useModOrganizerLaunch() {
+        programBatch = "/mo2.bat"
+        launchBatches.removeAll()
+    }
+
+    func useDefaultLaunchConfiguration() {
+        useModOrganizerLaunch()
+        launchArguments = ""
     }
 
     func setLaunchExecutable(_ executablePath: String) {
         let executable = URL(fileURLWithPath: executablePath)
         let batchPath = uniqueBatchPath(for: executable)
         let detectedMO2 = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
-        let usesMOEnv: Bool
-        if let detectedMO2 {
-            usesMOEnv = URL(fileURLWithPath: detectedMO2).standardizedFileURL == executable.standardizedFileURL
-        } else {
-            usesMOEnv = executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
-        }
+        let matchesDetectedMO2 = detectedMO2.map {
+            URL(fileURLWithPath: $0).standardizedFileURL == executable.standardizedFileURL
+        } ?? false
+        let usesMOEnv = matchesDetectedMO2
+            || executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
         let batch = LaunchBatch(
             batchPath: batchPath,
             executablePath: executablePath,
@@ -146,12 +134,36 @@ extension AppModel {
         programBatch = batch.batchPath
     }
 
+    private func normalizedBatchPath(_ path: String) -> String {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "/mo2.bat" }
+        return trimmed.hasPrefix("/") ? trimmed : "/" + trimmed
+    }
+
+    private func uniqueBatchPath(for executable: URL) -> String {
+        let folderName = executable
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .lastPathComponent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let executableName = executable.deletingPathExtension().lastPathComponent.lowercased()
+        var name = folderName.isEmpty ? executable.deletingPathExtension().lastPathComponent : folderName
+        if executableName.contains("avx") {
+            name += " - AVX"
+        }
+        var candidate = normalizedBatchPath("\(name).bat")
+        var index = 2
+        let existing = Set(["/mo2.bat"] + launchBatches.map(\.batchPath))
+        while existing.contains(candidate) {
+            candidate = normalizedBatchPath("\(name) \(index).bat")
+            index += 1
+        }
+        return candidate
+    }
+
     func create() async -> Bool {
-        let startedWithExistingWrapper = outputAppExists
         isRunning = true
-        createModeOverride = plannedCreateModeLabel
-        currentSettingsOverride = startedWithExistingWrapper ? currentManagedSettings() : nil
-        frozenSetupSummaryItems = makeSetupSummaryItems(current: [:], includeCurrent: false)
+        frozenSetupSummaryItems = setupSummaryItems
         installStageIndex = 0
         installStageCompletedIndex = -1
         installFailed = false
@@ -174,8 +186,6 @@ extension AppModel {
                 logText += "\nerror: setup exited while running \(installStageName(at: installStageIndex)). Attach this log in Discord.\n"
             }
             if result.exitCode == 0 {
-                currentSettingsOverride = nil
-                createModeOverride = nil
                 frozenSetupSummaryItems = nil
                 installStageIndex = -1
                 installStageCompletedIndex = -1
@@ -198,8 +208,6 @@ extension AppModel {
         savedLogPath = ""
         statusText = "Ready"
         progress = 0
-        createModeOverride = nil
-        currentSettingsOverride = nil
         frozenSetupSummaryItems = nil
         installStageIndex = -1
         installStageCompletedIndex = -1

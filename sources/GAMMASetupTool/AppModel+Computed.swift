@@ -14,7 +14,7 @@ extension AppModel {
     }
 
     var winetricksWrapperState: WinetricksWrapperState {
-        outputAppExists ? .needsUpdate : .planned
+        .planned
     }
 
     // MARK: - Configuration
@@ -29,6 +29,7 @@ extension AppModel {
             installGPTK4Binaries: installGPTK4Binaries,
             programBatch: programBatch,
             launchBatches: launchBatches,
+            launchArguments: launchArguments,
             saveVerboseLog: saveVerboseLog,
             driveMappingMode: driveMappingMode,
             displayMode: displayMode,
@@ -37,8 +38,7 @@ extension AppModel {
             customDisplayResolutionHeight: customDisplayResolutionHeight,
             manualModOrganizerPath: manualModOrganizerPath,
             preflight: preflight,
-            detectedDisplay: detectedDisplay,
-            outputAppExists: outputAppExists
+            detectedDisplay: detectedDisplay
         )
     }
 
@@ -61,62 +61,8 @@ extension AppModel {
         SetupConfiguration(appName: appName, installDirectory: installDirectory).outputAppPath
     }
 
-    var outputAppExists: Bool {
-        FileManager.default.fileExists(atPath: outputAppPath)
-    }
-
-    var hasSelectedExistingWrapper: Bool {
-        !selectedExistingWrapperPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && FileManager.default.fileExists(atPath: selectedExistingWrapperPath)
-    }
-
-    var createModeLabel: String {
-        createModeOverride ?? plannedCreateModeLabel
-    }
-
-    var plannedCreateModeLabel: String {
-        if unsupportedExistingWrapperEngine != nil {
-            return "Unsupported wrapper"
-        }
-        if outputAppExists {
-            return engineRecreateWarning == nil ? "Update existing wrapper" : "Recreate wrapper"
-        }
-        return "Create new wrapper"
-    }
-
     var wrapperStageTitle: String {
-        switch createModeLabel {
-        case "Update existing wrapper":
-            return "Update wrapper"
-        case "Recreate wrapper":
-            return "Recreate wrapper"
-        case "Unsupported wrapper":
-            return "Unsupported wrapper"
-        default:
-            return "Create wrapper"
-        }
-    }
-
-    var unsupportedExistingWrapperEngine: String? {
-        guard outputAppExists else { return nil }
-        let current = currentWrapperEngineLabel()
-        return SetupConfiguration.supportsExistingEngineLabel(current) ? nil : current
-    }
-
-    var engineRecreateWarning: String? {
-        guard outputAppExists else { return nil }
-        if let unsupportedExistingWrapperEngine {
-            return "Unsupported engine: \(unsupportedExistingWrapperEngine). This wrapper cannot be updated."
-        }
-        let current = currentWrapperEngineLabel()
-        guard current != engineLabel else { return nil }
-        return "Engine change requires full recreation of wrapper."
-    }
-
-    var existingWrapperSettingsActive: Bool {
-        outputAppExists
-            && existingWrapperSettingsDetected
-            && appliedWrapperSettingsPath == outputAppPath
+        "Create wrapper"
     }
 
     var rendererLabel: String {
@@ -132,7 +78,7 @@ extension AppModel {
     }
 
     var wrapperNameIsValid: Bool {
-        configuration.wrapperNameIsValid
+        configuration.wrapperNameIsValid && !FileManager.default.fileExists(atPath: outputAppPath)
     }
 
     var wrapperNameValidationMessage: String {
@@ -142,6 +88,9 @@ extension AppModel {
         }
         if !SetupConfiguration.isValidWrapperName(appName) {
             return "Use a name without / or : characters."
+        }
+        if FileManager.default.fileExists(atPath: outputAppPath) {
+            return "An app with this name already exists. Choose another name."
         }
         return ""
     }
@@ -153,11 +102,39 @@ extension AppModel {
     var setupReady: Bool {
         configuration.createFlowEnvironmentOK
             && driveMappingReady
-            && unsupportedExistingWrapperEngine == nil
+            && wrapperNameIsValid
+            && selectedLaunchExecutableFound
+            && configuration.launchArgumentsAreValid
     }
 
     var selectedModOrganizerExecutableFound: Bool {
         configuration.selectedModOrganizerExecutableFound
+    }
+
+    var selectedLaunchExecutablePath: String {
+        configuration.selectedLaunchExecutablePath
+    }
+
+    var selectedLaunchExecutableLabel: String {
+        configuration.selectedLaunchExecutableLabel
+    }
+
+    var selectedLaunchExecutableFound: Bool {
+        configuration.selectedLaunchExecutableFound
+    }
+
+    var launchConfigurationIsValid: Bool {
+        selectedLaunchExecutableFound && configuration.launchArgumentsAreValid
+    }
+
+    var launchSelectionMessage: String {
+        if !configuration.launchArgumentsAreValid {
+            return "Launch flags must be a single line."
+        }
+        if !selectedLaunchExecutableFound {
+            return "Selected launch executable was not found."
+        }
+        return "The executable and flags are written to the wrapper's launch batch."
     }
 
     var selectedModOrganizerDetail: String {
@@ -183,16 +160,7 @@ extension AppModel {
     }
 
     var primaryButtonTitle: String {
-        switch createModeLabel {
-        case "Update existing wrapper":
-            return "Update GAMMA wrapper"
-        case "Recreate wrapper":
-            return "Recreate GAMMA wrapper"
-        case "Unsupported wrapper":
-            return "Unsupported wrapper"
-        default:
-            return "Create GAMMA wrapper"
-        }
+        "Create GAMMA wrapper"
     }
 
     var createHeaderTitle: String {
@@ -219,59 +187,58 @@ extension AppModel {
         if let frozenSetupSummaryItems {
             return frozenSetupSummaryItems
         }
-        let current = currentSettingsOverride ?? (outputAppExists ? currentManagedSettings() : [:])
-        return makeSetupSummaryItems(current: current, includeCurrent: true)
+        return makeSetupSummaryItems()
     }
 
     var minimalSetupSummaryItems: [SetupSummaryItem] {
         var rows = [
-            SetupSummaryItem(label: "App", planned: outputAppPath, current: nil),
-            SetupSummaryItem(label: "ModOrganizer", planned: configuration.selectedLaunchExecutablePath, current: nil),
-            SetupSummaryItem(label: "Engine", planned: engineLabel, current: nil),
-            SetupSummaryItem(label: "Renderer", planned: rendererLabel, current: nil)
+            SetupSummaryItem(label: "App", planned: outputAppPath),
+            SetupSummaryItem(label: "ModOrganizer", planned: configuration.selectedLaunchExecutablePath),
+            SetupSummaryItem(label: "Engine", planned: engineLabel),
+            SetupSummaryItem(label: "Renderer", planned: rendererLabel)
         ]
         if installGPTK4Binaries {
-            rows.append(SetupSummaryItem(label: "GPTK4 binaries", planned: "Install or update bundled files", current: nil))
+            rows.append(SetupSummaryItem(label: "GPTK4 binaries", planned: "Install or update bundled files"))
         }
         if updateUSVFS {
-            rows.append(SetupSummaryItem(label: "ModOrganizer usvfs", planned: "Update binaries", current: nil))
+            rows.append(SetupSummaryItem(label: "ModOrganizer usvfs", planned: "Update binaries"))
         }
-        rows.append(SetupSummaryItem(label: "Installation", planned: "Default settings", current: nil))
+        rows.append(SetupSummaryItem(label: "Installation", planned: "Default settings"))
         return rows
     }
 
-    func makeSetupSummaryItems(current: [String: String], includeCurrent: Bool) -> [SetupSummaryItem] {
+    func makeSetupSummaryItems() -> [SetupSummaryItem] {
         var rows: [SetupSummaryItem] = []
 
-        func add(_ label: String, _ planned: String, currentKey: String? = nil) {
+        func add(_ label: String, _ planned: String) {
             rows.append(SetupSummaryItem(
                 label: label,
-                planned: planned,
-                current: includeCurrent ? currentKey.flatMap { current[$0] } : nil
+                planned: planned
             ))
         }
 
         add("App", outputAppPath)
-        add("Executable", configuration.selectedLaunchExecutablePath, currentKey: "launchExecutable")
-        if let engineRecreateWarning {
-            add("Warning", engineRecreateWarning)
+        add("Executable", configuration.selectedLaunchExecutablePath)
+        let arguments = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !arguments.isEmpty {
+            add("Flags", arguments)
         }
-        add("Engine", engineLabel, currentKey: "engine")
-        add("Renderer", rendererLabel, currentKey: "renderer")
+        add("Engine", engineLabel)
+        add("Renderer", rendererLabel)
 
         if driveMappingMode == "shorten" {
-            add("Drive mapping", plannedWineDriveMapping, currentKey: "driveMapping")
+            add("Drive mapping", plannedWineDriveMapping)
         }
 
         if selectedDisplayResolution != nil {
-            add("Wine display", displayResolutionLabel, currentKey: "wineDisplay")
+            add("Wine display", displayResolutionLabel)
         }
 
         if updateUSVFS {
-            add("ModOrganizer usvfs", "Update binaries", currentKey: "usvfs")
+            add("ModOrganizer usvfs", "Update binaries")
         }
         if installGPTK4Binaries {
-            add("GPTK4 binaries", "Install", currentKey: "gptk4")
+            add("GPTK4 binaries", "Install")
         }
 
         return rows
@@ -305,5 +272,9 @@ extension AppModel {
             return "Select the ModOrganizer folder."
         }
         return ""
+    }
+
+    func updateDetectedDisplayDefaults() {
+        detectedDisplay = MacDisplaySettings.detectMainDisplay()
     }
 }

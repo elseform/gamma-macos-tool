@@ -10,15 +10,6 @@ struct SetupConfiguration {
     static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
-    static let supportedExistingEngineLabels: Set<String> = [
-        "Wine CX 24.0.7",
-        "Wine Sikarugir 10.0"
-    ]
-
-    static func supportsExistingEngineLabel(_ label: String) -> Bool {
-        supportedExistingEngineLabels.contains(label)
-    }
-
     var appName = "stalker-gamma"
     var installDirectory = SetupConfiguration.defaultInstallDirectory
     var engine = SetupConfiguration.defaultEngine
@@ -27,6 +18,7 @@ struct SetupConfiguration {
     var installGPTK4Binaries = true
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
+    var launchArguments = ""
     var saveVerboseLog = true
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
@@ -36,7 +28,6 @@ struct SetupConfiguration {
     var manualModOrganizerPath = ""
     var preflight: Preflight?
     var detectedDisplay: MacDisplaySettings?
-    var outputAppExists = false
 
     var outputAppPath: String {
         let cleanName = appName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -69,6 +60,19 @@ struct SetupConfiguration {
     var selectedLaunchExecutableLabel: String {
         if programBatch == "/mo2.bat" { return "ModOrganizer" }
         return URL(fileURLWithPath: selectedLaunchExecutablePath).lastPathComponent
+    }
+
+    var selectedLaunchExecutableFound: Bool {
+        if programBatch == "/mo2.bat" {
+            return selectedModOrganizerExecutableFound
+        }
+        let path = selectedLaunchExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        return URL(fileURLWithPath: path).pathExtension.caseInsensitiveCompare("exe") == .orderedSame
+            && FileManager.default.fileExists(atPath: path)
+    }
+
+    var launchArgumentsAreValid: Bool {
+        !SetupLaunchBatchTools.containsLineBreak(launchArguments)
     }
 
     var rendererLabel: String {
@@ -169,6 +173,7 @@ struct SetupConfiguration {
 
     var setupRequest: SetupRequest {
         let modOrganizerPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let arguments = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolution = selectedDisplayResolution
 
         return SetupRequest(
@@ -181,6 +186,7 @@ struct SetupConfiguration {
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,
+            launchArguments: arguments.isEmpty ? nil : arguments,
             driveMappingMode: driveMappingMode,
             displayResolutionWidth: resolution?.width,
             displayResolutionHeight: resolution?.height,

@@ -102,7 +102,10 @@ public enum WinetricksTools {
 }
 
 public enum SetupLaunchBatchTools {
-    public static func modOrganizerCommandLines(executableWindowsPath: String) -> [String] {
+    public static func modOrganizerCommandLines(
+        executableWindowsPath: String,
+        launchArguments: String = ""
+    ) -> [String] {
         let workingDirectory = SetupPathTools.windowsDirectoryPath(executableWindowsPath)
         return [
             "@echo off",
@@ -111,7 +114,10 @@ public enum SetupLaunchBatchTools {
             #"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#,
             "",
             #"cd /d "\#(workingDirectory.replacingOccurrences(of: "/", with: "\\"))""#,
-            #"start "" "\#(executableWindowsPath.replacingOccurrences(of: "/", with: "\\"))""#
+            appendingArguments(
+                to: #"start "" "\#(executableWindowsPath.replacingOccurrences(of: "/", with: "\\"))""#,
+                launchArguments: launchArguments
+            )
         ]
     }
 
@@ -133,7 +139,8 @@ public enum SetupLaunchBatchTools {
     public static func commandLines(
         executableWindowsPath: String,
         workingDirectoryWindowsPath: String,
-        usesModOrganizerEnvironment: Bool
+        usesModOrganizerEnvironment: Bool,
+        launchArguments: String = ""
     ) -> [String] {
         var lines = ["@echo off"]
         if usesModOrganizerEnvironment {
@@ -144,8 +151,20 @@ public enum SetupLaunchBatchTools {
             ]
             lines.append("")
         }
-        lines.append(#"start "" /D "\#(workingDirectoryWindowsPath)" "\#(executableWindowsPath)""#)
+        lines.append(appendingArguments(
+            to: #"start "" /D "\#(workingDirectoryWindowsPath)" "\#(executableWindowsPath)""#,
+            launchArguments: launchArguments
+        ))
         return lines
+    }
+
+    public static func containsLineBreak(_ launchArguments: String) -> Bool {
+        launchArguments.rangeOfCharacter(from: .newlines) != nil
+    }
+
+    private static func appendingArguments(to command: String, launchArguments: String) -> String {
+        let trimmed = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? command : command + " " + trimmed
     }
 }
 

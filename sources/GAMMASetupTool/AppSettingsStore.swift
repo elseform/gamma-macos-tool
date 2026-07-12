@@ -70,14 +70,4 @@ enum AppSettingsStore {
             && fileManager.fileExists(atPath: url.path)
     }
 
-    static func wrapperSelection(from appURL: URL) -> (appName: String, installDirectory: String)? {
-        let standardized = appURL.standardizedFileURL
-        guard standardized.pathExtension.caseInsensitiveCompare("app") == .orderedSame else {
-            return nil
-        }
-        let rawName = standardized.deletingPathExtension().lastPathComponent
-        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return nil }
-        return (name, standardized.deletingLastPathComponent().path)
-    }
 }
