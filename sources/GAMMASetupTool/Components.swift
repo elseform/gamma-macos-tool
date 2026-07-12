@@ -147,11 +147,6 @@ struct WizardCard<Content: View>: View {
     }
 }
 
-enum SetupFlowIntent {
-    case create
-    case update
-}
-
 enum SetupInstallMode {
     case defaultInstall
     case advanced
@@ -160,7 +155,6 @@ enum SetupInstallMode {
 enum WizardStep: Int, CaseIterable, Identifiable {
     case welcome
     case wrapperName
-    case existingWrapper
     case environment
     case installChoice
     case setup
@@ -173,7 +167,6 @@ enum WizardStep: Int, CaseIterable, Identifiable {
         switch self {
         case .welcome: return "Welcome"
         case .wrapperName: return "Name"
-        case .existingWrapper: return "Wrapper"
         case .environment: return "ModOrganizer"
         case .installChoice: return "Install"
         case .setup: return "Setup"
@@ -186,7 +179,6 @@ enum WizardStep: Int, CaseIterable, Identifiable {
         switch self {
         case .welcome: return "sparkles"
         case .wrapperName: return "text.cursor"
-        case .existingWrapper: return "app"
         case .environment: return "folder"
         case .installChoice: return "list.bullet.rectangle"
         case .setup: return "slider.horizontal.3"
@@ -304,20 +296,12 @@ struct SetupSummaryRow: View {
 
     var body: some View {
         GridRow {
-            HStack(spacing: 5) {
-                Text(item.label)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                if item.changed {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption)
-                        .foregroundStyle(SetupStatusTone.accent.color)
-                        .help("This value will be updated.")
-                }
-            }
-            Text(item.displayValue)
+            Text(item.label)
                 .font(.body)
-                .foregroundStyle(item.changed ? SetupStatusTone.accent.color : .primary)
+                .foregroundStyle(.secondary)
+            Text(item.planned)
+                .font(.body)
+                .foregroundStyle(.primary)
                 .textSelection(.enabled)
                 .lineLimit(2)
                 .truncationMode(.middle)

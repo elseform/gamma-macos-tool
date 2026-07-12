@@ -10,15 +10,6 @@ struct SetupConfiguration {
     static let crossOverEngine = SetupDefaults.crossOverEngine
     static let sikarugir10Engine = SetupDefaults.sikarugir10Engine
     static let supportedEngines = SetupDefaults.supportedEngines
-    static let supportedExistingEngineLabels: Set<String> = [
-        "Wine CX 24.0.7",
-        "Wine Sikarugir 10.0"
-    ]
-
-    static func supportsExistingEngineLabel(_ label: String) -> Bool {
-        supportedExistingEngineLabels.contains(label)
-    }
-
     var appName = "stalker-gamma"
     var installDirectory = SetupConfiguration.defaultInstallDirectory
     var engine = SetupConfiguration.defaultEngine
@@ -36,7 +27,6 @@ struct SetupConfiguration {
     var manualModOrganizerPath = ""
     var preflight: Preflight?
     var detectedDisplay: MacDisplaySettings?
-    var outputAppExists = false
 
     var outputAppPath: String {
         let cleanName = appName.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView: View {
     @StateObject var model = AppModel()
     @State var step: WizardStep = .welcome
-    @State var flowIntent: SetupFlowIntent?
     @State var installMode: SetupInstallMode?
     @State var environmentCompleted = false
     @State var furthestUnlockedStep = WizardStep.setup
@@ -32,7 +31,6 @@ struct ContentView: View {
         .task {
             guard !isXcodePreview else { return }
             model.updateDetectedDisplayDefaults()
-            model.applyExistingWrapperSettingsIfNeeded()
         }
         .onChange(of: model.isRunning) { isRunning in
             if isRunning {

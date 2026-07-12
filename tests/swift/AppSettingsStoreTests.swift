@@ -45,19 +45,6 @@ final class AppSettingsStoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
-    func testWrapperSelectionSplitsAppNameAndDirectory() throws {
-        let temp = try makeTempDir("gamma-wrapper-selection")
-        let wrapper = temp.appendingPathComponent("Custom GAMMA.app")
-        try FileManager.default.createDirectory(at: wrapper, withIntermediateDirectories: true)
-
-        let selection = AppSettingsStore.wrapperSelection(from: wrapper)
-
-        XCTAssertEqual(selection?.appName, "Custom GAMMA")
-        XCTAssertEqual(selection?.installDirectory, temp.standardizedFileURL.path)
-        XCTAssertNil(AppSettingsStore.wrapperSelection(from: temp.appendingPathComponent("not-wrapper")))
-        try? FileManager.default.removeItem(at: temp)
-    }
-
     func testAppSettingsSaveAndLoadManualModOrganizerPath() throws {
         let temp = try makeTempDir("gamma-settings-save")
         let settingsURL = temp.appendingPathComponent("settings/settings.json")

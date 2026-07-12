@@ -15,19 +15,6 @@ struct SetupSummaryItem: Identifiable {
     var id: String { label }
     let label: String
     let planned: String
-    let current: String?
-
-    var changed: Bool {
-        guard let current else { return false }
-        return current != planned
-    }
-
-    var displayValue: String {
-        if let current, current != planned {
-            return "\(current) -> \(planned)"
-        }
-        return planned
-    }
 }
 
 final class OutputBuffer: @unchecked Sendable {
@@ -67,7 +54,6 @@ final class AppModel: ObservableObject {
     @Published var detectedDisplay: MacDisplaySettings?
     @Published var manualModOrganizerPath = ""
     @Published var modOrganizerSelectionError = ""
-    @Published var selectedExistingWrapperPath = ""
     @Published var preflight: Preflight?
     @Published var preflightError = ""
     @Published var logText = ""
@@ -76,14 +62,10 @@ final class AppModel: ObservableObject {
     @Published var isRunning = false
     @Published var showOutput = false
     @Published var progress = 0.0
-    @Published var createModeOverride: String?
-    @Published var currentSettingsOverride: [String: String]?
     @Published var frozenSetupSummaryItems: [SetupSummaryItem]?
     @Published var installStageIndex = -1
     @Published var installStageCompletedIndex = -1
     @Published var installFailed = false
-    @Published var existingWrapperSettingsDetected = false
-    var appliedWrapperSettingsPath: String?
     var receivedInstallStageEvents = false
     var pendingEngineEventText = ""
 
@@ -94,13 +76,6 @@ final class AppModel: ObservableObject {
         "d3dcompiler_47",
         "vcrun2026"
     ]
-
-    let requiredDllOverrides: [String: String] = SetupRegistryDefaults.requiredDllOverrides.reduce(into: [:]) { overrides, entry in
-        let key = entry.key
-            .trimmingCharacters(in: CharacterSet(charactersIn: "*"))
-            .lowercased()
-        overrides[key] = entry.value
-    }
 
     init() {
         loadSettings()

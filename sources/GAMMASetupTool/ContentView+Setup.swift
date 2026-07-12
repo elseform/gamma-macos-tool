@@ -27,9 +27,6 @@ struct SetupPage: View {
         .frame(width: Layout.setupContentWidth, alignment: .topLeading)
         .disabled(!model.selectedModOrganizerExecutableFound || model.isRunning)
         .opacity((model.selectedModOrganizerExecutableFound && !model.isRunning) ? 1 : 0.45)
-        .onChange(of: model.outputAppPath) { _ in
-            model.targetAppPathDidChange()
-        }
     }
 
     // MARK: - App And Prefix
@@ -64,12 +61,6 @@ struct SetupPage: View {
                 .pickerStyle(.segmented)
             }
 
-            if let unsupported = model.unsupportedExistingWrapperEngine {
-                Text("This wrapper uses an unsupported engine (\(unsupported)) and cannot be updated by this tool.")
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
     }
 
@@ -217,10 +208,6 @@ struct SetupPage: View {
 
     private var winetricksStatusIcon: String {
         switch model.winetricksWrapperState {
-        case .installed:
-            return "checkmark.circle.fill"
-        case .needsUpdate:
-            return "arrow.triangle.2.circlepath.circle.fill"
         case .planned:
             return "arrow.down.circle.fill"
         }
@@ -228,10 +215,6 @@ struct SetupPage: View {
 
     private var winetricksStatusText: String {
         switch model.winetricksWrapperState {
-        case .installed:
-            return "Present"
-        case .needsUpdate:
-            return "Verify"
         case .planned:
             return model.requiredWinetricksSummary
         }

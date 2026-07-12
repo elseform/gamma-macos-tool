@@ -1,6 +1,6 @@
 # Agent Workflow
 
-This repository builds a native macOS SwiftUI setup tool for creating and updating a Sikarugir wrapper around an existing S.T.A.L.K.E.R. G.A.M.M.A. install. Treat it as a user-facing installer: small behavioral changes can affect real game installs, Wine prefixes, downloaded archives, and wrapper settings.
+This repository builds a native macOS SwiftUI setup tool for creating a Sikarugir wrapper around an existing S.T.A.L.K.E.R. G.A.M.M.A. install. Treat it as a user-facing installer: small behavioral changes can affect real game installs, Wine prefixes, downloaded archives, and wrapper settings.
 
 ## Current Project State
 
@@ -30,7 +30,6 @@ This repository builds a native macOS SwiftUI setup tool for creating and updati
    - Put derived UI state in `AppModel+Computed.swift`.
    - Put selection and flow actions in `AppModel+Actions.swift`.
    - Put setup request construction, process execution, and event handling in `AppModel+Engine.swift`.
-   - Put existing wrapper marker/plist/registry detection in `AppModel+WrapperSettings.swift`.
    - Put cross-target setup data and behavior in `GAMMASetupCore`.
    - Put CLI argument parsing and top-level command dispatch in `GAMMASetupEngine/main.swift`.
 
@@ -99,8 +98,7 @@ Prefer `./test.sh` before handing off a code change because it matches this repo
 - Use dry-run behavior, temporary directories, and fake tools for setup engine tests.
 - Do not remove or rewrite user-created wrappers while debugging. Wrapper recreation is user-visible and can destroy local prefix state.
 - Do not change the required `winetricks` group casually. `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026` are the expected wrapper baseline.
-- Do not change managed wrapper marker semantics without updating both the setup engine writer and the GUI wrapper-settings reader.
-- Do not change renderer option semantics without checking all paths: UI controls, `SetupConfiguration`, request construction, engine application, marker writing, wrapper detection, and tests.
+- Do not change renderer option semantics without checking all paths: UI controls, `SetupConfiguration`, request construction, engine application, and tests.
 - Do not write to `user.ltx`. The setup tool reads game resolution for context only.
 - Do not commit build output, logs, module caches, local reports, temporary archives, or generated app bundles.
 - Do not commit local machine paths except in ignored local notes. Repository docs should use placeholders for user-specific paths.
@@ -108,9 +106,7 @@ Prefer `./test.sh` before handing off a code change because it matches this repo
 
 ## Behavior-Sensitive Areas
 
-- Wrapper idempotency: re-running setup for an existing managed wrapper should update settings without unnecessary destruction.
-- Engine-change handling: existing wrappers may need full recreation when the embedded engine changes.
-- Existing wrapper detection: GUI settings are inferred from marker files, Sikarugir plist keys, registry data, and launch batch content.
+- Existing targets: normal setup must refuse to inspect, update, or overwrite an existing app. Explicit engine replacement remains a separate destructive operation.
 - Display settings: forced Wine display mode writes Retina/DPI compatibility keys; default Wine mode removes only keys managed by this tool.
 - Renderer setup: D3DMetal is the default; DXVK and DXMT have separate config and HUD/log options.
 - Short Wine drive mapping: path mapping is based on the detected macOS install path and `ModOrganizer.ini`.
@@ -128,8 +124,7 @@ Prefer `./test.sh` before handing off a code change because it matches this repo
   - a stored/default value in `AppModel` or settings as appropriate
   - request serialization in `AppModel+Engine.swift`
   - backend handling in `GAMMASetupCore` or `GAMMASetupEngine`
-  - existing-wrapper detection if the option should be shown when updating a wrapper
-  - tests for request construction and detection when practical
+  - tests for request construction when practical
 
 ## Testing Rules
 
@@ -145,9 +140,7 @@ Keep this list current. Move items to a task-specific plan when actively working
 
 ### High Priority
 
-- Preserve and expand regression tests around existing wrapper detection, especially marker/plist/registry fallback order.
 - Add focused tests for display mode transitions: forced mode writes managed keys, default mode removes only managed keys, and `user.ltx` remains read-only.
-- Add tests for renderer switching between D3DMetal, DXVK, and DXMT on an existing wrapper so stale config/HUD/log settings do not leak across modes.
 - Keep release packaging reproducible: verify `build.sh` embeds the backend, icons, SVG resources, `usvfs`, and bundled reticle-fix archive after resource changes.
 
 ### Medium Priority

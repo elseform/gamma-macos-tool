@@ -200,10 +200,6 @@ final class SetupConfigurationTests {
     func testEngineLabels() {
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.crossOverEngine).engineLabel, "Wine CX 24.0.7")
         XCTAssertEqual(SetupConfiguration(engine: SetupConfiguration.sikarugir10Engine).engineLabel, "Wine Sikarugir 10.0")
-        XCTAssertTrue(SetupConfiguration.supportsExistingEngineLabel("Wine CX 24.0.7"))
-        XCTAssertTrue(SetupConfiguration.supportsExistingEngineLabel("Wine Sikarugir 10.0"))
-        XCTAssertFalse(SetupConfiguration.supportsExistingEngineLabel("Wine Experimental 11"))
-        XCTAssertFalse(SetupConfiguration.supportsExistingEngineLabel("Unknown"))
     }
 
     func testSetupRequestIncludesVerboseLogOption() {

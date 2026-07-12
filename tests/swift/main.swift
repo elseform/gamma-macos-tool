@@ -104,8 +104,7 @@ run("testModOrganizerBatchUsesWindowsWorkingDirectory", engine.testModOrganizerB
 run("testDefaultModOrganizerBatchDetectionIsNarrow", engine.testDefaultModOrganizerBatchDetectionIsNarrow)
 run("testDefaultInstallUsesWineZMappingWithoutCreatingShortDrive", engine.testDefaultInstallUsesWineZMappingWithoutCreatingShortDrive)
 run("testAdvancedInstallCreatesGMappingWithoutChangingModOrganizerINI", engine.testAdvancedInstallCreatesGMappingWithoutChangingModOrganizerINI)
-run("testOldMarkerFilesAreIgnoredWhenDetectingExistingWrapper", engine.testOldMarkerFilesAreIgnoredWhenDetectingExistingWrapper)
-run("testEngineChangeRecreatesExistingWrapperFromWineVersion", engine.testEngineChangeRecreatesExistingWrapperFromWineVersion)
+run("testExistingTargetIsRejectedWithoutReplacement", engine.testExistingTargetIsRejectedWithoutReplacement)
 run("testWinetricksDetectionReadsRegistryDllOverrides", engine.testWinetricksDetectionReadsRegistryDllOverrides)
 run("testUSVFSInstallerComparesAndReplacesStaleBinaries", engine.testUSVFSInstallerComparesAndReplacesStaleBinaries)
 run("testGPTK4PayloadDetectionAndReplacement", engine.testGPTK4PayloadDetectionAndReplacement)
@@ -116,7 +115,6 @@ run("testManualGammaSelectionFindsDirectModOrganizer", appSettings.testManualGam
 run("testManualGammaSelectionFindsNestedModOrganizer", appSettings.testManualGammaSelectionFindsNestedModOrganizer)
 run("testManualGammaSelectionRejectsInvalidFolder", appSettings.testManualGammaSelectionRejectsInvalidFolder)
 run("testModOrganizerValidationRequiresExecutableNameAndFile", appSettings.testModOrganizerValidationRequiresExecutableNameAndFile)
-run("testWrapperSelectionSplitsAppNameAndDirectory", appSettings.testWrapperSelectionSplitsAppNameAndDirectory)
 run("testAppSettingsSaveAndLoadManualModOrganizerPath", appSettings.testAppSettingsSaveAndLoadManualModOrganizerPath)
 run("testAppSettingsLoadIgnoresMissingAndMalformedFiles", appSettings.testAppSettingsLoadIgnoresMissingAndMalformedFiles)
 
@@ -124,7 +122,6 @@ let tones = SetupStatusToneTests()
 run("testCheckRowTonesMatchEnvironmentColoringRules", tones.testCheckRowTonesMatchEnvironmentColoringRules)
 run("testStatusRowTonesMatchCheckRows", tones.testStatusRowTonesMatchCheckRows)
 run("testWinetricksTonesMatchWrapperState", tones.testWinetricksTonesMatchWrapperState)
-run("testSetupControlToneHighlightsExistingWrapperSettings", tones.testSetupControlToneHighlightsExistingWrapperSettings)
 
 if failures.isEmpty {
     print("\nAll Swift tests passed.")

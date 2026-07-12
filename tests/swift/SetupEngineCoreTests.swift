@@ -404,75 +404,28 @@ final class SetupEngineCoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
-    func testOldMarkerFilesAreIgnoredWhenDetectingExistingWrapper() throws {
-        let temp = try makeTempDir("gamma-marker-ignored")
+    func testExistingTargetIsRejectedWithoutReplacement() throws {
+        let temp = try makeTempDir("gamma-existing-target")
         let template = try makeWrapperTemplate(root: temp)
         let app = temp.appendingPathComponent("stalker-gamma.app")
-        try makeExistingWrapper(
-            at: app,
-            engineVersion: "wine sikarugir 10.0 (revision 6)",
-            plist: [
-                "WINEESYNC": "0",
-                "WINEMSYNC": "1",
-                "IsFnToggleEnabled": "1",
-                "MOLTENVKCX": "1",
-                "FASTMATH": "1",
-                "METAL_HUD": "1"
-            ]
-        )
-        let sentinel = app.appendingPathComponent("Contents/Resources/user-file")
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+        let sentinel = app.appendingPathComponent("user-file")
         try "keep".write(to: sentinel, atomically: true, encoding: .utf8)
-        let marker = app.appendingPathComponent(".stalker-gamma-sikarugir-setup")
-        let markerDir = app.appendingPathComponent(".stalker-gamma-sikarugir-markers")
-        try "engine=WS12WineCX24.0.7_7\n".write(to: marker, atomically: true, encoding: .utf8)
-        try FileManager.default.createDirectory(at: markerDir, withIntermediateDirectories: true)
-        try "old".write(to: markerDir.appendingPathComponent("engine"), atomically: true, encoding: .utf8)
 
         let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
-        XCTAssertEqual(engine.detectedEngineForTesting(outputApp: app), SetupDefaults.sikarugir10Engine)
-        try engine.configureWrapperForTesting(
-            request: SetupRequest(outputApp: app.path, engine: SetupDefaults.sikarugir10Engine, updateUSVFS: false),
-            templateSource: template,
-            templateName: "Template-1.0.11"
-        )
+        var errorDescription = ""
+        do {
+            try engine.configureWrapperForTesting(
+                request: SetupRequest(outputApp: app.path, updateUSVFS: false),
+                templateSource: template,
+                templateName: "Template-1.0.11"
+            )
+        } catch {
+            errorDescription = String(describing: error)
+        }
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: sentinel.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: markerDir.appendingPathComponent("engine").path))
-        let plist = try readPlist(app.appendingPathComponent("Contents/Info.plist"))
-        XCTAssertEqual(plist["WINEESYNC"] as? String, "0")
-        XCTAssertEqual(plist["WINEMSYNC"] as? String, "1")
-        XCTAssertEqual(plist["IsFnToggleEnabled"] as? String, "1")
-        XCTAssertEqual(plist["MOLTENVKCX"] as? String, "1")
-        XCTAssertEqual(plist["FASTMATH"] as? String, "1")
-        XCTAssertEqual(plist["METAL_HUD"] as? String, "1")
-        try? FileManager.default.removeItem(at: temp)
-    }
-
-    func testEngineChangeRecreatesExistingWrapperFromWineVersion() throws {
-        let temp = try makeTempDir("gamma-engine-recreate")
-        let template = try makeWrapperTemplate(root: temp)
-        let templateSentinel = template.appendingPathComponent("Contents/Resources/template-file")
-        try "template".write(to: templateSentinel, atomically: true, encoding: .utf8)
-        let app = temp.appendingPathComponent("stalker-gamma.app")
-        try makeExistingWrapper(at: app, engineVersion: "wine cx 24.0.7")
-        let oldSentinel = app.appendingPathComponent("Contents/Resources/old-file")
-        try "old".write(to: oldSentinel, atomically: true, encoding: .utf8)
-        try "engine=WS12WineSikarugir10.0_6\n".write(
-            to: app.appendingPathComponent(".stalker-gamma-sikarugir-setup"),
-            atomically: true,
-            encoding: .utf8
-        )
-
-        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
-        try engine.configureWrapperForTesting(
-            request: SetupRequest(outputApp: app.path, engine: SetupDefaults.sikarugir10Engine, updateUSVFS: false),
-            templateSource: template,
-            templateName: "Template-1.0.11"
-        )
-
-        XCTAssertFalse(FileManager.default.fileExists(atPath: oldSentinel.path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: app.appendingPathComponent("Contents/Resources/template-file").path))
+        XCTAssertContains(errorDescription, "target already exists")
+        XCTAssertEqual(try String(contentsOf: sentinel), "keep")
         try? FileManager.default.removeItem(at: temp)
     }
 
@@ -626,33 +579,6 @@ final class SetupEngineCoreTests {
         return template
     }
 
-    private func makeExistingWrapper(
-        at app: URL,
-        engineVersion: String,
-        plist: [String: Any] = [:]
-    ) throws {
-        let contents = app.appendingPathComponent("Contents")
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("Configure.app"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("MacOS"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("Resources"), withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: contents.appendingPathComponent("SharedSupport/wine"), withIntermediateDirectories: true)
-        var values: [String: Any] = [
-            "Program Name and Path": "/mo2.bat",
-            "D3DMETAL": "1",
-            "DXVK": "0",
-            "DXMT": "0"
-        ]
-        for (key, value) in plist {
-            values[key] = value
-        }
-        try writePlist(values, to: contents.appendingPathComponent("Info.plist"))
-        try engineVersion.write(
-            to: contents.appendingPathComponent("SharedSupport/wine/version"),
-            atomically: true,
-            encoding: .utf8
-        )
-    }
-
     private func makeD3DMetalPayload(at root: URL, version: String, marker: String) throws {
         try FileManager.default.createDirectory(
             at: root.appendingPathComponent("external/D3DMetal.framework/Resources"),
@@ -680,11 +606,6 @@ final class SetupEngineCoreTests {
         let data = try PropertyListSerialization.data(fromPropertyList: values, format: .xml, options: 0)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
-    }
-
-    private func readPlist(_ url: URL) throws -> [String: Any] {
-        let data = try Data(contentsOf: url)
-        return try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] ?? [:]
     }
 
     private func bookmarkTarget(_ alias: URL) -> URL? {

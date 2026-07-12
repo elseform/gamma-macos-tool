@@ -14,13 +14,6 @@ final class SetupStatusToneTests {
     }
 
     func testWinetricksTonesMatchWrapperState() {
-        XCTAssertEqual(SetupStatusTone.winetricks(.installed), .success)
-        XCTAssertEqual(SetupStatusTone.winetricks(.needsUpdate), .accent)
         XCTAssertEqual(SetupStatusTone.winetricks(.planned), .secondary)
-    }
-
-    func testSetupControlToneHighlightsExistingWrapperSettings() {
-        XCTAssertEqual(SetupStatusTone.setupControls(existingWrapperSettingsActive: true), .warning)
-        XCTAssertEqual(SetupStatusTone.setupControls(existingWrapperSettingsActive: false), .accent)
     }
 }

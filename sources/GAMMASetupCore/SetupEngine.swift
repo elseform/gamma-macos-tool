@@ -162,7 +162,6 @@ struct SetupContext {
     var zRewriteRequired = false
     var driveLetter = "g"
     var driveRoot = ""
-    var updatingExistingWrapper = false
 
     var appSupportDirectory: URL {
         URL(
@@ -378,11 +377,6 @@ public final class GAMMASetupEngine {
         try createMO2Batch(context: &context)
     }
 
-    func detectedEngineForTesting(outputApp: URL) -> String? {
-        let context = SetupContext(request: SetupRequest(outputApp: outputApp.path), executablePath: executablePath)
-        return installedEngineID(context: context)
-    }
-
     func missingDllOverridesForTesting(registry: String) -> [String] {
         missingDllOverrides(in: currentDllOverrides(in: registry))
     }
@@ -498,31 +492,11 @@ public final class GAMMASetupEngine {
 
     private func prepareTargetApp(context: inout SetupContext) throws {
         let app = context.outputApp
-        context.updatingExistingWrapper = false
         if fileManager.fileExists(atPath: app.path) {
-            var isDir: ObjCBool = false
-            fileManager.fileExists(atPath: app.path, isDirectory: &isDir)
-            if !isDir.boolValue {
-                guard context.request.replace else {
-                    throw SetupEngineError.message("target exists but is not an app directory: \(app.path)")
-                }
-                try remove(app, context: context)
-            } else if context.request.replace {
-                try remove(app, context: context)
-            } else if isSikarugirWrapper(context: context) {
-                guard let currentEngine = installedEngineID(context: context) else {
-                    throw SetupEngineError.message("target exists but the Sikarugir engine version could not be detected: \(app.path)")
-                }
-                if currentEngine == context.request.engine {
-                    reporter.log("Configuring existing Sikarugir wrapper at \(app.path)")
-                    context.updatingExistingWrapper = true
-                    return
-                }
-                reporter.log("Rebuilding Sikarugir wrapper at \(app.path) because the engine changed")
-                try remove(app, context: context)
-            } else {
-                throw SetupEngineError.message("target exists but is not a Sikarugir wrapper created from the expected template: \(app.path)")
+            guard context.request.replace else {
+                throw SetupEngineError.message("target already exists; choose a different wrapper name: \(app.path)")
             }
+            try remove(app, context: context)
         }
 
         reporter.log("Creating Sikarugir wrapper at \(app.path)")
@@ -532,28 +506,6 @@ public final class GAMMASetupEngine {
             throw SetupEngineError.message("Sikarugir template source was not found")
         }
         try fileManager.copyItem(at: template, to: app)
-    }
-
-    private func isSikarugirWrapper(context: SetupContext) -> Bool {
-        fileManager.fileExists(atPath: context.contents.appendingPathComponent("Info.plist").path)
-            && directoryExists(context.contents.appendingPathComponent("Configure.app").path)
-            && pathEntryExists(context.contents.appendingPathComponent("MacOS"))
-            && pathEntryExists(context.contents.appendingPathComponent("Resources"))
-    }
-
-    private func installedEngineID(context: SetupContext) -> String? {
-        engineID(fromWineVersion: readText(context.wineDir.appendingPathComponent("version")))
-    }
-
-    private func engineID(fromWineVersion version: String) -> String? {
-        let normalized = version.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if normalized.contains("sikarugir 10.0") && normalized.contains("revision 6") {
-            return SetupDefaults.sikarugir10Engine
-        }
-        if normalized.contains("24.0.7") && (normalized.contains("cx") || normalized.contains("crossover")) {
-            return SetupDefaults.crossOverEngine
-        }
-        return nil
     }
 
     private func ensureAppTemplateLayout(context: SetupContext) throws {
@@ -633,10 +585,8 @@ public final class GAMMASetupEngine {
         plist["Program Name and Path"] = context.request.programBatch
         plist["Program Flags"] = ""
         plist["D3DMETAL"] = renderer == "d3dmetal" ? "1" : "0"
-        if !context.updatingExistingWrapper {
-            plist["WINEESYNC"] = "0"
-            plist["WINEMSYNC"] = "1"
-        }
+        plist["WINEESYNC"] = "0"
+        plist["WINEMSYNC"] = "1"
         plist["DXVK"] = renderer == "dxvk" ? "1" : "0"
         plist["DXMT"] = renderer == "dxmt" ? "1" : "0"
         plist["D9VK"] = "0"
@@ -694,11 +644,6 @@ public final class GAMMASetupEngine {
     }
 
     private func installEngine(context: SetupContext) throws {
-        if installedEngineID(context: context) == context.request.engine,
-           fileManager.isExecutableFile(atPath: context.wineBin.path),
-           !context.request.forceDownload {
-            return
-        }
         reporter.log("Installing Sikarugir engine \(context.request.engine)")
         guard !context.request.dryRun else { return }
         guard let archive = context.engineArchive, fileManager.fileExists(atPath: archive.path) else {
@@ -1018,14 +963,6 @@ public final class GAMMASetupEngine {
         let mo2WinPath = try launchWindowsPath(nativePath: context.mo2Path, context: context)
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
-        if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
-            let existing = (try? String(contentsOf: batch)) ?? ""
-            if !SetupLaunchBatchTools.isDefaultModOrganizerBatch(existing) {
-                reporter.log("Preserving existing mo2.bat")
-                return
-            }
-            reporter.log("Refreshing generated mo2.bat")
-        }
         try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
         let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: mo2WinPath)
         try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
@@ -1047,10 +984,6 @@ public final class GAMMASetupEngine {
             let workingWinPath = try launchWindowsPath(nativePath: workingNative, context: context)
             guard !context.request.dryRun else { continue }
             try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if context.updatingExistingWrapper, fileManager.fileExists(atPath: batch.path) {
-                reporter.log("Preserving existing \(launch.batchPath)")
-                continue
-            }
             let lines = SetupLaunchBatchTools.commandLines(
                 executableWindowsPath: windowsBackslashPath(exeWinPath),
                 workingDirectoryWindowsPath: windowsBackslashPath(workingWinPath),
@@ -1455,10 +1388,6 @@ public final class GAMMASetupEngine {
             return true
         }
         return (try? fileManager.destinationOfSymbolicLink(atPath: url.path)) != nil
-    }
-
-    private func readText(_ url: URL) -> String {
-        (try? String(contentsOf: url, encoding: .utf8)) ?? ""
     }
 
     private func absolutePath(_ path: String) -> String {

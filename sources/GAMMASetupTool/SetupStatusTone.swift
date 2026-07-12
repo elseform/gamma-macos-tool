@@ -2,8 +2,6 @@ import Foundation
 
 enum WinetricksWrapperState {
     case planned
-    case installed
-    case needsUpdate
 }
 
 enum SetupStatusTone: String {
@@ -23,16 +21,8 @@ enum SetupStatusTone: String {
 
     static func winetricks(_ state: WinetricksWrapperState) -> SetupStatusTone {
         switch state {
-        case .installed:
-            return .success
-        case .needsUpdate:
-            return .accent
         case .planned:
             return .secondary
         }
-    }
-
-    static func setupControls(existingWrapperSettingsActive: Bool) -> SetupStatusTone {
-        existingWrapperSettingsActive ? .warning : .accent
     }
 }

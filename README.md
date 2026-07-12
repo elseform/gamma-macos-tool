@@ -121,7 +121,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Extracts the engine into the wrapper.
 - Initializes the Sikarugir Wine prefix inside the wrapper.
 - Uses Wine Sikarugir 10.0 and D3DMetal by default, or DXMT/DXVK when selected.
-- Sets `WINEESYNC=0` and `WINEMSYNC=1` on newly created wrappers. Existing-wrapper updates preserve current plist values for removed Sikarugir Configure settings.
+- Sets `WINEESYNC=0` and `WINEMSYNC=1` on newly created wrappers.
 - When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
 - Creates a Finder alias named `Configure <wrapper name>` beside the wrapper, targeting the wrapper's `Contents/Configure.app`.
@@ -132,7 +132,7 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring native `concrt140` with Wine's built-in implementation as fallback.
 - Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
-- Detects existing wrapper state from wrapper files such as `Info.plist`, Wine registry files, `wine/version`, bundled payloads, batch files, and symlinks. Old marker files are left untouched but ignored.
+- Refuses to overwrite an existing target unless the setup engine is explicitly invoked with replacement enabled.
 
 ### Logs And Cache
 
