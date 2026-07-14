@@ -124,14 +124,16 @@ The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 - Sets `WINEESYNC=0` and `WINEMSYNC=1` on newly created wrappers.
 - When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
 - Sets the wrapper launch path to `/mo2.bat`.
+- Advanced installation can select another Windows `.exe` and append optional single-line launch flags to its generated batch file.
 - Creates a Finder alias named `Configure <wrapper name>` beside the wrapper, targeting the wrapper's `Contents/Configure.app`.
 - Advanced installation can add `G:` at the directory containing the selected GAMMA folder when existing ModOrganizer paths require it.
+- Custom launch executables and working directories use that `G:` mapping when they are under its root, with Wine's standard `Z:` host path as the fallback outside it.
 - Updates ModOrganizer's `usvfs` binaries from bundled files when selected.
 - Installs bundled GPTK4 D3DMetal binaries by default.
 - Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
 - Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
 - Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring native `concrt140` with Wine's built-in implementation as fallback.
-- Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`.
+- Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`; optional launch flags are appended without being split or re-quoted.
 - Refuses to overwrite an existing target unless the setup engine is explicitly invoked with replacement enabled.
 
 ### Logs And Cache

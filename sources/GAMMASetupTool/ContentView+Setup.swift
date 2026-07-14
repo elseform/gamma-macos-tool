@@ -34,6 +34,7 @@ struct SetupPage: View {
     private var setupOptionsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             prefixPanel
+            launchCard
             winetricksCard
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -273,6 +274,57 @@ struct SetupPage: View {
                 CardHeading(title: "Additional Options")
                 Toggle("Update ModOrganizer's usvfs binaries", isOn: $model.updateUSVFS)
                 Toggle("Update GPTK4 binaries", isOn: $model.installGPTK4Binaries)
+            }
+        }
+    }
+
+    // MARK: - Launch
+
+    private var launchCard: some View {
+        WizardCard {
+            VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(model.selectedLaunchExecutableLabel)
+                                .lineLimit(1)
+                            if model.programBatch != "/mo2.bat" {
+                                Button {
+                                    model.useModOrganizerLaunch()
+                                } label: {
+                                    Image(systemName: "arrow.uturn.backward.circle")
+                                }
+                                .buttonStyle(.borderless)
+                                .controlSize(.small)
+                                .help("Use ModOrganizer.exe")
+                                .accessibilityLabel("Use ModOrganizer.exe")
+                            }
+                        }
+                        Text(model.selectedLaunchExecutablePath)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(model.selectedLaunchExecutablePath)
+                    }
+                    Spacer(minLength: 4)
+                    Button("Choose…") {
+                        model.chooseLaunchExecutable()
+                    }
+                    .controlSize(.small)
+                }
+
+                HStack(spacing: 8) {
+                    Text("Flags")
+                        .frame(width: 34, alignment: .leading)
+                    TextField("Optional launch flags", text: $model.launchArguments)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                Text(model.launchSelectionMessage)
+                    .font(.caption)
+                    .foregroundStyle(model.launchConfigurationIsValid ? Color.secondary : Color.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

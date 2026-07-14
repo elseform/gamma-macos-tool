@@ -18,6 +18,7 @@ struct SetupConfiguration {
     var installGPTK4Binaries = true
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
+    var launchArguments = ""
     var saveVerboseLog = true
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
@@ -59,6 +60,19 @@ struct SetupConfiguration {
     var selectedLaunchExecutableLabel: String {
         if programBatch == "/mo2.bat" { return "ModOrganizer" }
         return URL(fileURLWithPath: selectedLaunchExecutablePath).lastPathComponent
+    }
+
+    var selectedLaunchExecutableFound: Bool {
+        if programBatch == "/mo2.bat" {
+            return selectedModOrganizerExecutableFound
+        }
+        let path = selectedLaunchExecutablePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        return URL(fileURLWithPath: path).pathExtension.caseInsensitiveCompare("exe") == .orderedSame
+            && FileManager.default.fileExists(atPath: path)
+    }
+
+    var launchArgumentsAreValid: Bool {
+        !SetupLaunchBatchTools.containsLineBreak(launchArguments)
     }
 
     var rendererLabel: String {
@@ -159,6 +173,7 @@ struct SetupConfiguration {
 
     var setupRequest: SetupRequest {
         let modOrganizerPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let arguments = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolution = selectedDisplayResolution
 
         return SetupRequest(
@@ -171,6 +186,7 @@ struct SetupConfiguration {
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,
+            launchArguments: arguments.isEmpty ? nil : arguments,
             driveMappingMode: driveMappingMode,
             displayResolutionWidth: resolution?.width,
             displayResolutionHeight: resolution?.height,

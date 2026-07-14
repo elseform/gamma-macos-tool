@@ -76,6 +76,7 @@ extension AppModel {
         appName = "stalker-gamma"
         installDirectory = SetupConfiguration.defaultInstallDirectory
         driveMappingMode = "preserve"
+        useDefaultLaunchConfiguration()
         modOrganizerSelectionError = ""
     }
 
@@ -98,23 +99,31 @@ extension AppModel {
         let detectedModOrganizerPath = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
         if let detectedModOrganizerPath,
            URL(fileURLWithPath: detectedModOrganizerPath).standardizedFileURL == url.standardizedFileURL {
-            programBatch = "/mo2.bat"
-            launchBatches.removeAll()
+            useModOrganizerLaunch()
         } else {
             setLaunchExecutable(url.path)
         }
+    }
+
+    func useModOrganizerLaunch() {
+        programBatch = "/mo2.bat"
+        launchBatches.removeAll()
+    }
+
+    func useDefaultLaunchConfiguration() {
+        useModOrganizerLaunch()
+        launchArguments = ""
     }
 
     func setLaunchExecutable(_ executablePath: String) {
         let executable = URL(fileURLWithPath: executablePath)
         let batchPath = uniqueBatchPath(for: executable)
         let detectedMO2 = manualModOrganizerPath.isEmpty ? preflight?.mo2Path : manualModOrganizerPath
-        let usesMOEnv: Bool
-        if let detectedMO2 {
-            usesMOEnv = URL(fileURLWithPath: detectedMO2).standardizedFileURL == executable.standardizedFileURL
-        } else {
-            usesMOEnv = executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
-        }
+        let matchesDetectedMO2 = detectedMO2.map {
+            URL(fileURLWithPath: $0).standardizedFileURL == executable.standardizedFileURL
+        } ?? false
+        let usesMOEnv = matchesDetectedMO2
+            || executable.lastPathComponent.caseInsensitiveCompare("ModOrganizer.exe") == .orderedSame
         let batch = LaunchBatch(
             batchPath: batchPath,
             executablePath: executablePath,

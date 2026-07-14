@@ -294,6 +294,8 @@ public final class GAMMASetupEngine {
         var context = SetupContext(request: request, executablePath: executablePath)
         try setupLogIfNeeded(context: context)
         try loadGammaSettings(context: &context, required: true, preflightOnly: false)
+        try validateLaunchArguments(context.request.launchArguments)
+        try validateSelectedLaunchExecutable(context: context)
 
         try runStage(.dependencies) {
             try ensureBrewDependencies(context: context)
@@ -365,6 +367,7 @@ public final class GAMMASetupEngine {
 
     func configureDriveMappingAndMO2BatchForTesting(request: SetupRequest) throws {
         var context = SetupContext(request: request, executablePath: executablePath)
+        try validateLaunchArguments(context.request.launchArguments)
         context.mo2Path = absolutePath(request.mo2Path)
         context.gammaPath = request.gammaPath.isEmpty
             ? URL(fileURLWithPath: context.mo2Path).deletingLastPathComponent().path
@@ -375,6 +378,7 @@ public final class GAMMASetupEngine {
         try fileManager.createDirectory(at: context.driveC, withIntermediateDirectories: true)
         try configureDriveMapping(context: &context)
         try createMO2Batch(context: &context)
+        try createLaunchBatches(context: &context)
     }
 
     func missingDllOverridesForTesting(registry: String) -> [String] {
@@ -964,7 +968,12 @@ public final class GAMMASetupEngine {
         let batch = context.driveC.appendingPathComponent("mo2.bat")
         guard !context.request.dryRun else { return }
         try fileManager.createDirectory(at: batch.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: mo2WinPath)
+        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(
+            executableWindowsPath: mo2WinPath,
+            launchArguments: normalizedBatchPath(context.request.programBatch) == "/mo2.bat"
+                ? context.request.launchArguments ?? ""
+                : ""
+        )
         try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
     }
 
@@ -987,7 +996,10 @@ public final class GAMMASetupEngine {
             let lines = SetupLaunchBatchTools.commandLines(
                 executableWindowsPath: windowsBackslashPath(exeWinPath),
                 workingDirectoryWindowsPath: windowsBackslashPath(workingWinPath),
-                usesModOrganizerEnvironment: launch.usesModOrganizerEnvironment == true
+                usesModOrganizerEnvironment: launch.usesModOrganizerEnvironment == true,
+                launchArguments: normalizedBatchPath(launch.batchPath) == normalizedBatchPath(context.request.programBatch)
+                    ? context.request.launchArguments ?? ""
+                    : ""
             )
             try (lines.joined(separator: "\r\n") + "\r\n").write(to: batch, atomically: true, encoding: .utf8)
         }
@@ -1039,6 +1051,22 @@ public final class GAMMASetupEngine {
     private func normalizedBatchPath(_ path: String) -> String {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.hasPrefix("/") ? trimmed : "/" + trimmed
+    }
+
+    private func validateLaunchArguments(_ launchArguments: String?) throws {
+        guard let launchArguments,
+              SetupLaunchBatchTools.containsLineBreak(launchArguments) else {
+            return
+        }
+        throw SetupEngineError.message("launch flags must be a single line")
+    }
+
+    private func validateSelectedLaunchExecutable(context: SetupContext) throws {
+        guard context.request.programBatch != "/mo2.bat" else { return }
+        let executable = selectedLaunchExecutable(context: context)
+        guard fileManager.fileExists(atPath: executable) else {
+            throw SetupEngineError.message("launch executable not found: \(executable)")
+        }
     }
 
     private func normalizeAppPermissions(context: SetupContext) throws {

@@ -29,6 +29,7 @@ extension AppModel {
             installGPTK4Binaries: installGPTK4Binaries,
             programBatch: programBatch,
             launchBatches: launchBatches,
+            launchArguments: launchArguments,
             saveVerboseLog: saveVerboseLog,
             driveMappingMode: driveMappingMode,
             displayMode: displayMode,
@@ -102,10 +103,38 @@ extension AppModel {
         configuration.createFlowEnvironmentOK
             && driveMappingReady
             && wrapperNameIsValid
+            && selectedLaunchExecutableFound
+            && configuration.launchArgumentsAreValid
     }
 
     var selectedModOrganizerExecutableFound: Bool {
         configuration.selectedModOrganizerExecutableFound
+    }
+
+    var selectedLaunchExecutablePath: String {
+        configuration.selectedLaunchExecutablePath
+    }
+
+    var selectedLaunchExecutableLabel: String {
+        configuration.selectedLaunchExecutableLabel
+    }
+
+    var selectedLaunchExecutableFound: Bool {
+        configuration.selectedLaunchExecutableFound
+    }
+
+    var launchConfigurationIsValid: Bool {
+        selectedLaunchExecutableFound && configuration.launchArgumentsAreValid
+    }
+
+    var launchSelectionMessage: String {
+        if !configuration.launchArgumentsAreValid {
+            return "Launch flags must be a single line."
+        }
+        if !selectedLaunchExecutableFound {
+            return "Selected launch executable was not found."
+        }
+        return "The executable and flags are written to the wrapper's launch batch."
     }
 
     var selectedModOrganizerDetail: String {
@@ -190,6 +219,10 @@ extension AppModel {
 
         add("App", outputAppPath)
         add("Executable", configuration.selectedLaunchExecutablePath)
+        let arguments = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !arguments.isEmpty {
+            add("Flags", arguments)
+        }
         add("Engine", engineLabel)
         add("Renderer", rendererLabel)
 

@@ -176,6 +176,7 @@ public struct SetupRequest: Codable {
     public var anomalyPath: String
     public var programBatch: String
     public var launchBatches: [LaunchBatch]?
+    public var launchArguments: String?
     public var driveMappingMode: String
     public var displayResolutionWidth: Int?
     public var displayResolutionHeight: Int?
@@ -202,6 +203,7 @@ public struct SetupRequest: Codable {
         anomalyPath: String = "",
         programBatch: String = "/mo2.bat",
         launchBatches: [LaunchBatch] = [],
+        launchArguments: String? = nil,
         driveMappingMode: String = "preserve",
         displayResolutionWidth: Int? = nil,
         displayResolutionHeight: Int? = nil,
@@ -227,6 +229,7 @@ public struct SetupRequest: Codable {
         self.anomalyPath = anomalyPath
         self.programBatch = programBatch
         self.launchBatches = launchBatches
+        self.launchArguments = launchArguments
         self.driveMappingMode = driveMappingMode
         self.displayResolutionWidth = displayResolutionWidth
         self.displayResolutionHeight = displayResolutionHeight

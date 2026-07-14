@@ -161,12 +161,33 @@ final class SetupConfigurationTests {
             workingDirectory: "/Games/Anomaly/bin",
             usesModOrganizerEnvironment: false
         )
-        let config = SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch])
+        let config = SetupConfiguration(
+            programBatch: launch.batchPath,
+            launchBatches: [launch],
+            launchArguments: #"  --dxgi-old --profile "Gold"  "#
+        )
 
         XCTAssertEqual(config.selectedLaunchExecutablePath, launch.executablePath)
         XCTAssertEqual(config.selectedLaunchExecutableLabel, "AnomalyDX11AVX.exe")
         XCTAssertEqual(config.setupRequest.launchBatches?.first, launch)
         XCTAssertEqual(config.setupRequest.launchBatches?.first?.usesModOrganizerEnvironment, false)
+        XCTAssertEqual(config.setupRequest.launchArguments, #"--dxgi-old --profile "Gold""#)
+    }
+
+    func testEmptyLaunchArgumentsAreNotSerialized() {
+        XCTAssertNil(SetupConfiguration(launchArguments: "   ").setupRequest.launchArguments)
+    }
+
+    func testCustomLaunchExecutableMustStillExist() throws {
+        let temp = try makeTempDir("gamma-custom-launch")
+        let executable = temp.appendingPathComponent("AnomalyDX11AVX.exe")
+        FileManager.default.createFile(atPath: executable.path, contents: Data())
+        let launch = LaunchBatch(batchPath: "/Anomaly.bat", executablePath: executable.path)
+
+        XCTAssertTrue(SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch]).selectedLaunchExecutableFound)
+        try FileManager.default.removeItem(at: executable)
+        XCTAssertFalse(SetupConfiguration(programBatch: launch.batchPath, launchBatches: [launch]).selectedLaunchExecutableFound)
+        try? FileManager.default.removeItem(at: temp)
     }
 
     func testCustomModOrganizerLaunchRequestsEnvironment() {

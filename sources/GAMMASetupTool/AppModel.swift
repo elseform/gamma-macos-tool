@@ -45,6 +45,7 @@ final class AppModel: ObservableObject {
     @Published var installGPTK4Binaries = true
     @Published var programBatch = "/mo2.bat"
     @Published var launchBatches: [LaunchBatch] = []
+    @Published var launchArguments = ""
     @Published var saveVerboseLog = true
     @Published var driveMappingMode = "preserve"
     @Published var displayMode = "defaultWine"

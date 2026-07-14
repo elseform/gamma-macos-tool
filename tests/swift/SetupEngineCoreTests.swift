@@ -307,23 +307,64 @@ final class SetupEngineCoreTests {
         let gameLines = SetupLaunchBatchTools.commandLines(
             executableWindowsPath: #"G:\Anomaly\bin\AnomalyDX11AVX.exe"#,
             workingDirectoryWindowsPath: #"G:\Anomaly\bin"#,
-            usesModOrganizerEnvironment: false
+            usesModOrganizerEnvironment: false,
+            launchArguments: "  --dxgi-old  "
         )
         XCTAssertFalse(gameLines.contains { $0.contains("QT_OPENGL") })
+        XCTAssertEqual(gameLines.last, #"start "" /D "G:\Anomaly\bin" "G:\Anomaly\bin\AnomalyDX11AVX.exe" --dxgi-old"#)
 
         let mo2Lines = SetupLaunchBatchTools.commandLines(
             executableWindowsPath: #"G:\GAMMA\ModOrganizer.exe"#,
             workingDirectoryWindowsPath: #"G:\GAMMA"#,
-            usesModOrganizerEnvironment: true
+            usesModOrganizerEnvironment: true,
+            launchArguments: #"--profile "Default""#
         )
         XCTAssertTrue(mo2Lines.contains(#"set "QT_OPENGL=software""#))
+        XCTAssertTrue(mo2Lines.contains(#"set "QT_QUICK_BACKEND=software""#))
+        XCTAssertTrue(mo2Lines.contains(#"set "QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu""#))
+        XCTAssertEqual(mo2Lines.last, #"start "" /D "G:\GAMMA" "G:\GAMMA\ModOrganizer.exe" --profile "Default""#)
+
+        let noArguments = SetupLaunchBatchTools.commandLines(
+            executableWindowsPath: #"G:\Anomaly\bin\Anomaly.exe"#,
+            workingDirectoryWindowsPath: #"G:\Anomaly\bin"#,
+            usesModOrganizerEnvironment: false,
+            launchArguments: "   "
+        )
+        XCTAssertEqual(noArguments.last, #"start "" /D "G:\Anomaly\bin" "G:\Anomaly\bin\Anomaly.exe""#)
     }
 
     func testModOrganizerBatchUsesWindowsWorkingDirectory() {
-        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(executableWindowsPath: "G:/g/ModOrganizer.exe")
+        let lines = SetupLaunchBatchTools.modOrganizerCommandLines(
+            executableWindowsPath: "G:/g/ModOrganizer.exe",
+            launchArguments: "--portable"
+        )
         XCTAssertContains(lines.joined(separator: "\n"), #"cd /d "G:\g""#)
-        XCTAssertContains(lines.joined(separator: "\n"), #"start "" "G:\g\ModOrganizer.exe""#)
+        XCTAssertContains(lines.joined(separator: "\n"), #"start "" "G:\g\ModOrganizer.exe" --portable"#)
         XCTAssertFalse(lines.joined(separator: "\n").contains("Contents\\Resources"))
+    }
+
+    func testLaunchArgumentsRejectLineBreaks() throws {
+        let temp = try makeTempDir("gamma-launch-flags")
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let gamma = temp.appendingPathComponent("GAMMA")
+        try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
+        let request = SetupRequest(
+            outputApp: app.path,
+            mo2Path: gamma.appendingPathComponent("ModOrganizer.exe").path,
+            launchArguments: "--first\r\nstart unwanted.exe"
+        )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path)
+        var rejected = false
+        do {
+            try engine.configureDriveMappingAndMO2BatchForTesting(request: request)
+        } catch SetupEngineError.message(let message) {
+            rejected = message.contains("single line")
+        } catch {
+            rejected = false
+        }
+        XCTAssertTrue(rejected)
+        try? FileManager.default.removeItem(at: temp)
     }
 
     func testDefaultModOrganizerBatchDetectionIsNarrow() {
@@ -402,6 +443,60 @@ final class SetupEngineCoreTests {
         XCTAssertContains(batch, #"start "" "G:\GAMMA\ModOrganizer.exe""#)
         XCTAssertEqual(try String(contentsOf: iniURL), originalINI)
         try? FileManager.default.removeItem(at: temp)
+    }
+
+    func testCustomLaunchBatchesUseMappedGAndFallbackZPaths() throws {
+        let temp = try makeTempDir("gamma-custom-launch-mapped")
+        let outside = try makeTempDir("gamma-custom-launch-outside")
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let gamma = temp.appendingPathComponent("GAMMA")
+        let mappedBin = temp.appendingPathComponent("flatgold/bin")
+        let outsideBin = outside.appendingPathComponent("bin")
+        try FileManager.default.createDirectory(at: gamma, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: mappedBin, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outsideBin, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: gamma.appendingPathComponent("ModOrganizer.exe").path, contents: Data())
+        let mappedExecutable = mappedBin.appendingPathComponent("AnomalyDX11AVX.exe")
+        let outsideExecutable = outsideBin.appendingPathComponent("AnomalyDX11.exe")
+        FileManager.default.createFile(atPath: mappedExecutable.path, contents: Data())
+        FileManager.default.createFile(atPath: outsideExecutable.path, contents: Data())
+
+        let request = SetupRequest(
+            outputApp: app.path,
+            mo2Path: gamma.appendingPathComponent("ModOrganizer.exe").path,
+            programBatch: "/Mapped.bat",
+            launchBatches: [
+                LaunchBatch(
+                    batchPath: "/Mapped.bat",
+                    executablePath: mappedExecutable.path,
+                    workingDirectory: mappedBin.path
+                ),
+                LaunchBatch(
+                    batchPath: "/Outside.bat",
+                    executablePath: outsideExecutable.path,
+                    workingDirectory: outsideBin.path
+                )
+            ],
+            launchArguments: "--dxgi-old",
+            driveMappingMode: "shorten"
+        )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path)
+        try engine.configureDriveMappingAndMO2BatchForTesting(request: request)
+
+        let driveC = app.appendingPathComponent("Contents/SharedSupport/prefix/drive_c")
+        let mappedBatch = try String(contentsOf: driveC.appendingPathComponent("Mapped.bat"))
+        XCTAssertContains(mappedBatch, #"start "" /D "G:\flatgold\bin" "G:\flatgold\bin\AnomalyDX11AVX.exe" --dxgi-old"#)
+        let modOrganizerBatch = try String(contentsOf: driveC.appendingPathComponent("mo2.bat"))
+        XCTAssertFalse(modOrganizerBatch.contains("--dxgi-old"))
+
+        let outsideWindowsDirectory = "Z:" + outsideBin.path.replacingOccurrences(of: "/", with: "\\")
+        let outsideWindowsExecutable = "Z:" + outsideExecutable.path.replacingOccurrences(of: "/", with: "\\")
+        let outsideBatch = try String(contentsOf: driveC.appendingPathComponent("Outside.bat"))
+        XCTAssertContains(outsideBatch, #"start "" /D "\#(outsideWindowsDirectory)" "\#(outsideWindowsExecutable)""#)
+        XCTAssertFalse(outsideBatch.contains("--dxgi-old"))
+
+        try? FileManager.default.removeItem(at: temp)
+        try? FileManager.default.removeItem(at: outside)
     }
 
     func testExistingTargetIsRejectedWithoutReplacement() throws {
