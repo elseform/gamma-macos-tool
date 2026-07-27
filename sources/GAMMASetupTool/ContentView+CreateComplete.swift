@@ -51,7 +51,7 @@ struct CreatePage: View {
                 }
             }
 
-            if model.saveVerboseLog && (model.isRunning || !model.logText.isEmpty) {
+            if model.isRunning || !model.logText.isEmpty {
                 DisclosureGroup("Output", isExpanded: $model.showOutput) {
                     TextEditor(text: $model.logText)
                         .font(.system(.body, design: .monospaced))
@@ -119,10 +119,10 @@ struct CreatePage: View {
             (2, "Engine", model.engineLabel)
         ]
         if model.updateUSVFS {
-            rows.append((2, "ModOrganizer usvfs", "Update binaries"))
+            rows.append((2, SetupOptionCopy.usvfsBinaries, SetupOptionCopy.installBundledAction))
         }
         if model.installGPTK4Binaries {
-            rows.append((2, "GPTK4 binaries", "Install or update bundled files"))
+            rows.append((2, SetupOptionCopy.gptkBinaries, SetupOptionCopy.installAction))
         }
         rows.append((3, "Prefix", "Initialize Wine prefix"))
         if model.driveMappingMode == "shorten" {
@@ -185,7 +185,7 @@ struct CompletePage: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title2.weight(.semibold))
                             .foregroundStyle(.green)
-                        Text("Wrapper created successfully")
+                        Text(WrapperCreatedCopy.title)
                             .font(.headline)
                     }
 
@@ -221,7 +221,7 @@ struct CompletePage: View {
                     }
                     .font(.callout)
 
-                    Text("Run created app to open MO2.")
+                    Text("Open the new app to launch ModOrganizer.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -42,7 +42,7 @@ extension AppModel {
     @discardableResult
     func chooseModOrganizerFolder() -> Bool {
         let panel = NSOpenPanel()
-        panel.title = "Select ModOrganizer Folder"
+        panel.title = "Select GAMMA or ModOrganizer Folder"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false

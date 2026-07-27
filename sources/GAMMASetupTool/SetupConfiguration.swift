@@ -19,7 +19,7 @@ struct SetupConfiguration {
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
     var launchArguments = ""
-    var saveVerboseLog = true
+    var saveVerboseLog = false
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
     var displayResolutionMode = "detected"
@@ -166,7 +166,7 @@ struct SetupConfiguration {
 
     var displayResolutionLabel: String {
         guard let resolution = selectedDisplayResolution else {
-            return "Default Wine"
+            return "Wine default"
         }
         return "\(resolution.width) x \(resolution.height)"
     }

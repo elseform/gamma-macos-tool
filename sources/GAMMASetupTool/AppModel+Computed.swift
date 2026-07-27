@@ -198,12 +198,12 @@ extension AppModel {
             SetupSummaryItem(label: "Renderer", planned: rendererLabel)
         ]
         if installGPTK4Binaries {
-            rows.append(SetupSummaryItem(label: "GPTK4 binaries", planned: "Install or update bundled files"))
+            rows.append(SetupSummaryItem(label: SetupOptionCopy.gptkBinaries, planned: SetupOptionCopy.installAction))
         }
         if updateUSVFS {
-            rows.append(SetupSummaryItem(label: "ModOrganizer usvfs", planned: "Update binaries"))
+            rows.append(SetupSummaryItem(label: SetupOptionCopy.usvfsBinaries, planned: SetupOptionCopy.installBundledAction))
         }
-        rows.append(SetupSummaryItem(label: "Installation", planned: "Default settings"))
+        rows.append(SetupSummaryItem(label: "Settings", planned: "Recommended settings"))
         return rows
     }
 
@@ -235,10 +235,14 @@ extension AppModel {
         }
 
         if updateUSVFS {
-            add("ModOrganizer usvfs", "Update binaries")
+            add(SetupOptionCopy.usvfsBinaries, SetupOptionCopy.installBundledAction)
         }
         if installGPTK4Binaries {
-            add("GPTK4 binaries", "Install")
+            add(SetupOptionCopy.gptkBinaries, SetupOptionCopy.installAction)
+        }
+
+        if saveVerboseLog {
+            add(SetupOptionCopy.logTitle, SetupOptionCopy.logAction)
         }
 
         return rows

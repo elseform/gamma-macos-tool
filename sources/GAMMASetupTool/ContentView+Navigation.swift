@@ -7,8 +7,8 @@ extension ContentView {
         switch step {
         case .welcome:
             return (
-                "Setup",
-                "Create a new wrapper."
+                "GAMMA Setup Tool",
+                SetupFlowCopy.wrapperDescription
             )
         case .wrapperName:
             return (
@@ -18,22 +18,22 @@ extension ContentView {
         case .environment:
             return (
                 "Locate GAMMA installation",
-                "Pick ModOrganizer.exe's location if autodetection failed."
+                "Select the GAMMA folder that contains ModOrganizer.exe."
             )
         case .installChoice:
             return (
-                "Choose installation",
-                "Use defaults or review advanced wrapper settings."
+                "Choose settings",
+                "Use the recommended settings or review the advanced settings."
             )
         case .setup:
             return (
                 "Wrapper settings",
-                "Default settings are fine in most cases. Try other options only if you encounter issues."
+                "Recommended settings work for most installations. Change them only when needed."
             )
         case .create:
             return (model.createHeaderTitle, model.createHeaderSubtitle)
         case .complete:
-            return ("Installation finished", "Get out of here, Stalker")
+            return (WrapperCreatedCopy.title, WrapperCreatedCopy.subtitle)
         }
     }
 
@@ -90,7 +90,7 @@ extension ContentView {
     // MARK: - Footer
 
     private var footerVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.75"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.86"
     }
 
     var footer: some View {

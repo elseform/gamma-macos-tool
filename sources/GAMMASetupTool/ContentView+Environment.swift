@@ -12,7 +12,7 @@ struct EnvironmentPage: View {
                 verticalPadding: Layout.environmentPanelVerticalPadding
             ) {
                 VStack(alignment: .leading, spacing: 8) {
-                    modOrganizerRow(label: "GAMMA's ModOrganizer")
+                    modOrganizerRow(label: "GAMMA installation")
                 }
             }
             .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)

@@ -672,13 +672,13 @@ public final class GAMMASetupEngine {
         let mo2Dir = URL(fileURLWithPath: context.mo2Path).deletingLastPathComponent()
         let files = ["usvfs_x64.dll", "usvfs_proxy_x64.exe", "usvfs_x86.dll", "usvfs_proxy_x86.exe"]
         for file in files where !fileManager.fileExists(atPath: source.appendingPathComponent(file).path) {
-            throw SetupEngineError.message("missing updated usvfs binary: \(source.appendingPathComponent(file).path)")
+            throw SetupEngineError.message("missing bundled usvfs binary: \(source.appendingPathComponent(file).path)")
         }
         if !context.request.forceDownload,
            files.allSatisfy({ fileManager.contentsEqual(atPath: source.appendingPathComponent($0).path, andPath: mo2Dir.appendingPathComponent($0).path) }) {
             return
         }
-        reporter.log("Installing updated usvfs binaries for \(context.request.engine)")
+        reporter.log("Installing bundled usvfs binaries for \(context.request.engine)")
         guard !context.request.dryRun else { return }
         guard directoryExists(mo2Dir.path) else {
             throw SetupEngineError.message("missing ModOrganizer directory")
@@ -1543,7 +1543,7 @@ public final class GAMMASetupEngine {
             return match
         }
 
-        throw SetupEngineError.message("updated usvfs binaries were requested but no source was provided or bundled at Resources/usvfs")
+        throw SetupEngineError.message("bundled usvfs binaries were requested but no source was found at Resources/usvfs")
     }
 
     private func gptk4Source(context: SetupContext) throws -> URL {

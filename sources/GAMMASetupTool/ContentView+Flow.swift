@@ -7,7 +7,7 @@ struct WelcomePage: View {
         VStack(alignment: .leading, spacing: 14) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Create a new Sikarugir wrapper for your GAMMA installation.")
+                    Text("Choose an app name, locate ModOrganizer.exe, and use the recommended settings or review the advanced options.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -64,7 +64,7 @@ struct InstallChoicePage: View {
         VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Default installation option creates wrapper with recommended settings. Advanced installation has some knobs to tweak: Wine engine, translation layer, etc.")
+                    Text("Use the recommended settings, or review the Wine engine, renderer, display, and launch options using the advanced settings.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -73,7 +73,7 @@ struct InstallChoicePage: View {
                         Button {
                             defaultAction()
                         } label: {
-                            Label("Default installation", systemImage: "checkmark.circle")
+                            Label("Use recommended settings", systemImage: "checkmark.circle")
                         }
                         .controlSize(.large)
                         .disabled(defaultDisabled)
@@ -81,13 +81,13 @@ struct InstallChoicePage: View {
                         Button {
                             advancedAction()
                         } label: {
-                            Label("Advanced installation", systemImage: "slider.horizontal.3")
+                            Label("Review advanced settings", systemImage: "slider.horizontal.3")
                         }
                         .controlSize(.large)
                     }
 
                     if defaultDisabled {
-                        Text("Default installation is unavailable until drive mapping is ready. Use Advanced installation to review drive mapping.")
+                        Text("Recommended setup is unavailable until the drive mapping is valid. Review the advanced settings to correct it.")
                             .font(.caption)
                             .foregroundStyle(.yellow)
                             .fixedSize(horizontal: false, vertical: true)

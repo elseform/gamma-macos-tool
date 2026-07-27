@@ -4,8 +4,6 @@ This repository builds a native macOS SwiftUI setup tool for creating a Sikarugi
 
 ## Current Project State
 
-- Active branch during the last cleanup pass: `refactor-and-cleanup`.
-- The conservative refactor/cleanup slice in `refactor-and-cleanup-plan.md` is complete.
 - The main implementation is Swift 5.9 targeting macOS 13.
 - The package has three source areas:
   - `sources/GAMMASetupTool/`: SwiftUI app, state model, app settings, and user flow.

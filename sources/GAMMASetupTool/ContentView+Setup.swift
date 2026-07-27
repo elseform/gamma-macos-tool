@@ -97,8 +97,8 @@ struct SetupPage: View {
                 GridRow {
                     Text("Display")
                     Picker("Display", selection: $model.displayMode) {
-                        Text("Default Wine").tag("defaultWine")
-                        Text("Forced").tag("forced")
+                        Text("Wine default").tag("defaultWine")
+                        Text("Force resolution").tag("forced")
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
@@ -106,8 +106,8 @@ struct SetupPage: View {
 
                 if model.displayMode == "forced" {
                     GridRow {
-                        Text("Value")
-                        Picker("Value", selection: $model.displayResolutionMode) {
+                        Text("Resolution")
+                        Picker("Resolution", selection: $model.displayResolutionMode) {
                             if let detectedResolutionLabel {
                                 Text(detectedResolutionLabel).tag("detected")
                             }
@@ -149,11 +149,11 @@ struct SetupPage: View {
     private func rendererHelp(for renderer: String) -> String {
         switch renderer {
         case "dxmt":
-            return "Best performance. Experimental."
+            return "Experimental Direct3D 11 renderer. Try it if D3DMetal has compatibility or performance problems."
         case "dxvk":
-            return "Average performance. Most accurate if you use a lot of shader mods."
+            return "Vulkan-based compatibility fallback. It is usually slower than D3DMetal or DXMT."
         default:
-            return "Best first choice for compatibility."
+            return "Recommended renderer and the best first choice for most GAMMA installations."
         }
     }
 
@@ -271,9 +271,10 @@ struct SetupPage: View {
     private var additionalOptionsCard: some View {
         WizardCard {
             VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                CardHeading(title: "Additional Options")
-                Toggle("Update ModOrganizer's usvfs binaries", isOn: $model.updateUSVFS)
-                Toggle("Update GPTK4 binaries", isOn: $model.installGPTK4Binaries)
+                CardHeading(title: "Additional options")
+                Toggle(SetupOptionCopy.installUSVFSBinaries, isOn: $model.updateUSVFS)
+                Toggle(SetupOptionCopy.installGPTK4Binaries, isOn: $model.installGPTK4Binaries)
+                Toggle(SetupOptionCopy.saveDetailedLog, isOn: $model.saveVerboseLog)
             }
         }
     }

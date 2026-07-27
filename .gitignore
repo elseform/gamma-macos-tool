@@ -5,5 +5,6 @@ dist/
 *.log
 *.profraw
 .DS_Store
-AGENTS.md
 .claude
+ANNOUNCEMENT_0.86.md
+AGENTS.md
