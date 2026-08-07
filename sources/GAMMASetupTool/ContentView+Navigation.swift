@@ -113,7 +113,7 @@ extension ContentView {
     }
 
     private var footerLinks: some View {
-        let sourceURL = URL(string: "https://github.com/elseform/gamma-macos-tool")!
+        let sourceURL = URL(string: "https://github.com/elseform/gamma-setup-tool")!
         let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
 
         return HStack(spacing: 10) {

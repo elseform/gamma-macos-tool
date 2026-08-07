@@ -28,9 +28,9 @@ The guided flow handles:
 
 ## How to Use
 
-Open the [latest GitHub release](https://github.com/elseform/gamma-macos-tool/releases/latest) and download the GAMMA Setup Tool ZIP archive from its **Assets** section.
+Open the [latest GitHub release](https://github.com/elseform/gamma-setup-tool/releases/latest) and download the GAMMA Setup Tool archive from its **Assets** section.
 
-Unzip it, then run:
+Extract it, then run:
 
 ```text
 GAMMA Setup Tool.app
