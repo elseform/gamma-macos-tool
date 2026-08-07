@@ -97,8 +97,8 @@ struct SetupPage: View {
                 GridRow {
                     Text("Display")
                     Picker("Display", selection: $model.displayMode) {
-                        Text("Wine default").tag("defaultWine")
-                        Text("Force resolution").tag("forced")
+                        Text("Default").tag("defaultWine")
+                        Text("Forced").tag("forced")
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
@@ -138,7 +138,7 @@ struct SetupPage: View {
             }
 
             if let display = model.detectedDisplay {
-                Text("macOS: \(display.summary)")
+                Text("Detected resolution: \(display.summary)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -149,11 +149,11 @@ struct SetupPage: View {
     private func rendererHelp(for renderer: String) -> String {
         switch renderer {
         case "dxmt":
-            return "Experimental Direct3D 11 renderer. Try it if D3DMetal has compatibility or performance problems."
+            return "Experimental Direct3D 11 renderer. Very unstable, use at your own risk."
         case "dxvk":
             return "Vulkan-based compatibility fallback. It is usually slower than D3DMetal or DXMT."
         default:
-            return "Recommended renderer and the best first choice for most GAMMA installations."
+            return "Recommended renderer, use this unless you encounter issues."
         }
     }
 
@@ -200,9 +200,9 @@ struct SetupPage: View {
 
     private var driveMappingExplanation: String {
         if model.driveMappingMode == "shorten" {
-            return "Creates G: at the folder containing the selected GAMMA folder. ModOrganizer.ini is not modified; use this only when its existing paths already use G:."
+            return "Mount GAMMA directory into wine as G:"
         }
-        return "Uses Wine's default Z: host mapping. ModOrganizer.ini is not modified. Choose Add G: if its existing paths already use G:."
+        return "Uses Wine's default Z: host mapping."
     }
 
     // MARK: - Winetricks

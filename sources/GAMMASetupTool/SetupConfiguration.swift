@@ -166,7 +166,7 @@ struct SetupConfiguration {
 
     var displayResolutionLabel: String {
         guard let resolution = selectedDisplayResolution else {
-            return "Wine default"
+            return "Default"
         }
         return "\(resolution.width) x \(resolution.height)"
     }

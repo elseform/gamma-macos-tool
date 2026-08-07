@@ -73,7 +73,7 @@ struct CreatePage: View {
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(.red)
                 if model.savedLogPath.isEmpty {
-                    Text("No log path was reported. Open Output and copy the visible log.")
+                    Text("Failed to save log. Expand Output and copy the visible log.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -93,7 +93,7 @@ struct CreatePage: View {
                         .help("Open log")
                     }
                 }
-                Text("Go to the Discord support thread and attach the log.")
+                Text("Open the Discord support thread and attach the log.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -114,7 +114,7 @@ struct CreatePage: View {
 
     private var installStageRows: [(stage: Int, title: String, detail: String)] {
         var rows: [(stage: Int, title: String, detail: String)] = [
-            (0, "Sikarugir", "Install tap and app if needed"),
+            (0, "Sikarugir", "Checking Sikarugir"),
             (1, model.wrapperStageTitle, ""),
             (2, "Engine", model.engineLabel)
         ]
@@ -124,9 +124,9 @@ struct CreatePage: View {
         if model.installGPTK4Binaries {
             rows.append((2, SetupOptionCopy.gptkBinaries, SetupOptionCopy.installAction))
         }
-        rows.append((3, "Prefix", "Initialize Wine prefix"))
+        rows.append((3, "Prefix", "Creating prefix"))
         if model.driveMappingMode == "shorten" {
-            rows.append((4, "Drive mapping", model.plannedWineDriveMapping))
+            rows.append((4, "Setting drive mapping", model.plannedWineDriveMapping))
         }
         rows += [
             (5, "Winetricks", model.requiredWinetricksSummary),
@@ -191,7 +191,7 @@ struct CompletePage: View {
 
                     Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
                         GridRow {
-                            Text("App location")
+                            Text("App created:")
                                 .foregroundStyle(.secondary)
                             Text(model.outputAppPath)
                                 .lineLimit(2)
@@ -200,10 +200,10 @@ struct CompletePage: View {
                         }
                         if model.saveVerboseLog {
                             GridRow {
-                                Text("Log saved to")
+                                Text("Log saved:")
                                     .foregroundStyle(.secondary)
                                 if model.savedLogPath.isEmpty {
-                                    Text("Log path was not reported.")
+                                    Text("Log path not found")
                                         .foregroundStyle(.secondary)
                                 } else {
                                     Button {
@@ -214,7 +214,7 @@ struct CompletePage: View {
                                             .truncationMode(.middle)
                                     }
                                     .buttonStyle(.link)
-                                    .help("Open log")
+                                    .help("Show log")
                                 }
                             }
                         }

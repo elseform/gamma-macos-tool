@@ -114,7 +114,7 @@ extension AppModel {
         case .artifact:
             if event.message == "Log file", let path = event.path {
                 savedLogPath = path
-                logText += "Log file: \(path)\n"
+                logText += "Log location: \(path)\n"
             }
         case .completed:
             if let message = event.message, !message.isEmpty {
@@ -218,7 +218,7 @@ extension AppModel {
         case 3: return "prefix initialization"
         case 4: return "drive mapping"
         case 5: return "winetricks"
-        case 6: return "finalization"
+        case 6: return "finalizing"
         default: return "setup"
         }
     }

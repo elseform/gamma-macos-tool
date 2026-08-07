@@ -2,15 +2,15 @@
 
 Native macOS tool for creating a Sikarugir `.app` wrapper around an existing S.T.A.L.K.E.R. G.A.M.M.A. installation.
 
-GAMMA Setup Tool does not install G.A.M.M.A. itself. It expects G.A.M.M.A. to already be installed.
+GAMMA Setup Tool does not install G.A.M.M.A. itself. It requires an existing G.A.M.M.A. installation.
 
 See [CHANGELOG.md](CHANGELOG.md) for release highlights and notable behavior changes.
 
 ## Description
 
-Select the GAMMA folder that contains `ModOrganizer.exe`, choose a wrapper name, and use the recommended settings or review the advanced options. The tool then creates a Sikarugir `.app` wrapper in `~/Applications`.
+Choose an app name, select the GAMMA folder that contains `ModOrganizer.exe`, and use the recommended settings or review the advanced options. The tool then creates a Sikarugir `.app` wrapper in `~/Applications`.
 
-The recommended settings are intended to work for most installations. Advanced settings are available for changing the Wine engine, renderer, display behavior, drive mapping, or launch executable.
+The recommended settings work for most installations. Advanced settings let you change the Wine engine, renderer, display behavior, drive mapping, or launch executable.
 
 The tool checks that `ModOrganizer.exe` exists, but it does not validate the contents or health of the GAMMA installation.
 
@@ -18,7 +18,7 @@ The setup flow creates a new wrapper and will not overwrite an existing app. If 
 
 ## What It Does
 
-The app uses your selected `ModOrganizer.exe` path, then creates a native macOS app wrapper that launches G.A.M.M.A. through ModOrganizer.
+The app uses the selected `ModOrganizer.exe` path to create a native macOS app wrapper that launches G.A.M.M.A. through ModOrganizer.
 
 The guided flow handles:
 
@@ -28,7 +28,7 @@ The guided flow handles:
 
 ## How to Use
 
-Open the latest GitHub release and download the GAMMA Setup Tool ZIP archive from its **Assets** section.
+Open the [latest GitHub release](https://github.com/elseform/gamma-macos-tool/releases/latest) and download the GAMMA Setup Tool ZIP archive from its **Assets** section.
 
 Unzip it, then run:
 
@@ -36,7 +36,7 @@ Unzip it, then run:
 GAMMA Setup Tool.app
 ```
 
-macOS may require approving the app in System Settings because the release is not notarized.
+Because the release is not notarized, macOS may require you to approve the app in System Settings.
 
 ### Wine Display Resolution
 

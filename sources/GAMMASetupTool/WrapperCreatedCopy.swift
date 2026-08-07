@@ -4,26 +4,26 @@ enum SetupFlowCopy {
 
 enum WrapperCreatedCopy {
     static let title = "Wrapper ready"
-    static let subtitle = "Your GAMMA app is ready to use."
+    static let subtitle = "Application created successfully"
 }
 
 enum SetupOptionCopy {
     static let installAction = "Install"
-    static let installBundledAction = "Install bundled"
-    static let gptkBinaries = "GPTK4 D3DMetal binaries"
-    static let usvfsBinaries = "ModOrganizer usvfs binaries"
-    static let logTitle = "Detailed setup log"
+    static let installBundledAction = "Update binaries"
+    static let gptkBinaries = "GPTK4 beta 1 D3DMetal binaries"
+    static let usvfsBinaries = "Update ModOrganizer usvfs libraries"
+    static let logTitle = "Setup log"
     static let logAction = "Save"
 
     static var installGPTK4Binaries: String {
-        "\(installAction) \(gptkBinaries)"
+        gptkBinaries
     }
 
     static var installUSVFSBinaries: String {
-        "\(installBundledAction) \(usvfsBinaries)"
+        usvfsBinaries
     }
 
     static var saveDetailedLog: String {
-        "Save detailed setup log"
+        "Save setup log"
     }
 }

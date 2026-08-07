@@ -12,8 +12,8 @@ extension ContentView {
             )
         case .wrapperName:
             return (
-                "Application name",
-                "The wrapper will be created under ~/Applications."
+                "App name",
+                "The application will be created under ~/Applications."
             )
         case .environment:
             return (
@@ -22,8 +22,8 @@ extension ContentView {
             )
         case .installChoice:
             return (
-                "Choose settings",
-                "Use the recommended settings or review the advanced settings."
+                "Pick installation type",
+                "Use the recommended settings unless you know what you are doing."
             )
         case .setup:
             return (
@@ -117,7 +117,7 @@ extension ContentView {
         let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
 
         return HStack(spacing: 10) {
-            Text("Source:")
+            Text("Source code:")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Link(destination: sourceURL) {
@@ -178,7 +178,7 @@ extension ContentView {
             Button {
                 continueToNextStep()
             } label: {
-                Label("Confirm settings", systemImage: "arrow.right.circle")
+                Label("Confirm selection", systemImage: "arrow.right.circle")
             }
             .keyboardShortcut(.return, modifiers: [.command])
             .disabled(!canContinue)

@@ -84,7 +84,7 @@ extension AppModel {
     var wrapperNameValidationMessage: String {
         let trimmed = appName.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            return "Enter a wrapper name."
+            return "Enter an app name."
         }
         if !SetupConfiguration.isValidWrapperName(appName) {
             return "Use a name without / or : characters."
@@ -132,7 +132,7 @@ extension AppModel {
             return "Launch flags must be a single line."
         }
         if !selectedLaunchExecutableFound {
-            return "Selected launch executable was not found."
+            return "Selected executable was not found."
         }
         return "The executable and flags are written to the wrapper's launch batch."
     }
@@ -160,7 +160,7 @@ extension AppModel {
     }
 
     var primaryButtonTitle: String {
-        "Create GAMMA wrapper"
+        "Create wrapper"
     }
 
     var createHeaderTitle: String {
@@ -168,19 +168,19 @@ extension AppModel {
             return "Installation failed"
         }
         if isRunning {
-            return "Installing wrapper"
+            return "Installation in progress"
         }
         return "Review settings"
     }
 
     var createHeaderSubtitle: String {
         if installFailed {
-            return "Check the output log for the failed setup step."
+            return "Check the logs for the failed setup step."
         }
         if isRunning {
-            return statusText.isEmpty ? "Applying wrapper changes." : statusText
+            return statusText.isEmpty ? "Applying changes" : statusText
         }
-        return "Confirm wrapper options before installation."
+        return "Confirm options"
     }
 
     var setupSummaryItems: [SetupSummaryItem] {
@@ -203,7 +203,7 @@ extension AppModel {
         if updateUSVFS {
             rows.append(SetupSummaryItem(label: SetupOptionCopy.usvfsBinaries, planned: SetupOptionCopy.installBundledAction))
         }
-        rows.append(SetupSummaryItem(label: "Settings", planned: "Recommended settings"))
+        rows.append(SetupSummaryItem(label: "Settings", planned: "Recommended"))
         return rows
     }
 
@@ -231,7 +231,7 @@ extension AppModel {
         }
 
         if selectedDisplayResolution != nil {
-            add("Wine display", displayResolutionLabel)
+            add("Display", displayResolutionLabel)
         }
 
         if updateUSVFS {
@@ -268,7 +268,7 @@ extension AppModel {
         let trimmed = preflightError.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         guard trimmed.localizedCaseInsensitiveContains("ModOrganizer.exe not found") else { return nil }
-        return "Selected folder is not a valid GAMMA folder. Select the GAMMA folder that contains ModOrganizer.exe."
+        return "Selected folder is not a valid MO2 folder. Select the path that contains ModOrganizer.exe."
     }
 
     var environmentMessage: String {

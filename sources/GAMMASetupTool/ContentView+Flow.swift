@@ -7,7 +7,7 @@ struct WelcomePage: View {
         VStack(alignment: .leading, spacing: 14) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Choose an app name, locate ModOrganizer.exe, and use the recommended settings or review the advanced options.")
+                    Text("Full GAMMA installation required. Enter an app name and locate ModOrganizer.exe.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -64,7 +64,7 @@ struct InstallChoicePage: View {
         VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Use the recommended settings, or review the Wine engine, renderer, display, and launch options using the advanced settings.")
+                    Text("You can configure the wrapper later using the \"Configure\" application.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -73,7 +73,7 @@ struct InstallChoicePage: View {
                         Button {
                             defaultAction()
                         } label: {
-                            Label("Use recommended settings", systemImage: "checkmark.circle")
+                            Label("Recommended", systemImage: "checkmark.circle")
                         }
                         .controlSize(.large)
                         .disabled(defaultDisabled)
@@ -81,13 +81,13 @@ struct InstallChoicePage: View {
                         Button {
                             advancedAction()
                         } label: {
-                            Label("Review advanced settings", systemImage: "slider.horizontal.3")
+                            Label("Advanced", systemImage: "slider.horizontal.3")
                         }
                         .controlSize(.large)
                     }
 
                     if defaultDisabled {
-                        Text("Recommended setup is unavailable until the drive mapping is valid. Review the advanced settings to correct it.")
+                        Text("Drive mapping is not valid, fix using Advanced settings.")
                             .font(.caption)
                             .foregroundStyle(.yellow)
                             .fixedSize(horizontal: false, vertical: true)

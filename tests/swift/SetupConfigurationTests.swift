@@ -203,7 +203,7 @@ final class SetupConfigurationTests {
 
     func testSetupRequestIncludesDisplayResolutionOptions() {
         let defaultWine = SetupConfiguration(displayMode: "defaultWine")
-        XCTAssertEqual(defaultWine.displayResolutionLabel, "Wine default")
+        XCTAssertEqual(defaultWine.displayResolutionLabel, "Default")
         XCTAssertNil(defaultWine.setupRequest.displayResolutionWidth)
         XCTAssertNil(defaultWine.setupRequest.displayResolutionHeight)
         XCTAssertEqual(defaultWine.setupRequest.resetWineDisplay, true)

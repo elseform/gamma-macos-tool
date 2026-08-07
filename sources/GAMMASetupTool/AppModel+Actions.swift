@@ -42,7 +42,7 @@ extension AppModel {
     @discardableResult
     func chooseModOrganizerFolder() -> Bool {
         let panel = NSOpenPanel()
-        panel.title = "Select GAMMA or ModOrganizer Folder"
+        panel.title = "Select ModOrganizer Folder"
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
@@ -57,7 +57,7 @@ extension AppModel {
         let modOrganizerPath = detected ?? url.appendingPathComponent("ModOrganizer.exe").path
         manualModOrganizerPath = modOrganizerPath
         if detected == nil {
-            modOrganizerSelectionError = "Selected folder does not contain ModOrganizer.exe."
+            modOrganizerSelectionError = "ModOrganizer.exe not found in selected folder."
         } else {
             modOrganizerSelectionError = ""
             saveSettings(gammaPath: URL(fileURLWithPath: modOrganizerPath).deletingLastPathComponent().path)
@@ -82,7 +82,7 @@ extension AppModel {
 
     func chooseLaunchExecutable() {
         let panel = NSOpenPanel()
-        panel.title = "Select Windows Executable"
+        panel.title = "Select any Windows Executable"
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.canCreateDirectories = false
@@ -171,7 +171,7 @@ extension AppModel {
         progress = 0
         logText = ""
         savedLogPath = ""
-        statusText = "Creating wrapper"
+        statusText = "Creating"
         pendingEngineEventText = ""
         do {
             let result = try await runEngine(command: "create", request: engineRequest(), stream: true)
@@ -183,7 +183,7 @@ extension AppModel {
             }
             statusText = result.exitCode == 0 ? WrapperCreatedCopy.title : "Failed"
             if result.exitCode != 0 && !logText.localizedCaseInsensitiveContains("error:") {
-                logText += "\nerror: setup exited while running \(installStageName(at: installStageIndex)). Attach this log in Discord.\n"
+                logText += "\nerror: setup exited while running \(installStageName(at: installStageIndex)).\n"
             }
             if result.exitCode == 0 {
                 frozenSetupSummaryItems = nil
