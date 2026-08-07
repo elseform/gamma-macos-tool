@@ -84,6 +84,13 @@ public enum SetupPathTools {
 }
 
 public enum WinetricksTools {
+    private static let knownPayloadChecksumUpdates = [
+        "e7267c1bdf9237c0b4a28cf027c382b97aa909934f84f1c92d3fb9f04173b33e":
+            "f0bab33a302b3cdb2e11113760d016f54fd3d2632c65ba7834fac4f0abd7f1a3",
+        "8995548dfffcde7c49987029c764355612ba6850ee09a7b6f0fddc85bdc5c280":
+            "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+    ]
+
     public static func listedVerbs(_ output: String) -> Set<String> {
         Set(output.split(whereSeparator: \.isNewline).compactMap { line in
             line.split(whereSeparator: \.isWhitespace).first.map(String.init)
@@ -98,6 +105,12 @@ public enum WinetricksTools {
     public static func missingVerbs(_ requiredVerbs: [String], installedOutput: String) -> [String] {
         let installed = listedVerbs(installedOutput)
         return requiredVerbs.filter { !installed.contains($0) }
+    }
+
+    public static func updatingKnownPayloadChecksums(in script: String) -> String {
+        knownPayloadChecksumUpdates.reduce(script) { result, update in
+            result.replacingOccurrences(of: update.key, with: update.value)
+        }
     }
 }
 

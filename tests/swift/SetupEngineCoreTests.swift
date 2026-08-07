@@ -53,6 +53,21 @@ final class SetupEngineCoreTests {
         XCTAssertFalse(first.values.contains { $0.contains("first-wrapper.app") || $0.contains("second-wrapper.app") })
     }
 
+    func testWinetricksCurrentVCRunChecksumsReplaceStaleValues() {
+        let script = """
+        w_download x86 e7267c1bdf9237c0b4a28cf027c382b97aa909934f84f1c92d3fb9f04173b33e
+        w_download x64 8995548dfffcde7c49987029c764355612ba6850ee09a7b6f0fddc85bdc5c280
+        keep unrelated-checksum
+        """
+        let updated = WinetricksTools.updatingKnownPayloadChecksums(in: script)
+
+        XCTAssertContains(updated, "f0bab33a302b3cdb2e11113760d016f54fd3d2632c65ba7834fac4f0abd7f1a3")
+        XCTAssertContains(updated, "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c")
+        XCTAssertContains(updated, "keep unrelated-checksum")
+        XCTAssertFalse(updated.contains("e7267c1bdf9237c0b4a28cf027c382b97aa909934f84f1c92d3fb9f04173b33e"))
+        XCTAssertFalse(updated.contains("8995548dfffcde7c49987029c764355612ba6850ee09a7b6f0fddc85bdc5c280"))
+    }
+
     func testPathHelpers() throws {
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root/child", parent: "/tmp/root"))
         XCTAssertTrue(SetupPathTools.pathIsUnder("/tmp/root", parent: "/tmp/root"))

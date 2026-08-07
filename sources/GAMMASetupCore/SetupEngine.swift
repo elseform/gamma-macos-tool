@@ -838,6 +838,7 @@ public final class GAMMASetupEngine {
 
     private func resolveCompatibleWinetricks(requiredVerbs: [String], context: SetupContext) throws -> String {
         let managedWinetricks = context.managedWinetricks
+        try updateManagedWinetricksPayloadChecksums(at: managedWinetricks)
         let candidates = [managedWinetricks.path, findTool("winetricks")].compactMap { $0 }
         let validationRunner = ProcessRunner(dryRun: context.request.dryRun, verbose: false, reporter: reporter)
         for candidate in candidates where fileManager.isExecutableFile(atPath: candidate) {
@@ -867,12 +868,23 @@ public final class GAMMASetupEngine {
         if context.request.dryRun {
             return managedWinetricks.path
         }
+        try updateManagedWinetricksPayloadChecksums(at: managedWinetricks)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: managedWinetricks.path)
         let output = try validationRunner.run(managedWinetricks.path, ["list-all"], label: "validate downloaded winetricks").output
         guard WinetricksTools.supports(requiredVerbs, listOutput: output) else {
             throw SetupEngineError.message("downloaded winetricks does not support required verbs: \(requiredVerbs.joined(separator: ", "))")
         }
         return managedWinetricks.path
+    }
+
+    private func updateManagedWinetricksPayloadChecksums(at scriptURL: URL) throws {
+        guard fileManager.fileExists(atPath: scriptURL.path) else { return }
+        let script = try String(contentsOf: scriptURL)
+        let updated = WinetricksTools.updatingKnownPayloadChecksums(in: script)
+        guard updated != script else { return }
+        try updated.write(to: scriptURL, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+        reporter.log("Updated managed winetricks checksums for current Visual C++ redistributables")
     }
 
     private func installWinetricksGroup(label: String, verbs: [String], winetricks: String, context: SetupContext) throws {

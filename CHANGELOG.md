@@ -13,6 +13,7 @@
 - Reduced repeated downloads by reusing cached Sikarugir and Winetricks files when available.
 - Improved setup review, progress reporting, completion details, and error guidance.
 - Added an optional detailed setup log for troubleshooting.
+- Updated the managed Winetricks checksums for the current `vcrun2026` redistributables so repeat wrapper creation can reuse cached payloads.
 
 ### Safety and behavior
 
