@@ -16,6 +16,7 @@ struct SetupConfiguration {
     var renderer = "d3dmetal"
     var updateUSVFS = true
     var installGPTK4Binaries = true
+    var installDirectXBinaries = false
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
     var launchArguments = ""
@@ -183,6 +184,7 @@ struct SetupConfiguration {
             renderer: renderer,
             updateUSVFS: updateUSVFS,
             installGPTK4Binaries: installGPTK4Binaries,
+            installDirectXBinaries: installDirectXBinaries,
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,

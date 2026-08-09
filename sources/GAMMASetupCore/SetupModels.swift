@@ -171,6 +171,7 @@ public struct SetupRequest: Codable {
     public var renderer: String
     public var updateUSVFS: Bool
     public var installGPTK4Binaries: Bool
+    public var installDirectXBinaries: Bool
     public var mo2Path: String
     public var gammaPath: String
     public var anomalyPath: String
@@ -198,6 +199,7 @@ public struct SetupRequest: Codable {
         renderer: String = "d3dmetal",
         updateUSVFS: Bool = true,
         installGPTK4Binaries: Bool = true,
+        installDirectXBinaries: Bool = false,
         mo2Path: String = "",
         gammaPath: String = "",
         anomalyPath: String = "",
@@ -224,6 +226,7 @@ public struct SetupRequest: Codable {
         self.renderer = renderer
         self.updateUSVFS = updateUSVFS
         self.installGPTK4Binaries = installGPTK4Binaries
+        self.installDirectXBinaries = installDirectXBinaries
         self.mo2Path = mo2Path
         self.gammaPath = gammaPath
         self.anomalyPath = anomalyPath
