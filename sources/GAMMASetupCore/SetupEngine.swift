@@ -316,6 +316,7 @@ public final class GAMMASetupEngine {
         }
         try runStage(.prefix) {
             try initializePrefix(context: context)
+            try installDirectXBinaries(context: context)
             try configureWineGraphicsDriver(context: context)
             try configureDisplayGeometry(context: context)
         }
@@ -711,6 +712,50 @@ public final class GAMMASetupEngine {
         try fileManager.createSymbolicLink(atPath: rendererDir.appendingPathComponent("apple_gptk").path, withDestinationPath: "d3dmetal")
     }
 
+    private func installDirectXBinaries(context: SetupContext) throws {
+        guard context.request.installDirectXBinaries else { return }
+        let source = try directxSource(context: context)
+        
+        let targetDir: URL
+        if context.request.programBatch != "/mo2.bat" {
+            let exeURL = URL(fileURLWithPath: context.request.programBatch)
+            targetDir = exeURL.deletingLastPathComponent()
+        } else {
+            targetDir = context.driveC.appendingPathComponent("windows/system32")
+        }
+        
+        let files = ["d3dx9_43.dll", "d3dx10_43.dll", "d3dx11_43.dll", "d3dcompiler_47.dll", "d3dcompiler_43.dll", "xinput1_3.dll"]
+        
+        reporter.log("Installing DirectX native binaries from \(source.path) to \(targetDir.path)")
+        guard !context.request.dryRun else { return }
+        
+        try fileManager.createDirectory(at: targetDir, withIntermediateDirectories: true)
+        
+        for file in files {
+            let sourceFile = source.appendingPathComponent(file)
+            let targetFile = targetDir.appendingPathComponent(file)
+            
+            if fileManager.fileExists(atPath: sourceFile.path) {
+                try? fileManager.removeItem(at: targetFile)
+                try fileManager.copyItem(at: sourceFile, to: targetFile)
+            } else {
+                reporter.log("Warning: bundled DirectX binary missing: \(file)", severity: "warning")
+            }
+        }
+    }
+
+    private func directxSource(context: SetupContext) throws -> URL {
+        let candidates = [
+            context.scriptRoot.appendingPathComponent("directx"),
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/directx"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/directx")
+        ]
+        if let found = candidates.first(where: { directoryExists($0.path) }) {
+            return found
+        }
+        throw SetupEngineError.message("bundled directx binaries were requested but no source was found at Resources/directx")
+    }
+
     private func initializePrefix(context: SetupContext) throws {
         if fileManager.fileExists(atPath: context.userReg.path), directoryExists(context.driveC.path) {
             try normalizeWineUserProfile(context: context)
@@ -779,7 +824,10 @@ public final class GAMMASetupEngine {
     }
 
     private func installWinetricksDependencies(context: SetupContext) throws {
-        let requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
+        var requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
+        if context.request.installDirectXBinaries {
+            requiredVerbs.removeAll { ["d3dx9_43", "d3dx11_43", "d3dcompiler_47"].contains($0) }
+        }
         let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
         let installedOutput: String
         do {

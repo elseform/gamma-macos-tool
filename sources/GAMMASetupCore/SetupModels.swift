@@ -22,7 +22,7 @@ public enum SetupEngineEventType: String, Codable {
 public enum SetupRegistryDefaults {
     public static let requiredDllOverrides: [String: String] = [
         "*concrt140": "native,builtin",
-        "*d3dcompiler_47": "native",
+        "*d3dcompiler_47": "native,builtin",
         "*msvcp140": "native,builtin",
         "*msvcp140_1": "native,builtin",
         "*msvcp140_2": "native,builtin",
@@ -33,6 +33,11 @@ public enum SetupRegistryDefaults {
         "*vcomp140": "native,builtin",
         "*vcruntime140": "native,builtin",
         "*vcruntime140_1": "native,builtin",
+        "*d3dx9_43": "native,builtin",
+        "*d3dx10_43": "native,builtin",
+        "*d3dx11_43": "native,builtin",
+        "*d3dcompiler_43": "native,builtin",
+        "*xinput1_3": "native,builtin",
     ]
 }
 

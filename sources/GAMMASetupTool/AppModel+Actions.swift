@@ -107,6 +107,7 @@ extension AppModel {
 
     func useModOrganizerLaunch() {
         programBatch = "/mo2.bat"
+        installDirectXBinaries = false
         launchBatches.removeAll()
     }
 

@@ -274,7 +274,11 @@ struct SetupPage: View {
                 CardHeading(title: "Additional options")
                 Toggle(SetupOptionCopy.installUSVFSBinaries, isOn: $model.updateUSVFS)
                 Toggle(SetupOptionCopy.installGPTK4Binaries, isOn: $model.installGPTK4Binaries)
-                Toggle(SetupOptionCopy.installDirectXBinaries, isOn: $model.installDirectXBinaries)
+                
+                if model.programBatch != "/mo2.bat" {
+                    Toggle(SetupOptionCopy.installDirectXBinaries, isOn: $model.installDirectXBinaries)
+                }
+                
                 Toggle(SetupOptionCopy.saveDetailedLog, isOn: $model.saveVerboseLog)
             }
         }
