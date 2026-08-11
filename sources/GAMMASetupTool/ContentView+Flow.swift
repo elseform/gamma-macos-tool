@@ -1,33 +1,11 @@
 import SwiftUI
 
-struct WelcomePage: View {
-    let createAction: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            WizardCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("Full GAMMA installation required. Enter an app name and locate ModOrganizer.exe.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button {
-                        createAction()
-                    } label: {
-                        Label("Create wrapper", systemImage: "plus.app")
-                    }
-                    .controlSize(.large)
-                }
-            }
-            .frame(width: Layout.wizardContentWidth, alignment: .leading)
-        }
-        .frame(width: Layout.wizardContentWidth, alignment: .leading)
-    }
-}
-
 struct WrapperNamePage: View {
     @ObservedObject var model: AppModel
+    let recommendedDisabled: Bool
+    let advancedDisabled: Bool
+    let recommendedAction: () -> Void
+    let advancedAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -50,19 +28,15 @@ struct WrapperNamePage: View {
                 }
             }
             .frame(width: Layout.environmentPanelWidth, alignment: .leading)
-        }
-        .frame(width: Layout.environmentPanelWidth, alignment: .leading)
-    }
-}
 
-struct InstallChoicePage: View {
-    var defaultDisabled = false
-    let defaultAction: () -> Void
-    let advancedAction: () -> Void
-    let xrayD3DMetalAction: () -> Void
+            WizardCard(
+                horizontalPadding: Layout.environmentPanelHorizontalPadding,
+                verticalPadding: Layout.environmentPanelVerticalPadding
+            ) {
+                    modOrganizerRow()
+            }
+            .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
             WizardCard {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("You can configure the wrapper later using the \"Configure\" application.")
@@ -72,12 +46,13 @@ struct InstallChoicePage: View {
 
                     HStack(spacing: 12) {
                         Button {
-                            defaultAction()
+                            recommendedAction()
                         } label: {
                             Label("Recommended", systemImage: "checkmark.circle")
                         }
                         .controlSize(.large)
-                        .disabled(defaultDisabled)
+                        .disabled(recommendedDisabled || advancedDisabled)
+                        .help("GPTK4 D3DMetal with source-verified X-Ray dependencies.")
 
                         Button {
                             advancedAction()
@@ -85,17 +60,10 @@ struct InstallChoicePage: View {
                             Label("Advanced", systemImage: "slider.horizontal.3")
                         }
                         .controlSize(.large)
-
-                        Button {
-                            xrayD3DMetalAction()
-                        } label: {
-                            Label("X-Ray D3DMetal", systemImage: "testtube.2")
-                        }
-                        .controlSize(.large)
-                        .help("Open Advanced settings with GPTK4 D3DMetal and source-verified X-Ray dependencies.")
+                        .disabled(advancedDisabled)
                     }
 
-                    if defaultDisabled {
+                    if recommendedDisabled && !advancedDisabled {
                         Text("Drive mapping is not valid, fix using Advanced settings.")
                             .font(.caption)
                             .foregroundStyle(.yellow)
@@ -105,6 +73,34 @@ struct InstallChoicePage: View {
             }
             .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
         }
-        .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+        .frame(width: Layout.environmentPanelWidth, alignment: .leading)
+    }
+
+    private func modOrganizerRow() -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            CheckRow(
+                label: model.selectedLaunchExecutableLabel,
+                status: "",
+                ok: model.selectedModOrganizerExecutableFound,
+                warning: true,
+                detail: model.selectedLaunchExecutablePath
+            ) {
+                Button {
+                    model.chooseLaunchExecutable()
+                } label: {
+                    Label("Choose…", systemImage: "folder")
+                }
+            }
+
+            HStack(spacing: 8) {
+                Text("Flags")
+                    .frame(width: 44, alignment: .leading)
+                TextField("Optional launch flags", text: $model.launchArguments)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(model.programBatch == "/mo2.bat")
+            }
+            .padding(.bottom, 8)
+        }
     }
 }
+

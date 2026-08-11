@@ -84,7 +84,7 @@ extension AppModel {
     func useXRayD3DMetalPreset() {
         engine = SetupConfiguration.sikarugir10Engine
         renderer = "d3dmetal"
-        updateUSVFS = false
+        updateUSVFS = true
         installGPTK4Binaries = true
         installDirectXBinaries = false
         compatibilityProfile = .xrayD3DMetal

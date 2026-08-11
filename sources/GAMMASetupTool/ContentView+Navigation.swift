@@ -5,26 +5,12 @@ extension ContentView {
 
     private var headerText: (title: String, subtitle: String) {
         switch step {
-        case .welcome:
-            return (
-                "GAMMA Setup Tool",
-                SetupFlowCopy.wrapperDescription
-            )
         case .wrapperName:
             return (
-                "App name",
-                "The application will be created under ~/Applications."
+                "GAMMA Setup Tool",
+                "Enter an app name and locate ModOrganizer.exe."
             )
-        case .environment:
-            return (
-                "Locate GAMMA installation",
-                "Select the GAMMA folder that contains ModOrganizer.exe."
-            )
-        case .installChoice:
-            return (
-                "Pick installation type",
-                "Use the recommended settings unless you know what you are doing."
-            )
+
         case .setup:
             return (
                 "Wrapper settings",
@@ -34,6 +20,8 @@ extension ContentView {
             return (model.createHeaderTitle, model.createHeaderSubtitle)
         case .complete:
             return (WrapperCreatedCopy.title, WrapperCreatedCopy.subtitle)
+        default:
+            return ("GAMMA Setup Tool", "")
         }
     }
 
@@ -62,18 +50,14 @@ extension ContentView {
     @ViewBuilder
     var currentStepView: some View {
         switch step {
-        case .welcome:
-            WelcomePage(createAction: startCreateFlow)
         case .wrapperName:
-            WrapperNamePage(model: model)
-        case .environment:
-            EnvironmentPage(model: model)
-        case .installChoice:
-            InstallChoicePage(
-                defaultDisabled: !model.driveMappingReady,
-                defaultAction: selectDefaultInstall,
-                advancedAction: selectAdvancedInstall,
-                xrayD3DMetalAction: selectXRayD3DMetalInstall
+            let invalidNameOrExe = !model.wrapperNameIsValid || !model.selectedModOrganizerExecutableFound
+            WrapperNamePage(
+                model: model,
+                recommendedDisabled: invalidNameOrExe || !model.driveMappingReady,
+                advancedDisabled: invalidNameOrExe,
+                recommendedAction: selectRecommendedInstall,
+                advancedAction: selectAdvancedInstall
             )
         case .setup:
             SetupPage(model: model, showWinetricksList: $showWinetricksList)
@@ -85,6 +69,8 @@ extension ContentView {
             )
         case .complete:
             CompletePage(model: model)
+        default:
+            EmptyView()
         }
     }
 
@@ -142,7 +128,7 @@ extension ContentView {
 
     @ViewBuilder
     private var footerBackButton: some View {
-        if step != .welcome && step != .complete && !model.isRunning && !createButtonSubmitted {
+        if step != .wrapperName && step != .complete && !model.isRunning && !createButtonSubmitted {
             Button("Back") {
                 if let previous = previousStep {
                     step = previous
@@ -155,25 +141,7 @@ extension ContentView {
     @ViewBuilder
     private var footerPrimaryButton: some View {
         switch step {
-        case .welcome:
-            EmptyView()
         case .wrapperName:
-            Button {
-                continueToNextStep()
-            } label: {
-                Label("Continue", systemImage: "arrow.right.circle")
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!model.wrapperNameIsValid || model.isRunning)
-        case .environment:
-            Button {
-                continueFromEnvironment()
-            } label: {
-                Label("Continue", systemImage: "arrow.right.circle")
-            }
-            .keyboardShortcut(.return, modifiers: [.command])
-            .disabled(!canContinueFromEnvironment || model.isRunning)
-        case .installChoice:
             EmptyView()
         case .setup:
             Button {
@@ -204,6 +172,8 @@ extension ContentView {
             }
             .keyboardShortcut(.return, modifiers: [.command])
             .help("Show wrapper in Finder")
+        default:
+            EmptyView()
         }
     }
 
@@ -214,12 +184,12 @@ extension ContentView {
             return []
         }
         if installMode == .defaultInstall {
-            return [.welcome, .wrapperName, .environment, .installChoice, .create]
+            return [.wrapperName, .create]
         }
         if installMode == .advanced {
-            return [.welcome, .wrapperName, .environment, .installChoice, .setup, .create]
+            return [.wrapperName, .setup, .create]
         }
-        return [.welcome, .wrapperName, .environment, .installChoice]
+        return [.wrapperName]
     }
 
     private var currentStepIndex: Int? {
@@ -244,29 +214,16 @@ extension ContentView {
         if model.isRunning {
             return false
         }
-        if step == .environment {
-            return canContinueFromEnvironment
-        }
         if step == .setup {
             return nextStep != nil && model.setupReady
         }
         return nextStep != nil
     }
 
-    private var canContinueFromEnvironment: Bool {
-        model.selectedModOrganizerExecutableFound
-    }
-
     private func continueToNextStep() {
         guard let next = nextStep else { return }
         furthestUnlockedStep = next.rawValue > furthestUnlockedStep.rawValue ? next : furthestUnlockedStep
         step = next
-    }
-
-    private func continueFromEnvironment() {
-        guard canContinueFromEnvironment else { return }
-        environmentCompleted = true
-        step = .installChoice
     }
 
     private func startCreate() {
@@ -280,28 +237,14 @@ extension ContentView {
         }
     }
 
-    private func startCreateFlow() {
-        installMode = nil
-        model.prepareNewWrapperFlow()
-        step = .wrapperName
-    }
-
-    private func selectDefaultInstall() {
+    private func selectRecommendedInstall() {
         guard model.selectedModOrganizerExecutableFound, model.driveMappingReady else { return }
-        model.compatibilityProfile = .standard
-        model.driveMappingMode = "preserve"
-        model.useDefaultLaunchConfiguration()
+        model.useXRayD3DMetalPreset()
         installMode = .defaultInstall
         step = .create
     }
 
     private func selectAdvancedInstall() {
-        model.compatibilityProfile = .standard
-        installMode = .advanced
-        step = .setup
-    }
-
-    private func selectXRayD3DMetalInstall() {
         model.useXRayD3DMetalPreset()
         installMode = .advanced
         step = .setup

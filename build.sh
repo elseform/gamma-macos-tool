@@ -125,11 +125,15 @@ PLIST
 
 perl -0pi -e "s/APP_VERSION_PLACEHOLDER/$APP_VERSION/g" "$CONTENTS_DIR/Info.plist"
 
+INSTALL_DIR="$HOME/Applications"
+
 if [[ "$MODE" == "build" ]]; then
   codesign --force --deep --sign - "$APP_DIR"
+  mkdir -p "$INSTALL_DIR"
+  rm -rf "$INSTALL_DIR/GAMMA Setup Tool.app"
+  cp -R "$APP_DIR" "$INSTALL_DIR/GAMMA Setup Tool.app"
+  printf '%s\n' "$INSTALL_DIR/GAMMA Setup Tool.app"
 fi
-
-echo "$APP_DIR"
 
 if [[ "$MODE" == "run" ]]; then
   "$BINARY"

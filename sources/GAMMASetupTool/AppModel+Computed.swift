@@ -204,7 +204,7 @@ extension AppModel {
         if updateUSVFS {
             rows.append(SetupSummaryItem(label: SetupOptionCopy.usvfsBinaries, planned: SetupOptionCopy.installBundledAction))
         }
-        rows.append(SetupSummaryItem(label: "Settings", planned: "Recommended"))
+        rows.append(SetupSummaryItem(label: "Settings", planned: "X-Ray D3DMetal (Recommended)"))
         return rows
     }
 
