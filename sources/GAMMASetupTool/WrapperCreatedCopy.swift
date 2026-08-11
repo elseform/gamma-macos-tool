@@ -10,14 +10,14 @@ enum WrapperCreatedCopy {
 enum SetupOptionCopy {
     static let installAction = "Install"
     static let installBundledAction = "Update binaries"
-    static let gptkBinaries = "GPTK4 beta 1 D3DMetal binaries"
+    static let gptkBinaries = "GPTK4 D3DMetal binaries"
     static let dxBinaries = "DirectX Binaries"
-    static let usvfsBinaries = "Update ModOrganizer usvfs libraries"
+    static let usvfsBinaries = "Update ModOrganizer USVFS"
     static let logTitle = "Setup log"
     static let logAction = "Save"
 
     static var installGPTK4Binaries: String {
-        "Install GPTK4 d3dmetal/DXVK Binaries"
+        "Install GPTK4 D3DMetal binaries"
     }
 
     static var installUSVFSBinaries: String {

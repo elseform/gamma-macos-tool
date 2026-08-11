@@ -68,8 +68,12 @@ final class AppModel: ObservableObject {
     var receivedInstallStageEvents = false
     var pendingEngineEventText = ""
 
+    @Published var additionalWinetricks = ""
+
     var requiredWinetricks: [String] {
-        compatibilityProfile.requiredVerbs
+        let base = compatibilityProfile.requiredVerbs
+        let extra = additionalWinetricks.split(separator: " ").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        return base + extra
     }
 
     init() {

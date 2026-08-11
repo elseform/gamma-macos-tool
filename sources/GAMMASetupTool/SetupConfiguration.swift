@@ -25,6 +25,7 @@ struct SetupConfiguration {
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
     var manualModOrganizerPath = ""
+    var additionalWinetricks = ""
     var preflight: Preflight?
 
     var outputAppPath: String {
@@ -153,7 +154,8 @@ struct SetupConfiguration {
             driveMappingMode: driveMappingMode,
             forceRetinaOff: displayMode == "retinaOff",
             writeLog: saveVerboseLog,
-            verbose: saveVerboseLog
+            verbose: saveVerboseLog,
+            additionalWinetricks: additionalWinetricks.isEmpty ? nil : additionalWinetricks
         )
     }
 

@@ -236,6 +236,7 @@ public struct SetupRequest: Codable {
     public var usvfsSource: String
     public var appIconSource: String
     public var resourceRoot: String
+    public var additionalWinetricks: String?
 
     public init(
         appName: String = "stalker-gamma",
@@ -262,7 +263,8 @@ public struct SetupRequest: Codable {
         settingsFile: String = SetupDefaults.defaultSettingsFile,
         usvfsSource: String = SetupDefaults.defaultUSVFSSource,
         appIconSource: String = "",
-        resourceRoot: String = ""
+        resourceRoot: String = "",
+        additionalWinetricks: String? = nil
     ) {
         self.appName = appName
         self.outputApp = outputApp
@@ -289,6 +291,7 @@ public struct SetupRequest: Codable {
         self.usvfsSource = usvfsSource
         self.appIconSource = appIconSource
         self.resourceRoot = resourceRoot
+        self.additionalWinetricks = additionalWinetricks
     }
 }
 

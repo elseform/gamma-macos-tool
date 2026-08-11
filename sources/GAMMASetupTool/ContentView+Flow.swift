@@ -29,10 +29,7 @@ struct WrapperNamePage: View {
             }
             .frame(width: Layout.environmentPanelWidth, alignment: .leading)
 
-            WizardCard(
-                horizontalPadding: Layout.environmentPanelHorizontalPadding,
-                verticalPadding: Layout.environmentPanelVerticalPadding
-            ) {
+            WizardCard {
                     modOrganizerRow()
             }
             .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
@@ -77,7 +74,7 @@ struct WrapperNamePage: View {
     }
 
     private func modOrganizerRow() -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             CheckRow(
                 label: model.selectedLaunchExecutableLabel,
                 status: "",
@@ -85,21 +82,21 @@ struct WrapperNamePage: View {
                 warning: true,
                 detail: model.selectedLaunchExecutablePath
             ) {
-                Button {
+                Button("Choose…") {
                     model.chooseLaunchExecutable()
-                } label: {
-                    Label("Choose…", systemImage: "folder")
                 }
             }
 
             HStack(spacing: 8) {
                 Text("Flags")
-                    .frame(width: 44, alignment: .leading)
+                    .frame(width: 38, alignment: .leading)
                 TextField("Optional launch flags", text: $model.launchArguments)
                     .textFieldStyle(.roundedBorder)
-                    .disabled(model.programBatch == "/mo2.bat")
             }
-            .padding(.bottom, 8)
+            .padding(.leading, 34)
+            .padding(.bottom, 12)
+            .opacity(model.programBatch == "/mo2.bat" ? 0.5 : 1.0)
+            .disabled(model.programBatch == "/mo2.bat")
         }
     }
 }

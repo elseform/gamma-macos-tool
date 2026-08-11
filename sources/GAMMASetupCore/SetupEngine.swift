@@ -852,6 +852,10 @@ public final class GAMMASetupEngine {
         if context.request.installDirectXBinaries {
             requiredVerbs.removeAll { ["d3dx9_43", "d3dx11_43", "d3dcompiler_47"].contains($0) }
         }
+        if let additional = context.request.additionalWinetricks {
+            let extra = additional.split(separator: " ").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            requiredVerbs.append(contentsOf: extra)
+        }
         let winetricks = try resolveCompatibleWinetricks(requiredVerbs: requiredVerbs, context: context)
         let installedOutput: String
         do {

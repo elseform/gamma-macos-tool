@@ -36,6 +36,7 @@ extension AppModel {
             driveMappingMode: driveMappingMode,
             displayMode: displayMode,
             manualModOrganizerPath: manualModOrganizerPath,
+            additionalWinetricks: additionalWinetricks,
             preflight: preflight
         )
     }
