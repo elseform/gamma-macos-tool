@@ -95,53 +95,14 @@ struct SetupPage: View {
             Divider()
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 7) {
                 GridRow {
-                    Text("Display")
-                    Picker("Display", selection: $model.displayMode) {
+                    Text("Wine display")
+                    Picker("Wine display", selection: $model.displayMode) {
                         Text("Default").tag("defaultWine")
-                        Text("Forced").tag("forced")
+                        Text("Force Retina off").tag("retinaOff")
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
                 }
-
-                if model.displayMode == "forced" {
-                    GridRow {
-                        Text("Resolution")
-                        Picker("Resolution", selection: $model.displayResolutionMode) {
-                            if let detectedResolutionLabel {
-                                Text(detectedResolutionLabel).tag("detected")
-                            }
-                            Text("1920 x 1080").tag("1920x1080")
-                            Text("2560 x 1440").tag("2560x1440")
-                            Text("3840 x 2160").tag("3840x2160")
-                            Text("Custom").tag("custom")
-                        }
-                        .labelsHidden()
-                    }
-
-                    if model.displayResolutionMode == "custom" {
-                        GridRow {
-                            Text("Custom")
-                            HStack(spacing: 6) {
-                                TextField("Width", text: $model.customDisplayResolutionWidth)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 72)
-                                Text("x")
-                                    .foregroundStyle(.secondary)
-                                TextField("Height", text: $model.customDisplayResolutionHeight)
-                                    .textFieldStyle(.roundedBorder)
-                                    .frame(width: 72)
-                            }
-                        }
-                    }
-                }
-            }
-
-            if let display = model.detectedDisplay {
-                Text("Detected resolution: \(display.summary)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -155,15 +116,6 @@ struct SetupPage: View {
         default:
             return "Recommended renderer, use this unless you encounter issues."
         }
-    }
-
-    private var detectedResolutionLabel: String? {
-        guard let display = model.detectedDisplay,
-              display.backingWidth > 0,
-              display.backingHeight > 0 else {
-            return nil
-        }
-        return "Use detected: \(display.backingWidth) x \(display.backingHeight)"
     }
 
     // MARK: - Drive Mapping

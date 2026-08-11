@@ -1,6 +1,30 @@
 import Foundation
 
 final class SetupEngineCoreTests {
+    func testXRayD3DMetalWinetricksProfileOmitsCoreFonts() {
+        XCTAssertEqual(
+            SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs,
+            ["d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026", "win10", "sound=coreaudio"]
+        )
+        XCTAssertFalse(SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs.contains("corefonts"))
+        XCTAssertTrue(SetupCompatibilityProfile.standard.requiredVerbs.contains("corefonts"))
+    }
+
+    func testXRayD3DMetalOverridesKeepBackendOwnedDllsUnforced() {
+        let overrides = SetupRegistryDefaults.xrayD3DMetalDllOverrides
+
+        XCTAssertEqual(overrides["*d3dx9_43"], "native,builtin")
+        XCTAssertEqual(overrides["*d3dx11_43"], "native,builtin")
+        XCTAssertEqual(overrides["*d3dcompiler_47"], "native,builtin")
+        XCTAssertEqual(overrides["winemenubuilder.exe"], "")
+        XCTAssertNil(overrides["*d3d11"])
+        XCTAssertNil(overrides["*dxgi"])
+        XCTAssertNil(overrides["*nvapi64"])
+        XCTAssertNil(overrides["*d3dx10_43"])
+        XCTAssertNil(overrides["*d3dcompiler_43"])
+        XCTAssertNil(overrides["*xinput1_3"])
+    }
+
     func testAppendWordsSplitsSpacesAndCommas() {
         XCTAssertEqual(SetupPathTools.appendWords("corefonts,d3dx9 dxvk"), ["corefonts", "d3dx9", "dxvk"])
     }
@@ -137,10 +161,49 @@ final class SetupEngineCoreTests {
         XCTAssertContains(output, "[Existing]")
     }
 
+    func testWineDisplayDefaultWritesNothingAndRetinaOffWritesOnlyRequiredValues() throws {
+        let temp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("gamma-wine-display-tests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        let existingRegistry = #"""
+        [Software\\Wine\\Mac Driver]
+        "RetinaMode"="Y"
+
+        [Control Panel\\Desktop]
+        "LogPixels"=dword:000000c0
+        """#
+        let engine = GAMMASetupEngine(executablePath: "/tmp/gamma-setup-engine")
+        let unchanged = try engine.configureWineDisplayForTesting(
+            request: SetupRequest(
+                outputApp: temp.appendingPathComponent("default.app").path,
+                forceRetinaOff: false
+            ),
+            registry: existingRegistry
+        )
+        XCTAssertEqual(unchanged, existingRegistry)
+
+        let forced = try engine.configureWineDisplayForTesting(
+            request: SetupRequest(
+                outputApp: temp.appendingPathComponent("forced.app").path,
+                forceRetinaOff: true
+            ),
+            registry: ""
+        )
+        XCTAssertContains(forced, #""RetinaMode"="N""#)
+        XCTAssertContains(forced, #""LogPixels"=dword:00000060"#)
+        XCTAssertFalse(forced.contains("Win8DpiScaling"))
+        XCTAssertFalse(forced.contains("Explorer\\\\Desktops"))
+    }
+
     func testRequiredDllOverridesMatchEnforcedWrapperRegistry() {
         XCTAssertEqual(SetupRegistryDefaults.requiredDllOverrides, [
             "*concrt140": "native,builtin",
-            "*d3dcompiler_47": "native",
+            "*d3dcompiler_43": "native,builtin",
+            "*d3dcompiler_47": "native,builtin",
+            "*d3dx9_43": "native,builtin",
+            "*d3dx10_43": "native,builtin",
+            "*d3dx11_43": "native,builtin",
             "*msvcp140": "native,builtin",
             "*msvcp140_1": "native,builtin",
             "*msvcp140_2": "native,builtin",
@@ -151,6 +214,7 @@ final class SetupEngineCoreTests {
             "*vcomp140": "native,builtin",
             "*vcruntime140": "native,builtin",
             "*vcruntime140_1": "native,builtin",
+            "*xinput1_3": "native,builtin",
         ])
     }
 
@@ -311,6 +375,39 @@ final class SetupEngineCoreTests {
             reporter: JSONEventReporter(streamEvents: false)
         )
         try engine.createForTesting(request: request, templateSource: template, templateName: "Template-1.0.11")
+        try? FileManager.default.removeItem(at: temp)
+    }
+
+    func testXRayD3DMetalProfileWritesLauncherWineOptions() throws {
+        let temp = try makeTempDir("gamma-xray-d3dmetal-profile")
+        let template = try makeWrapperTemplate(root: temp)
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let request = SetupRequest(
+            outputApp: app.path,
+            renderer: "d3dmetal",
+            installGPTK4Binaries: true,
+            compatibilityProfile: .xrayD3DMetal
+        )
+        let engine = GAMMASetupEngine(
+            executablePath: temp.appendingPathComponent("gamma-setup-engine").path,
+            reporter: JSONEventReporter(streamEvents: false)
+        )
+
+        try engine.configureWrapperForTesting(
+            request: request,
+            templateSource: template,
+            templateName: "Template-1.0.11"
+        )
+        let plistURL = app.appendingPathComponent("Contents/Info.plist")
+        let data = try Data(contentsOf: plistURL)
+        let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+
+        XCTAssertEqual(plist?["D3DMETAL"] as? String, "1")
+        XCTAssertEqual(plist?["WINEESYNC"] as? String, "0")
+        XCTAssertEqual(plist?["WINEMSYNC"] as? String, "1")
+        XCTAssertEqual(plist?["ADVERTISE_AVX"] as? Int, 1)
+        XCTAssertEqual(plist?["METAL_HUD"] as? Int, 1)
+        XCTAssertEqual(plist?["WINEDEBUG"] as? String, "-all")
         try? FileManager.default.removeItem(at: temp)
     }
 
@@ -543,7 +640,11 @@ final class SetupEngineCoreTests {
         let registry = #"""
         [Software\\Wine\\DllOverrides]
         "*concrt140"="native,builtin"
-        "*d3dcompiler_47"="native"
+        "*d3dcompiler_43"="native,builtin"
+        "*d3dcompiler_47"="native,builtin"
+        "*d3dx9_43"="native,builtin"
+        "*d3dx10_43"="native,builtin"
+        "*d3dx11_43"="native,builtin"
         "*msvcp140"="native,builtin"
         "*msvcp140_1"="native,builtin"
         "*msvcp140_2"="native,builtin"
@@ -554,6 +655,7 @@ final class SetupEngineCoreTests {
         "*vcomp140"="native,builtin"
         "*vcruntime140"="native,builtin"
         "*vcruntime140_1"="native,builtin"
+        "*xinput1_3"="native,builtin"
         """#
         let engine = GAMMASetupEngine(executablePath: "/tmp/gamma-setup-engine", reporter: JSONEventReporter(streamEvents: false))
 

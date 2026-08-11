@@ -19,6 +19,20 @@ public enum SetupEngineEventType: String, Codable {
     case completed
 }
 
+public enum SetupCompatibilityProfile: String, Codable {
+    case standard
+    case xrayD3DMetal = "xray-d3dmetal"
+
+    public var requiredVerbs: [String] {
+        switch self {
+        case .standard:
+            return ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
+        case .xrayD3DMetal:
+            return ["d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026", "win10", "sound=coreaudio"]
+        }
+    }
+}
+
 public enum SetupRegistryDefaults {
     public static let requiredDllOverrides: [String: String] = [
         "*concrt140": "native,builtin",
@@ -39,6 +53,33 @@ public enum SetupRegistryDefaults {
         "*d3dcompiler_43": "native,builtin",
         "*xinput1_3": "native,builtin",
     ]
+
+    public static let xrayD3DMetalDllOverrides: [String: String] = [
+        "*concrt140": "native,builtin",
+        "*d3dcompiler_47": "native,builtin",
+        "*d3dx9_43": "native,builtin",
+        "*d3dx11_43": "native,builtin",
+        "*msvcp140": "native,builtin",
+        "*msvcp140_1": "native,builtin",
+        "*msvcp140_2": "native,builtin",
+        "*msvcp140_atomic_wait": "native,builtin",
+        "*msvcp140_codecvt_ids": "native,builtin",
+        "*vcamp140": "native,builtin",
+        "*vccorlib140": "native,builtin",
+        "*vcomp140": "native,builtin",
+        "*vcruntime140": "native,builtin",
+        "*vcruntime140_1": "native,builtin",
+        "winemenubuilder.exe": "",
+    ]
+
+    public static func dllOverrides(for profile: SetupCompatibilityProfile) -> [String: String] {
+        switch profile {
+        case .standard:
+            return requiredDllOverrides
+        case .xrayD3DMetal:
+            return xrayD3DMetalDllOverrides
+        }
+    }
 }
 
 public struct SetupEngineEvent: Codable {
@@ -177,6 +218,7 @@ public struct SetupRequest: Codable {
     public var updateUSVFS: Bool
     public var installGPTK4Binaries: Bool
     public var installDirectXBinaries: Bool
+    public var compatibilityProfile: SetupCompatibilityProfile?
     public var mo2Path: String
     public var gammaPath: String
     public var anomalyPath: String
@@ -184,9 +226,7 @@ public struct SetupRequest: Codable {
     public var launchBatches: [LaunchBatch]?
     public var launchArguments: String?
     public var driveMappingMode: String
-    public var displayResolutionWidth: Int?
-    public var displayResolutionHeight: Int?
-    public var resetWineDisplay: Bool?
+    public var forceRetinaOff: Bool?
     public var writeLog: Bool
     public var verbose: Bool
     public var dryRun: Bool
@@ -205,6 +245,7 @@ public struct SetupRequest: Codable {
         updateUSVFS: Bool = true,
         installGPTK4Binaries: Bool = true,
         installDirectXBinaries: Bool = false,
+        compatibilityProfile: SetupCompatibilityProfile? = nil,
         mo2Path: String = "",
         gammaPath: String = "",
         anomalyPath: String = "",
@@ -212,9 +253,7 @@ public struct SetupRequest: Codable {
         launchBatches: [LaunchBatch] = [],
         launchArguments: String? = nil,
         driveMappingMode: String = "preserve",
-        displayResolutionWidth: Int? = nil,
-        displayResolutionHeight: Int? = nil,
-        resetWineDisplay: Bool? = false,
+        forceRetinaOff: Bool? = false,
         writeLog: Bool = false,
         verbose: Bool = false,
         dryRun: Bool = false,
@@ -232,6 +271,7 @@ public struct SetupRequest: Codable {
         self.updateUSVFS = updateUSVFS
         self.installGPTK4Binaries = installGPTK4Binaries
         self.installDirectXBinaries = installDirectXBinaries
+        self.compatibilityProfile = compatibilityProfile
         self.mo2Path = mo2Path
         self.gammaPath = gammaPath
         self.anomalyPath = anomalyPath
@@ -239,9 +279,7 @@ public struct SetupRequest: Codable {
         self.launchBatches = launchBatches
         self.launchArguments = launchArguments
         self.driveMappingMode = driveMappingMode
-        self.displayResolutionWidth = displayResolutionWidth
-        self.displayResolutionHeight = displayResolutionHeight
-        self.resetWineDisplay = resetWineDisplay
+        self.forceRetinaOff = forceRetinaOff
         self.writeLog = writeLog
         self.verbose = verbose
         self.dryRun = dryRun

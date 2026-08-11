@@ -59,6 +59,7 @@ struct InstallChoicePage: View {
     var defaultDisabled = false
     let defaultAction: () -> Void
     let advancedAction: () -> Void
+    let xrayD3DMetalAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -84,6 +85,14 @@ struct InstallChoicePage: View {
                             Label("Advanced", systemImage: "slider.horizontal.3")
                         }
                         .controlSize(.large)
+
+                        Button {
+                            xrayD3DMetalAction()
+                        } label: {
+                            Label("X-Ray D3DMetal", systemImage: "testtube.2")
+                        }
+                        .controlSize(.large)
+                        .help("Open Advanced settings with GPTK4 D3DMetal and source-verified X-Ray dependencies.")
                     }
 
                     if defaultDisabled {

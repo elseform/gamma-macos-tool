@@ -38,17 +38,11 @@ GAMMA Setup Tool.app
 
 Because the release is not notarized, macOS may require you to approve the app in System Settings.
 
-### Wine Display Resolution
+### Wine Display
 
-The Display section is for choosing whether Wine should use its default display behavior or expose a specific resolution to Windows apps. This is mainly useful when using BetterDisplay or another HiDPI display mode where macOS may show a 1080p desktop while the backing pixel mode is larger.
+`Default` leaves Wine display behavior unchanged. `Force Retina off` runs the wrapper as a normal non-Retina Windows display at 96 DPI.
 
-The tool detects the current macOS display mode, including HiDPI/backing resolution when available.
-
-`Wine default` keeps Sikarugir's normal display behavior. `Force resolution` writes Wine's Retina and DPI settings so Wine presents the selected resolution as a plain Windows display.
-
-For a BetterDisplay `1080p HiDPI` desktop, use `Force resolution` with the detected `1920 x 1080` option only when you want Wine to expose that exact display mode.
-
-For deeper technical notes on macOS scaling, Wine DPI behavior, and monitor geometry, see [DPI awareness, monitor geometry](https://github.com/elseform/gamma-setup-tool/wiki/DPI-awareness,-monitor-geometry).
+No resolution selector or display detection is used.
 
 ## Developer Notes
 
@@ -99,34 +93,7 @@ The app is split into:
 
 The Swift package builds both the GUI and the `gamma-setup-engine` backend.
 
-### Setup Engine Details
-
-`gamma-setup-engine` performs these operations:
-
-- Installs or verifies Homebrew tap `sikarugir-app/sikarugir` and Sikarugir Creator during wrapper installation, before wrapper creation.
-- Uses the selected `ModOrganizer.exe`; the CLI can still read `stalker-gamma-cli` settings from `~/Library/Application Support/stalker-gamma/settings.json` as a fallback.
-- Reads `<gammaPath>/ModOrganizer.ini` for context only and never modifies it. The recommended settings use Wine's standard `Z:` host-path mapping.
-- Creates a Sikarugir app wrapper.
-- Downloads or reuses cached Sikarugir template and engine archives.
-- Extracts the engine into the wrapper.
-- Initializes the Sikarugir Wine prefix inside the wrapper.
-- Uses Wine Sikarugir 10.0 and D3DMetal by default, or DXMT/DXVK when selected.
-- Sets `WINEESYNC=0` and `WINEMSYNC=1` on newly created wrappers.
-- When a Wine display resolution is selected, writes Wine Retina/DPI compatibility settings.
-- Sets the wrapper launch path to `/mo2.bat`.
-- Advanced settings can select another Windows `.exe` and append optional single-line launch flags to its generated batch file.
-- Creates a Finder alias named `Configure <wrapper name>` beside the wrapper, targeting the wrapper's `Contents/Configure.app`.
-- Advanced settings can add `G:` at the directory containing the selected GAMMA folder when existing ModOrganizer paths require it.
-- Custom launch executables and working directories use that `G:` mapping when they are under its root, with Wine's standard `Z:` host path as the fallback outside it.
-- Installs the bundled ModOrganizer `usvfs` binaries when selected.
-- Installs bundled GPTK4 D3DMetal binaries by default.
-- Installs required Wine dependencies with `winetricks`: `corefonts`, `d3dx9_43`, `d3dx11_43`, `d3dcompiler_47`, and `vcrun2026`.
-- Reuses a compatible installed `winetricks` CLI when available and otherwise downloads one current script into the setup tool's shared cache without modifying the Homebrew installation.
-- Applies DLL overrides for DirectX and Visual C++ runtime DLLs, preferring native `concrt140` with Wine's built-in implementation as fallback.
-- Creates `drive_c/mo2.bat`, which sets ModOrganizer Qt rendering variables before starting `ModOrganizer.exe`; optional launch flags are appended without being split or re-quoted.
-- Refuses to overwrite an existing target.
-
-### Logs And Cache
+### Logs
 
 Setup logs are optional. Enable `Save detailed setup log` in the advanced settings to create a log in `~/`:
 
@@ -140,26 +107,4 @@ Dry-run logs use:
 gamma-setup-tool.dry-run.YYYYMMDD-HHMMSS.log
 ```
 
-Logs are ignored by git.
-
-Downloaded Sikarugir assets are cached in:
-
-```text
-~/Library/Caches/stalker-gamma-sikarugir-setup
-```
-
-The shared `winetricks` script and its installer payloads are cached beside the setup tool's `settings.json`:
-
-```text
-~/Library/Application Support/gamma-setup-tool/cache/winetricks
-```
-
-New wrappers still install the required components into separate Wine prefixes, but reuse payloads from this cache instead of downloading them again.
-
-If Sikarugir Creator has already downloaded the template or engine, the setup engine reuses those local assets from:
-
-```text
-~/Library/Application Support/Sikarugir
-```
-
-Generated build products, Swift module cache, and intermediate binaries are written to `.build/`, which is ignored by git.
+Logs are ignored by git. Private engine behavior, cache layout, and preset details are maintained in the `gamma-project` command-center documentation.

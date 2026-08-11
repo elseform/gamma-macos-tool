@@ -115,6 +115,13 @@ final class SetupConfigurationTests {
         XCTAssertFalse(SetupConfiguration(installGPTK4Binaries: false).setupRequest.installGPTK4Binaries)
     }
 
+    func testSetupRequestIncludesXRayD3DMetalWinetricksProfile() {
+        let request = SetupConfiguration(compatibilityProfile: .xrayD3DMetal).setupRequest
+
+        XCTAssertEqual(request.compatibilityProfile, .xrayD3DMetal)
+        XCTAssertTrue(request.installGPTK4Binaries)
+    }
+
     func testSetupRequestIncludesManualModOrganizerWhenProvided() {
         let config = SetupConfiguration(manualModOrganizerPath: "/Games/GAMMA/ModOrganizer.exe")
 
@@ -201,22 +208,13 @@ final class SetupConfigurationTests {
         XCTAssertEqual(launch.usesModOrganizerEnvironment, true)
     }
 
-    func testSetupRequestIncludesDisplayResolutionOptions() {
+    func testSetupRequestIncludesWineDisplayMode() {
         let defaultWine = SetupConfiguration(displayMode: "defaultWine")
-        XCTAssertEqual(defaultWine.displayResolutionLabel, "Default")
-        XCTAssertNil(defaultWine.setupRequest.displayResolutionWidth)
-        XCTAssertNil(defaultWine.setupRequest.displayResolutionHeight)
-        XCTAssertEqual(defaultWine.setupRequest.resetWineDisplay, true)
+        XCTAssertEqual(defaultWine.setupRequest.forceRetinaOff, false)
 
-        let config = SetupConfiguration(
-            displayMode: "forced",
-            displayResolutionMode: "1920x1080"
-        )
+        let config = SetupConfiguration(displayMode: "retinaOff")
 
-        XCTAssertEqual(config.displayResolutionLabel, "1920 x 1080")
-        XCTAssertEqual(config.setupRequest.displayResolutionWidth, 1920)
-        XCTAssertEqual(config.setupRequest.displayResolutionHeight, 1080)
-        XCTAssertEqual(config.setupRequest.resetWineDisplay, false)
+        XCTAssertEqual(config.setupRequest.forceRetinaOff, true)
     }
 
     func testEngineLabels() {

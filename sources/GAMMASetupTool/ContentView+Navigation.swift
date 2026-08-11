@@ -72,7 +72,8 @@ extension ContentView {
             InstallChoicePage(
                 defaultDisabled: !model.driveMappingReady,
                 defaultAction: selectDefaultInstall,
-                advancedAction: selectAdvancedInstall
+                advancedAction: selectAdvancedInstall,
+                xrayD3DMetalAction: selectXRayD3DMetalInstall
             )
         case .setup:
             SetupPage(model: model, showWinetricksList: $showWinetricksList)
@@ -287,6 +288,7 @@ extension ContentView {
 
     private func selectDefaultInstall() {
         guard model.selectedModOrganizerExecutableFound, model.driveMappingReady else { return }
+        model.compatibilityProfile = .standard
         model.driveMappingMode = "preserve"
         model.useDefaultLaunchConfiguration()
         installMode = .defaultInstall
@@ -294,6 +296,13 @@ extension ContentView {
     }
 
     private func selectAdvancedInstall() {
+        model.compatibilityProfile = .standard
+        installMode = .advanced
+        step = .setup
+    }
+
+    private func selectXRayD3DMetalInstall() {
+        model.useXRayD3DMetalPreset()
         installMode = .advanced
         step = .setup
     }

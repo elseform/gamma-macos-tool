@@ -10,7 +10,7 @@ extension AppModel {
     // MARK: - Wrapper Status
 
     var requiredWinetricksSummary: String {
-        "corefonts, d3dx9_43, d3dx11_43, d3dcompiler_47, vcrun2026"
+        requiredWinetricks.joined(separator: ", ")
     }
 
     var winetricksWrapperState: WinetricksWrapperState {
@@ -28,18 +28,15 @@ extension AppModel {
             updateUSVFS: updateUSVFS,
             installGPTK4Binaries: installGPTK4Binaries,
             installDirectXBinaries: installDirectXBinaries,
+            compatibilityProfile: compatibilityProfile,
             programBatch: programBatch,
             launchBatches: launchBatches,
             launchArguments: launchArguments,
             saveVerboseLog: saveVerboseLog,
             driveMappingMode: driveMappingMode,
             displayMode: displayMode,
-            displayResolutionMode: displayResolutionMode,
-            customDisplayResolutionWidth: customDisplayResolutionWidth,
-            customDisplayResolutionHeight: customDisplayResolutionHeight,
             manualModOrganizerPath: manualModOrganizerPath,
-            preflight: preflight,
-            detectedDisplay: detectedDisplay
+            preflight: preflight
         )
     }
 
@@ -234,8 +231,8 @@ extension AppModel {
             add("Drive mapping", plannedWineDriveMapping)
         }
 
-        if selectedDisplayResolution != nil {
-            add("Display", displayResolutionLabel)
+        if displayMode == "retinaOff" {
+            add("Wine display", "Force Retina off")
         }
 
         if updateUSVFS {
@@ -260,14 +257,6 @@ extension AppModel {
         configuration.driveMappingReady
     }
 
-    var selectedDisplayResolution: (width: Int, height: Int)? {
-        configuration.selectedDisplayResolution
-    }
-
-    var displayResolutionLabel: String {
-        configuration.displayResolutionLabel
-    }
-
     var gammaFolderSelectionError: String? {
         let trimmed = preflightError.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -282,7 +271,4 @@ extension AppModel {
         return ""
     }
 
-    func updateDetectedDisplayDefaults() {
-        detectedDisplay = MacDisplaySettings.detectMainDisplay()
-    }
 }

@@ -44,16 +44,13 @@ final class AppModel: ObservableObject {
     @Published var updateUSVFS = true
     @Published var installGPTK4Binaries = true
     @Published var installDirectXBinaries = false
+    @Published var compatibilityProfile: SetupCompatibilityProfile = .standard
     @Published var programBatch = "/mo2.bat"
     @Published var launchBatches: [LaunchBatch] = []
     @Published var launchArguments = ""
     @Published var saveVerboseLog = false
     @Published var driveMappingMode = "preserve"
     @Published var displayMode = "defaultWine"
-    @Published var displayResolutionMode = "detected"
-    @Published var customDisplayResolutionWidth = ""
-    @Published var customDisplayResolutionHeight = ""
-    @Published var detectedDisplay: MacDisplaySettings?
     @Published var manualModOrganizerPath = ""
     @Published var modOrganizerSelectionError = ""
     @Published var preflight: Preflight?
@@ -71,13 +68,9 @@ final class AppModel: ObservableObject {
     var receivedInstallStageEvents = false
     var pendingEngineEventText = ""
 
-    let requiredWinetricks = [
-        "corefonts",
-        "d3dx9_43",
-        "d3dx11_43",
-        "d3dcompiler_47",
-        "vcrun2026"
-    ]
+    var requiredWinetricks: [String] {
+        compatibilityProfile.requiredVerbs
+    }
 
     init() {
         loadSettings()

@@ -28,10 +28,6 @@ struct ContentView: View {
         .frame(minWidth: Layout.windowWidth, minHeight: Layout.windowHeight)
         .background(WindowMinimumSize(width: Layout.windowWidth, height: Layout.windowHeight))
         .animation(.easeInOut(duration: 0.18), value: step)
-        .task {
-            guard !isXcodePreview else { return }
-            model.updateDetectedDisplayDefaults()
-        }
         .onChange(of: model.isRunning) { isRunning in
             if isRunning {
                 step = .create
@@ -40,9 +36,6 @@ struct ContentView: View {
         }
     }
 
-    private var isXcodePreview: Bool {
-        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-    }
 }
 
 #if DEBUG

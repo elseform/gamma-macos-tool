@@ -17,18 +17,15 @@ struct SetupConfiguration {
     var updateUSVFS = true
     var installGPTK4Binaries = true
     var installDirectXBinaries = false
+    var compatibilityProfile: SetupCompatibilityProfile = .standard
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
     var launchArguments = ""
     var saveVerboseLog = false
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
-    var displayResolutionMode = "detected"
-    var customDisplayResolutionWidth = ""
-    var customDisplayResolutionHeight = ""
     var manualModOrganizerPath = ""
     var preflight: Preflight?
-    var detectedDisplay: MacDisplaySettings?
 
     var outputAppPath: String {
         let cleanName = appName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -136,46 +133,9 @@ struct SetupConfiguration {
         driveMappingMode != "shorten" || !optionalGDriveRoot.isEmpty
     }
 
-    var selectedDisplayResolution: (width: Int, height: Int)? {
-        guard displayMode == "forced" else { return nil }
-        switch displayResolutionMode {
-        case "detected":
-            guard let display = detectedDisplay,
-                  display.backingWidth > 0,
-                  display.backingHeight > 0 else {
-                return nil
-            }
-            return (display.backingWidth, display.backingHeight)
-        case "1920x1080":
-            return (1920, 1080)
-        case "2560x1440":
-            return (2560, 1440)
-        case "3840x2160":
-            return (3840, 2160)
-        case "custom":
-            guard let width = Int(customDisplayResolutionWidth.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let height = Int(customDisplayResolutionHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  width > 0,
-                  height > 0 else {
-                return nil
-            }
-            return (width, height)
-        default:
-            return nil
-        }
-    }
-
-    var displayResolutionLabel: String {
-        guard let resolution = selectedDisplayResolution else {
-            return "Default"
-        }
-        return "\(resolution.width) x \(resolution.height)"
-    }
-
     var setupRequest: SetupRequest {
         let modOrganizerPath = manualModOrganizerPath.trimmingCharacters(in: .whitespacesAndNewlines)
         let arguments = launchArguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolution = selectedDisplayResolution
 
         return SetupRequest(
             appName: appName.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -185,14 +145,13 @@ struct SetupConfiguration {
             updateUSVFS: updateUSVFS,
             installGPTK4Binaries: installGPTK4Binaries,
             installDirectXBinaries: installDirectXBinaries,
+            compatibilityProfile: compatibilityProfile,
             mo2Path: modOrganizerPath,
             programBatch: programBatch,
             launchBatches: launchBatches,
             launchArguments: arguments.isEmpty ? nil : arguments,
             driveMappingMode: driveMappingMode,
-            displayResolutionWidth: resolution?.width,
-            displayResolutionHeight: resolution?.height,
-            resetWineDisplay: displayMode == "defaultWine",
+            forceRetinaOff: displayMode == "retinaOff",
             writeLog: saveVerboseLog,
             verbose: saveVerboseLog
         )

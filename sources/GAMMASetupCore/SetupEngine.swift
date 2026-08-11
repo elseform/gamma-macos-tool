@@ -318,7 +318,7 @@ public final class GAMMASetupEngine {
             try initializePrefix(context: context)
             try installDirectXBinaries(context: context)
             try configureWineGraphicsDriver(context: context)
-            try configureDisplayGeometry(context: context)
+            try configureWineDisplay(context: context)
         }
         try runStage(.driveMapping) {
             try configureDriveMapping(context: &context)
@@ -382,8 +382,25 @@ public final class GAMMASetupEngine {
         try createLaunchBatches(context: &context)
     }
 
-    func missingDllOverridesForTesting(registry: String) -> [String] {
-        missingDllOverrides(in: currentDllOverrides(in: registry))
+    func configureWineDisplayForTesting(request: SetupRequest, registry: String) throws -> String {
+        let context = SetupContext(request: request, executablePath: executablePath)
+        try fileManager.createDirectory(
+            at: context.userReg.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try registry.write(to: context.userReg, atomically: true, encoding: .utf8)
+        try configureWineDisplay(context: context)
+        return try String(contentsOf: context.userReg)
+    }
+
+    func missingDllOverridesForTesting(
+        registry: String,
+        profile: SetupCompatibilityProfile = .standard
+    ) -> [String] {
+        missingDllOverrides(
+            in: currentDllOverrides(in: registry),
+            required: SetupRegistryDefaults.dllOverrides(for: profile)
+        )
     }
 
     func winetricksCachePathsForTesting(request: SetupRequest) -> [String: String] {
@@ -599,6 +616,12 @@ public final class GAMMASetupEngine {
         plist["Winetricks silent"] = "1"
         plist["Winetricks disable logging"] = "1"
         plist["WINEDEBUG"] = "-all"
+        if context.request.compatibilityProfile == .xrayD3DMetal {
+            plist["ADVERTISE_AVX"] = 1
+            plist["METAL_HUD"] = 1
+            plist["FASTMATH"] = 0
+            plist["Try To Use GPU Info"] = 0
+        }
         let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try out.write(to: plistURL, options: .atomic)
     }
@@ -824,7 +847,8 @@ public final class GAMMASetupEngine {
     }
 
     private func installWinetricksDependencies(context: SetupContext) throws {
-        var requiredVerbs = ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
+        let profile = context.request.compatibilityProfile ?? .standard
+        var requiredVerbs = profile.requiredVerbs
         if context.request.installDirectXBinaries {
             requiredVerbs.removeAll { ["d3dx9_43", "d3dx11_43", "d3dcompiler_47"].contains($0) }
         }
@@ -849,11 +873,11 @@ public final class GAMMASetupEngine {
         try installWinetricksGroup(label: "missing required dependencies", verbs: missing, winetricks: winetricks, context: context)
     }
 
-    private func missingDllOverrides(in overrides: [String: String]) -> [String] {
-        SetupRegistryDefaults.requiredDllOverrides.keys.sorted().compactMap { key in
+    private func missingDllOverrides(in overrides: [String: String], required: [String: String]) -> [String] {
+        required.keys.sorted().compactMap { key in
             let normalized = key.trimmingCharacters(in: CharacterSet(charactersIn: "*")).lowercased()
             guard let actual = overrides[normalized] else { return key }
-            let expected = SetupRegistryDefaults.requiredDllOverrides[key]?.lowercased() ?? ""
+            let expected = required[key]?.lowercased() ?? ""
             if actual == expected { return nil }
             if expected == "native", actual == "native,builtin" { return nil }
             return key
@@ -870,7 +894,7 @@ public final class GAMMASetupEngine {
                 continue
             }
             guard inSection else { continue }
-            let parts = trimmed.split(separator: "=", maxSplits: 1)
+            let parts = trimmed.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
             guard parts.count == 2 else { continue }
             let key = parts[0]
                 .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
@@ -948,75 +972,32 @@ public final class GAMMASetupEngine {
         try ensureSectionKeyValues(file: context.userReg, section: #"Software\\Wine\\Drivers"#, entries: ["Graphics": "mac"], context: context)
     }
 
-    private func configureDisplayGeometry(context: SetupContext) throws {
-        if context.request.resetWineDisplay == true {
-            reporter.log("Restoring default Wine display behavior")
-            try resetDisplayGeometry(context: context)
-            return
-        }
+    private func configureWineDisplay(context: SetupContext) throws {
+        guard context.request.forceRetinaOff == true else { return }
 
-        guard let width = context.request.displayResolutionWidth,
-              let height = context.request.displayResolutionHeight,
-              width > 0,
-              height > 0 else {
-            return
-        }
-
-        reporter.log("Configuring Wine display compatibility: \(width)x\(height)")
+        reporter.log("Forcing Wine Retina mode off at 96 DPI")
         try ensureSectionKeyValues(
             file: context.userReg,
             section: #"Software\\Wine\\Mac Driver"#,
-            entries: ["RetinaMode": "n"],
+            entries: ["RetinaMode": "N"],
             context: context
         )
         try ensureSectionRawLines(
             file: context.userReg,
             section: #"Control Panel\\Desktop"#,
-            lines: [
-                #""LogPixels"=dword:00000060"#,
-                #""Win8DpiScaling"=dword:00000000"#
-            ],
-            context: context
-        )
-
-        try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer"#, keys: ["Desktop"], context: context)
-        try removeSectionKeys(file: context.userReg, section: #"Software\\Wine\\Explorer\\Desktops"#, keys: ["Default"], context: context)
-    }
-
-    private func resetDisplayGeometry(context: SetupContext) throws {
-        try removeSectionKeys(
-            file: context.userReg,
-            section: #"Software\\Wine\\Mac Driver"#,
-            keys: ["RetinaMode"],
-            context: context
-        )
-        try removeSectionKeys(
-            file: context.userReg,
-            section: #"Control Panel\\Desktop"#,
-            keys: ["LogPixels", "Win8DpiScaling"],
-            context: context
-        )
-        try removeSectionKeys(
-            file: context.userReg,
-            section: #"Software\\Wine\\Explorer"#,
-            keys: ["Desktop"],
-            context: context
-        )
-        try removeSectionKeys(
-            file: context.userReg,
-            section: #"Software\\Wine\\Explorer\\Desktops"#,
-            keys: ["Default"],
+            lines: [#""LogPixels"=dword:00000060"#],
             context: context
         )
     }
 
     private func configureDllOverrides(context: SetupContext) throws {
         reporter.log("Configuring DLL overrides")
+        let profile = context.request.compatibilityProfile ?? .standard
         try removeRegistrySection(file: context.userReg, section: #"Software\\Wine\\DllOverrides"#, context: context)
         try ensureSectionKeyValues(
             file: context.userReg,
             section: #"Software\\Wine\\DllOverrides"#,
-            entries: SetupRegistryDefaults.requiredDllOverrides,
+            entries: SetupRegistryDefaults.dllOverrides(for: profile),
             context: context
         )
     }

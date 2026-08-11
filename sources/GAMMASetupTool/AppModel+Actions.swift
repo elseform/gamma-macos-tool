@@ -76,8 +76,21 @@ extension AppModel {
         appName = "stalker-gamma"
         installDirectory = SetupConfiguration.defaultInstallDirectory
         driveMappingMode = "preserve"
+        compatibilityProfile = .standard
         useDefaultLaunchConfiguration()
         modOrganizerSelectionError = ""
+    }
+
+    func useXRayD3DMetalPreset() {
+        engine = SetupConfiguration.sikarugir10Engine
+        renderer = "d3dmetal"
+        updateUSVFS = false
+        installGPTK4Binaries = true
+        installDirectXBinaries = false
+        compatibilityProfile = .xrayD3DMetal
+        driveMappingMode = "preserve"
+        displayMode = "retinaOff"
+        useDefaultLaunchConfiguration()
     }
 
     func chooseLaunchExecutable() {
