@@ -11,7 +11,7 @@ struct SetupPage: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: Layout.setupColumnSpacing) {
                 setupOptionsCard
                     .frame(width: Layout.setupLeftColumnWidth, alignment: .topLeading)
@@ -23,8 +23,15 @@ struct SetupPage: View {
                 .frame(width: Layout.setupRightColumnWidth, alignment: .topLeading)
             }
             .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+
+            VStack(alignment: .leading, spacing: 12) {
+                setupOptionsCard
+                rendererCard
+                additionalOptionsCard
+            }
+            .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
         }
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+        .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
         .disabled(!model.selectedModOrganizerExecutableFound || model.isRunning)
         .opacity((model.selectedModOrganizerExecutableFound && !model.isRunning) ? 1 : 0.45)
     }

@@ -5,41 +5,31 @@ struct WindowMinimumSize: NSViewRepresentable {
     let width: CGFloat
     let height: CGFloat
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            applySizing(to: view.window, context: context)
+            applySizing(to: view.window)
         }
         return view
     }
 
     func updateNSView(_ view: NSView, context: Context) {
         DispatchQueue.main.async {
-            applySizing(to: view.window, context: context)
+            applySizing(to: view.window)
         }
     }
 
-    private func applySizing(to window: NSWindow?, context: Context) {
+    private func applySizing(to window: NSWindow?) {
         guard let window else { return }
-        let size = NSSize(width: width, height: height)
-        window.minSize = size
-        guard !context.coordinator.appliedInitialSize else { return }
-        context.coordinator.appliedInitialSize = true
-        window.setContentSize(size)
-    }
-
-    final class Coordinator {
-        var appliedInitialSize = false
+        window.minSize = NSSize(width: width, height: height)
     }
 }
 
 enum Layout {
-    static let windowWidth: CGFloat = 820
-    static let windowHeight: CGFloat = 640
+    static let windowDefaultWidth: CGFloat = 820
+    static let windowDefaultHeight: CGFloat = 640
+    static let windowMinimumWidth: CGFloat = 760
+    static let windowMinimumHeight: CGFloat = 560
     static let contentMaxWidth: CGFloat = 1000
     static let contentHorizontalPadding: CGFloat = 30
     static let contentVerticalPadding: CGFloat = 16

@@ -225,10 +225,7 @@ struct CheckRow<Action: View>: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: ok ? "checkmark.circle.fill" : (warning ? "exclamationmark.triangle.fill" : "xmark.circle.fill"))
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
-                .frame(width: 22)
+            StatusIndicator(ok: ok, warning: warning)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
@@ -245,16 +242,36 @@ struct CheckRow<Action: View>: View {
 
             Spacer(minLength: 12)
 
-            Text(status)
-                .font(.callout.weight(.semibold))
-                .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
-                .frame(width: 96, alignment: .trailing)
+            if !status.isEmpty {
+                Text(status)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
+                    .multilineTextAlignment(.trailing)
+            }
 
             action()
-                .frame(width: 150, height: 28, alignment: .trailing)
+                .frame(minHeight: 28, alignment: .trailing)
         }
         .padding(.vertical, 11)
         .frame(minHeight: 50)
+    }
+}
+
+struct StatusIndicator: View {
+    let ok: Bool
+    var warning = false
+
+    private var label: String {
+        if ok { return "Valid" }
+        return warning ? "Needs attention" : "Invalid"
+    }
+
+    var body: some View {
+        Image(systemName: ok ? "checkmark.circle.fill" : (warning ? "exclamationmark.triangle.fill" : "xmark.circle.fill"))
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(SetupStatusTone.checkRow(ok: ok, warning: warning).color)
+            .frame(width: 22)
+            .accessibilityLabel(label)
     }
 }
 

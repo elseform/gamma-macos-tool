@@ -233,6 +233,11 @@ extension AppModel {
         NSWorkspace.shared.open(URL(fileURLWithPath: outputAppPath))
     }
 
+    func showExistingApp() {
+        guard outputAppAlreadyExists else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: outputAppPath)])
+    }
+
     func showCreatedAppAndQuit() {
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: outputAppPath)])
         NSApp.terminate(nil)

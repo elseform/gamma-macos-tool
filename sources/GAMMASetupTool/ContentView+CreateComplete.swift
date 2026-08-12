@@ -16,7 +16,7 @@ struct CreatePage: View {
                 setupReviewCard(items: minimalSummary ? model.minimalSetupSummaryItems : model.setupSummaryItems)
             }
         }
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+        .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
     }
 
     // MARK: - Setup Review
@@ -31,7 +31,7 @@ struct CreatePage: View {
             .font(.system(size: 15))
             .padding(.vertical, 4)
         }
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+        .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
     }
 
     // MARK: - Run Status
@@ -42,7 +42,7 @@ struct CreatePage: View {
                 WizardCard {
                     installStages
                 }
-                .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+                .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
 
                 ProgressView(value: model.progress)
 
@@ -60,7 +60,7 @@ struct CreatePage: View {
                 }
             }
         }
-        .frame(width: Layout.setupContentWidth, alignment: .topLeading)
+        .frame(maxWidth: Layout.setupContentWidth, alignment: .topLeading)
     }
 
     private var installFailureView: some View {
@@ -229,8 +229,8 @@ struct CompletePage: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
+            .frame(maxWidth: Layout.completeMaxWidth, alignment: .topLeading)
         }
-        .frame(width: Layout.completeMaxWidth, alignment: .topLeading)
+        .frame(maxWidth: Layout.completeMaxWidth, alignment: .topLeading)
     }
 }

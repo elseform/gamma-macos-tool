@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject var model = AppModel()
     @State var step: WizardStep = .wrapperName
     @State var installMode: SetupInstallMode?
@@ -12,21 +13,21 @@ struct ContentView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            VStack(alignment: .center, spacing: 0) {
+            ScrollView {
                 currentStepView
                     .id(step)
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .trailing)))
+                    .frame(maxWidth: Layout.contentMaxWidth, alignment: .top)
+                    .padding(.horizontal, Layout.contentHorizontalPadding)
+                    .padding(.vertical, Layout.contentVerticalPadding)
             }
-            .frame(maxWidth: Layout.contentMaxWidth, maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, Layout.contentHorizontalPadding)
-            .padding(.vertical, Layout.contentVerticalPadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             Divider()
             footer
         }
-        .frame(minWidth: Layout.windowWidth, minHeight: Layout.windowHeight)
-        .background(WindowMinimumSize(width: Layout.windowWidth, height: Layout.windowHeight))
-        .animation(.easeInOut(duration: 0.18), value: step)
+        .frame(minWidth: Layout.windowMinimumWidth, minHeight: Layout.windowMinimumHeight)
+        .background(WindowMinimumSize(width: Layout.windowMinimumWidth, height: Layout.windowMinimumHeight))
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: step)
         .onChange(of: model.isRunning) { isRunning in
             if isRunning {
                 step = .create

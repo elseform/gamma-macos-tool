@@ -7,8 +7,8 @@ extension ContentView {
         switch step {
         case .wrapperName:
             return (
-                "GAMMA Setup Tool",
-                "Enter an app name and locate ModOrganizer.exe."
+                "Create GAMMA wrapper",
+                "Name the wrapper and select ModOrganizer.exe."
             )
 
         case .setup:
@@ -36,11 +36,10 @@ extension ContentView {
             }
             Spacer()
         }
-        .frame(height: Layout.headerContentHeight, alignment: .topLeading)
         .padding(.horizontal, Layout.headerHorizontalPadding)
         .padding(.top, Layout.headerTopPadding)
         .padding(.bottom, Layout.headerBottomPadding)
-        .frame(height: Layout.headerHeight, alignment: .topLeading)
+        .frame(minHeight: Layout.headerHeight, alignment: .topLeading)
         .background(Color(nsColor: .underPageBackgroundColor))
         .transaction { transaction in
             transaction.animation = nil
@@ -51,14 +50,7 @@ extension ContentView {
     var currentStepView: some View {
         switch step {
         case .wrapperName:
-            let invalidNameOrExe = !model.wrapperNameIsValid || !model.selectedModOrganizerExecutableFound
-            WrapperNamePage(
-                model: model,
-                recommendedDisabled: invalidNameOrExe || !model.driveMappingReady,
-                advancedDisabled: invalidNameOrExe,
-                recommendedAction: selectRecommendedInstall,
-                advancedAction: selectAdvancedInstall
-            )
+            WrapperNamePage(model: model)
         case .setup:
             SetupPage(model: model, showWinetricksList: $showWinetricksList)
         case .create:
@@ -81,48 +73,55 @@ extension ContentView {
     }
 
     var footer: some View {
-        HStack(spacing: 12) {
-            Text(footerVersion)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                footerMetadata
+                Spacer()
+                footerBackButton
+                footerPrimaryButton
+            }
 
-            footerLinks
-
-            Spacer()
-
-            footerBackButton
-            footerPrimaryButton
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    footerMetadata
+                    Spacer()
+                }
+                HStack(spacing: 12) {
+                    Spacer()
+                    footerBackButton
+                    footerPrimaryButton
+                }
+            }
         }
         .padding(.horizontal, Layout.footerHorizontalPadding)
         .padding(.vertical, Layout.footerVerticalPadding)
-        .frame(height: Layout.footerHeight, alignment: .center)
+        .frame(minHeight: Layout.footerHeight, alignment: .center)
         .background(Color(nsColor: .underPageBackgroundColor))
+    }
+
+    private var footerMetadata: some View {
+        HStack(spacing: 12) {
+            Text("v\(footerVersion)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            footerLinks
+        }
     }
 
     private var footerLinks: some View {
         let sourceURL = URL(string: "https://github.com/elseform/gamma-setup-tool")!
         let supportURL = URL(string: "https://discord.com/channels/912320241713958912/1315449108797980762")!
 
-        return HStack(spacing: 10) {
-            Text("Source code:")
+        return HStack(spacing: 12) {
+            Link("GitHub", destination: sourceURL)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: sourceURL) {
-                BrandIcon(resourceName: "github", fallbackSystemName: "chevron.left.forwardslash.chevron.right")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
             .help("GitHub repository")
 
-            Text("Support thread:")
+            Link("Discord support", destination: supportURL)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Link(destination: supportURL) {
-                BrandIcon(resourceName: "discord", fallbackSystemName: "bubble.left.and.bubble.right")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .help("Discord thread")
+                .help("Discord support thread")
         }
     }
 
@@ -142,7 +141,22 @@ extension ContentView {
     private var footerPrimaryButton: some View {
         switch step {
         case .wrapperName:
-            EmptyView()
+            Button {
+                selectAdvancedInstall()
+            } label: {
+                Label("Review Advanced Settings", systemImage: "slider.horizontal.3")
+            }
+            .disabled(wrapperNameActionsDisabled)
+
+            Button {
+                selectRecommendedInstall()
+            } label: {
+                Label("Create with Recommended Settings", systemImage: "checkmark.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(recommendedActionDisabled)
+            .help("Use GPTK4 D3DMetal with source-verified X-Ray dependencies.")
         case .setup:
             Button {
                 continueToNextStep()
@@ -218,6 +232,14 @@ extension ContentView {
             return nextStep != nil && model.setupReady
         }
         return nextStep != nil
+    }
+
+    private var wrapperNameActionsDisabled: Bool {
+        !model.wrapperNameIsValid || !model.selectedModOrganizerExecutableFound
+    }
+
+    private var recommendedActionDisabled: Bool {
+        wrapperNameActionsDisabled || !model.driveMappingReady
     }
 
     private func continueToNextStep() {

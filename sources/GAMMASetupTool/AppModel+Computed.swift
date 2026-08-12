@@ -80,6 +80,10 @@ extension AppModel {
         configuration.wrapperNameIsValid && !FileManager.default.fileExists(atPath: outputAppPath)
     }
 
+    var outputAppAlreadyExists: Bool {
+        configuration.wrapperNameIsValid && FileManager.default.fileExists(atPath: outputAppPath)
+    }
+
     var wrapperNameValidationMessage: String {
         let trimmed = appName.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
@@ -89,7 +93,7 @@ extension AppModel {
             return "Use a name without / or : characters."
         }
         if FileManager.default.fileExists(atPath: outputAppPath) {
-            return "An app with this name already exists. Choose another name."
+            return "An app with this name already exists."
         }
         return ""
     }

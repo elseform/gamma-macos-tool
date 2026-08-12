@@ -2,102 +2,107 @@ import SwiftUI
 
 struct WrapperNamePage: View {
     @ObservedObject var model: AppModel
-    let recommendedDisabled: Bool
-    let advancedDisabled: Bool
-    let recommendedAction: () -> Void
-    let advancedAction: () -> Void
+    @FocusState private var appNameIsFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            WizardCard {
-                VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
-                    CardHeading(title: "Application name")
-                    TextField("stalker-gamma", text: $model.appName)
-                        .textFieldStyle(.roundedBorder)
-                    if !model.wrapperNameValidationMessage.isEmpty {
-                        Text(model.wrapperNameValidationMessage)
-                            .font(.caption)
-                            .foregroundStyle(.yellow)
-                    }
-                    Text(model.outputAppPath)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .textSelection(.enabled)
-                }
-            }
-            .frame(width: Layout.environmentPanelWidth, alignment: .leading)
+            Text("Name and installation")
+                .font(.title3)
+                .bold()
 
             WizardCard {
-                    modOrganizerRow()
-            }
-            .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+                HStack(alignment: .center, spacing: 12) {
+                    StatusIndicator(ok: model.wrapperNameIsValid)
 
-            WizardCard {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("You can configure the wrapper later using the \"Configure\" application.")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 12) {
-                        Button {
-                            recommendedAction()
-                        } label: {
-                            Label("Recommended", systemImage: "checkmark.circle")
+                    VStack(alignment: .leading, spacing: Layout.cardContentSpacing) {
+                        CardHeading(title: "Application name")
+                        TextField("stalker-gamma", text: $model.appName)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($appNameIsFocused)
+                        if !model.wrapperNameValidationMessage.isEmpty {
+                            nameValidationContent
                         }
-                        .controlSize(.large)
-                        .disabled(recommendedDisabled || advancedDisabled)
-                        .help("GPTK4 D3DMetal with source-verified X-Ray dependencies.")
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("Creates:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(model.outputAppPath)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                                .textSelection(.enabled)
 
-                        Button {
-                            advancedAction()
-                        } label: {
-                            Label("Advanced", systemImage: "slider.horizontal.3")
+                            if model.outputAppAlreadyExists {
+                                Spacer(minLength: 8)
+                                Button("Show Existing App", action: model.showExistingApp)
+                                    .controlSize(.small)
+                            }
                         }
-                        .controlSize(.large)
-                        .disabled(advancedDisabled)
-                    }
-
-                    if recommendedDisabled && !advancedDisabled {
-                        Text("Drive mapping is not valid, fix using Advanced settings.")
-                            .font(.caption)
-                            .foregroundStyle(.yellow)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
-            .frame(width: Layout.environmentPanelWidth, alignment: .topLeading)
+            .frame(maxWidth: Layout.environmentPanelWidth, alignment: .leading)
+
+            WizardCard {
+                modOrganizerRow()
+            }
+            .frame(maxWidth: Layout.environmentPanelWidth, alignment: .topLeading)
+
+            Text("Recommended settings work for most installations. You can change them later using the Configure application.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if model.wrapperNameIsValid
+                && model.selectedModOrganizerExecutableFound
+                && !model.driveMappingReady {
+                Label("Drive mapping is not valid. Review Advanced Settings to fix it.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.yellow)
+            }
         }
-        .frame(width: Layout.environmentPanelWidth, alignment: .leading)
+        .frame(maxWidth: Layout.environmentPanelWidth, alignment: .leading)
+        .defaultFocus($appNameIsFocused, true)
+    }
+
+    private var nameValidationContent: some View {
+        Text(model.wrapperNameValidationMessage)
+            .font(.caption)
+            .foregroundStyle(.red)
     }
 
     private func modOrganizerRow() -> some View {
         VStack(alignment: .leading, spacing: 0) {
             CheckRow(
-                label: model.selectedLaunchExecutableLabel,
+                label: launchExecutableStatusLabel,
                 status: "",
                 ok: model.selectedModOrganizerExecutableFound,
                 warning: true,
                 detail: model.selectedLaunchExecutablePath
             ) {
-                Button("Choose…") {
+                Button(model.selectedModOrganizerExecutableFound ? "Change…" : "Choose…") {
                     model.chooseLaunchExecutable()
                 }
             }
 
-            HStack(spacing: 8) {
-                Text("Flags")
-                    .frame(width: 38, alignment: .leading)
-                TextField("Optional launch flags", text: $model.launchArguments)
-                    .textFieldStyle(.roundedBorder)
+            if model.programBatch != "/mo2.bat" {
+                HStack(spacing: 8) {
+                    Text("Flags")
+                        .frame(width: 38, alignment: .leading)
+                    TextField("Optional launch flags", text: $model.launchArguments)
+                        .textFieldStyle(.roundedBorder)
+                }
+                .padding(.leading, 34)
+                .padding(.bottom, 12)
             }
-            .padding(.leading, 34)
-            .padding(.bottom, 12)
-            .opacity(model.programBatch == "/mo2.bat" ? 0.5 : 1.0)
-            .disabled(model.programBatch == "/mo2.bat")
         }
     }
-}
 
+    private var launchExecutableStatusLabel: String {
+        if model.programBatch != "/mo2.bat" {
+            return "\(model.selectedLaunchExecutableLabel) selected"
+        }
+        return model.selectedModOrganizerExecutableFound ? "ModOrganizer.exe found" : "Select ModOrganizer.exe"
+    }
+}
