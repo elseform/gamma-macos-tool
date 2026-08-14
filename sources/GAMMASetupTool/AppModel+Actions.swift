@@ -90,7 +90,6 @@ extension AppModel {
         compatibilityProfile = .xrayD3DMetal
         driveMappingMode = "preserve"
         displayMode = "retinaOff"
-        useDefaultLaunchConfiguration()
     }
 
     func chooseLaunchExecutable() {
