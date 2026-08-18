@@ -115,6 +115,11 @@ final class SetupConfigurationTests {
         XCTAssertFalse(SetupConfiguration(installGPTK4Binaries: false).setupRequest.installGPTK4Binaries)
     }
 
+    func testSetupRequestIncludesDXMTOption() {
+        XCTAssertEqual(SetupConfiguration().setupRequest.installDXMTBinaries, false)
+        XCTAssertEqual(SetupConfiguration(installDXMTBinaries: true).setupRequest.installDXMTBinaries, true)
+    }
+
     func testSetupRequestIncludesXRayD3DMetalWinetricksProfile() {
         let request = SetupConfiguration(compatibilityProfile: .xrayD3DMetal).setupRequest
 

@@ -217,6 +217,7 @@ public struct SetupRequest: Codable {
     public var renderer: String
     public var updateUSVFS: Bool
     public var installGPTK4Binaries: Bool
+    public var installDXMTBinaries: Bool?
     public var installDirectXBinaries: Bool
     public var compatibilityProfile: SetupCompatibilityProfile?
     public var mo2Path: String
@@ -245,6 +246,7 @@ public struct SetupRequest: Codable {
         renderer: String = "d3dmetal",
         updateUSVFS: Bool = true,
         installGPTK4Binaries: Bool = true,
+        installDXMTBinaries: Bool? = false,
         installDirectXBinaries: Bool = false,
         compatibilityProfile: SetupCompatibilityProfile? = nil,
         mo2Path: String = "",
@@ -272,6 +274,7 @@ public struct SetupRequest: Codable {
         self.renderer = renderer
         self.updateUSVFS = updateUSVFS
         self.installGPTK4Binaries = installGPTK4Binaries
+        self.installDXMTBinaries = installDXMTBinaries
         self.installDirectXBinaries = installDirectXBinaries
         self.compatibilityProfile = compatibilityProfile
         self.mo2Path = mo2Path

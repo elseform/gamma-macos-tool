@@ -124,6 +124,9 @@ struct CreatePage: View {
         if model.installGPTK4Binaries {
             rows.append((2, SetupOptionCopy.gptkBinaries, SetupOptionCopy.installAction))
         }
+        if model.installDXMTBinaries {
+            rows.append((2, SetupOptionCopy.dxmtBinaries, SetupOptionCopy.installAction))
+        }
         if model.installDirectXBinaries {
             rows.append((2, SetupOptionCopy.dxBinaries, SetupOptionCopy.installAction))
         }

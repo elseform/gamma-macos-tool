@@ -313,6 +313,7 @@ public final class GAMMASetupEngine {
             try installEngine(context: context)
             try installUSVFSUpdateForEngine(context: context)
             try installGPTK4Binaries(context: context)
+            try installDXMTBinaries(context: context)
         }
         try runStage(.prefix) {
             try initializePrefix(context: context)
@@ -364,6 +365,11 @@ public final class GAMMASetupEngine {
     func installGPTK4ForTesting(request: SetupRequest) throws {
         let context = SetupContext(request: request, executablePath: executablePath)
         try installGPTK4Binaries(context: context)
+    }
+
+    func installDXMTForTesting(request: SetupRequest) throws {
+        let context = SetupContext(request: request, executablePath: executablePath)
+        try installDXMTBinaries(context: context)
     }
 
     func configureDriveMappingAndMO2BatchForTesting(request: SetupRequest) throws {
@@ -733,6 +739,151 @@ public final class GAMMASetupEngine {
         try copyPayloadDirectory(source: source, target: target)
         try? fileManager.removeItem(at: rendererDir.appendingPathComponent("apple_gptk"))
         try fileManager.createSymbolicLink(atPath: rendererDir.appendingPathComponent("apple_gptk").path, withDestinationPath: "d3dmetal")
+    }
+
+    private func installDXMTBinaries(context: SetupContext) throws {
+        guard context.request.installDXMTBinaries == true else { return }
+        let rendererDir = context.contents.appendingPathComponent("Frameworks/renderer")
+        let target = rendererDir.appendingPathComponent("dxmt")
+
+        let localCandidates = [
+            context.scriptRoot.appendingPathComponent("dxmt"),
+            context.scriptRoot.appendingPathComponent("sources/GAMMASetupTool/Resources/dxmt"),
+            context.scriptRoot.appendingPathComponent("../../sources/GAMMASetupTool/Resources/dxmt")
+        ]
+
+        if let localSource = localCandidates.first(where: { directoryExists($0.path) }) {
+            reporter.log("Installing DXMT binaries from local payload")
+            guard !context.request.dryRun else { return }
+            try fileManager.createDirectory(at: rendererDir, withIntermediateDirectories: true)
+            try? fileManager.removeItem(at: target)
+            try copyPayloadDirectory(source: localSource, target: target)
+            return
+        }
+
+        reporter.log("Resolving latest DXMT artifact from GitHub (3Shain/dxmt)")
+        let artifactInfo = try resolveLatestDXMTArtifact(context: context)
+        let archive = try downloadFile(
+            label: "latest DXMT artifact (\(artifactInfo.name))",
+            url: artifactInfo.downloadURL,
+            output: context.cacheDir.appendingPathComponent("dxmt/\(artifactInfo.name).zip"),
+            context: context
+        )
+
+        reporter.log("Installing latest DXMT binaries")
+        guard !context.request.dryRun else { return }
+
+        let staging = context.cacheDir.appendingPathComponent("dxmt/staging")
+        try? fileManager.removeItem(at: staging)
+        try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+
+        let unzip = findTool("unzip") ?? "/usr/bin/unzip"
+        try runner(context: context).run(unzip, ["-q", "-o", archive.path, "-d", staging.path], label: "unzip DXMT artifact")
+
+        if let entries = try? fileManager.contentsOfDirectory(at: staging, includingPropertiesForKeys: nil) {
+            for entry in entries {
+                if entry.pathExtension == "gz" || entry.lastPathComponent.hasSuffix(".tar.gz") || entry.pathExtension == "tgz" {
+                    let tar = findTool("tar") ?? "/usr/bin/tar"
+                    try runner(context: context).run(tar, ["-xzf", entry.path, "-C", staging.path], label: "extract DXMT tarball")
+                }
+            }
+        }
+
+        guard let payloadRoot = findDXMTPayloadRoot(in: staging) else {
+            throw SetupEngineError.message("could not find DXMT payload in downloaded artifact")
+        }
+
+        try fileManager.createDirectory(at: rendererDir, withIntermediateDirectories: true)
+        try? fileManager.removeItem(at: target)
+        try fileManager.createDirectory(at: target, withIntermediateDirectories: true)
+
+        let wineTarget = target.appendingPathComponent("wine")
+        try fileManager.createDirectory(at: wineTarget, withIntermediateDirectories: true)
+
+        let wineSource = payloadRoot.appendingPathComponent("wine")
+        let effectiveSource = directoryExists(wineSource.path) ? wineSource : payloadRoot
+
+        let subdirs = ["x86_64-unix", "x86_64-windows", "i386-windows", "aarch64-unix", "aarch64-windows"]
+        for subdir in subdirs {
+            let src = effectiveSource.appendingPathComponent(subdir)
+            if directoryExists(src.path) {
+                let dst = wineTarget.appendingPathComponent(subdir)
+                try copyPayloadDirectory(source: src, target: dst)
+            }
+        }
+
+        let version = artifactInfo.version.isEmpty ? artifactInfo.name : artifactInfo.version
+        let versionFile = target.appendingPathComponent("version")
+        try version.trimmingCharacters(in: .whitespacesAndNewlines).write(to: versionFile, atomically: true, encoding: .utf8)
+
+        let licenseSource = payloadRoot.appendingPathComponent("LICENSE")
+        if fileManager.fileExists(atPath: licenseSource.path) {
+            try? fileManager.copyItem(at: licenseSource, to: target.appendingPathComponent("LICENSE"))
+        }
+
+        try? fileManager.removeItem(at: staging)
+    }
+
+    private struct DXMTArtifactInfo {
+        let name: String
+        let version: String
+        let downloadURL: String
+    }
+
+    private func resolveLatestDXMTArtifact(context: SetupContext) throws -> DXMTArtifactInfo {
+        let nightlyIndex = try downloadText(
+            label: "DXMT nightly.link index",
+            url: "https://nightly.link/3Shain/dxmt/workflows/ci.yml/main",
+            fallback: "",
+            context: context
+        )
+
+        if let match = nightlyIndex.range(of: #"https://nightly\.link/3Shain/dxmt/workflows/ci/main/dxmt-[a-zA-Z0-9_\.-]+\.zip"#, options: .regularExpression) {
+            let urlString = String(nightlyIndex[match])
+            let fileName = URL(string: urlString)?.deletingPathExtension().lastPathComponent ?? "dxmt"
+            let version = fileName.hasPrefix("dxmt-") ? String(fileName.dropFirst("dxmt-".count)) : fileName
+            return DXMTArtifactInfo(name: fileName, version: version, downloadURL: urlString)
+        }
+
+        let apiJson = try downloadText(
+            label: "DXMT GitHub API artifacts",
+            url: "https://api.github.com/repos/3Shain/dxmt/actions/artifacts?per_page=30",
+            fallback: "",
+            context: context
+        )
+
+        if let data = apiJson.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let artifacts = json["artifacts"] as? [[String: Any]] {
+            for artifact in artifacts {
+                if let name = artifact["name"] as? String, name.hasPrefix("dxmt-") {
+                    let version = String(name.dropFirst("dxmt-".count))
+                    let downloadURL = "https://nightly.link/3Shain/dxmt/workflows/ci/main/\(name).zip"
+                    return DXMTArtifactInfo(name: name, version: version, downloadURL: downloadURL)
+                }
+            }
+        }
+
+        throw SetupEngineError.message("could not resolve latest DXMT artifact from GitHub Actions (https://github.com/3Shain/dxmt)")
+    }
+
+    private func findDXMTPayloadRoot(in root: URL) -> URL? {
+        if directoryExists(root.appendingPathComponent("x86_64-windows").path)
+            || directoryExists(root.appendingPathComponent("wine/x86_64-windows").path) {
+            return root
+        }
+        guard let enumerator = fileManager.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+        for case let url as URL in enumerator {
+            if directoryExists(url.appendingPathComponent("x86_64-windows").path)
+                || directoryExists(url.appendingPathComponent("wine/x86_64-windows").path) {
+                return url
+            }
+        }
+        return nil
     }
 
     private func installDirectXBinaries(context: SetupContext) throws {
@@ -1612,6 +1763,19 @@ public final class GAMMASetupEngine {
         return plist["CFBundleShortVersionString"] as? String ?? ""
     }
 
+    private func relativePayloadPath(child: URL, parent: URL) -> String {
+        if child.path.hasPrefix(parent.path) {
+            return String(child.path.dropFirst(parent.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        }
+        let parentCanonical = parent.resolvingSymlinksInPath().path
+        let childDirCanonical = child.deletingLastPathComponent().resolvingSymlinksInPath().path
+        if childDirCanonical.hasPrefix(parentCanonical) {
+            let relativeDir = String(childDirCanonical.dropFirst(parentCanonical.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            return relativeDir.isEmpty ? child.lastPathComponent : "\(relativeDir)/\(child.lastPathComponent)"
+        }
+        return child.lastPathComponent
+    }
+
     private func directoryPayloadMatches(source: URL, target: URL) -> Bool {
         guard directoryExists(source.path), directoryExists(target.path),
               let enumerator = fileManager.enumerator(
@@ -1622,8 +1786,7 @@ public final class GAMMASetupEngine {
         }
 
         for case let sourceURL as URL in enumerator {
-            let relative = String(sourceURL.path.dropFirst(source.path.count))
-                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let relative = relativePayloadPath(child: sourceURL, parent: source)
             guard !relative.isEmpty else { continue }
             let targetURL = target.appendingPathComponent(relative)
             guard payloadEntryMatches(source: sourceURL, target: targetURL) else {
@@ -1659,8 +1822,7 @@ public final class GAMMASetupEngine {
         }
 
         for case let sourceURL as URL in enumerator {
-            let relative = String(sourceURL.path.dropFirst(source.path.count))
-                .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            let relative = relativePayloadPath(child: sourceURL, parent: source)
             guard !relative.isEmpty else { continue }
             let targetURL = target.appendingPathComponent(relative)
             if isSymlink(sourceURL) {

@@ -43,6 +43,7 @@ final class AppModel: ObservableObject {
     @Published var renderer = "d3dmetal"
     @Published var updateUSVFS = true
     @Published var installGPTK4Binaries = true
+    @Published var installDXMTBinaries = false
     @Published var installDirectXBinaries = false
     @Published var compatibilityProfile: SetupCompatibilityProfile = .standard
     @Published var programBatch = "/mo2.bat"

@@ -27,6 +27,7 @@ extension AppModel {
             renderer: renderer,
             updateUSVFS: updateUSVFS,
             installGPTK4Binaries: installGPTK4Binaries,
+            installDXMTBinaries: installDXMTBinaries,
             installDirectXBinaries: installDirectXBinaries,
             compatibilityProfile: compatibilityProfile,
             programBatch: programBatch,
@@ -203,6 +204,9 @@ extension AppModel {
         if installGPTK4Binaries {
             rows.append(SetupSummaryItem(label: SetupOptionCopy.gptkBinaries, planned: SetupOptionCopy.installAction))
         }
+        if installDXMTBinaries {
+            rows.append(SetupSummaryItem(label: SetupOptionCopy.dxmtBinaries, planned: SetupOptionCopy.installAction))
+        }
         if installDirectXBinaries {
             rows.append(SetupSummaryItem(label: SetupOptionCopy.dxBinaries, planned: SetupOptionCopy.installAction))
         }
@@ -245,6 +249,9 @@ extension AppModel {
         }
         if installGPTK4Binaries {
             add(SetupOptionCopy.gptkBinaries, SetupOptionCopy.installAction)
+        }
+        if installDXMTBinaries {
+            add(SetupOptionCopy.dxmtBinaries, SetupOptionCopy.installAction)
         }
 
         if saveVerboseLog {

@@ -12,12 +12,17 @@ enum SetupOptionCopy {
     static let installBundledAction = "Update binaries"
     static let gptkBinaries = "GPTK4 D3DMetal binaries"
     static let dxBinaries = "DirectX Binaries"
+    static let dxmtBinaries = "Latest DXMT libraries"
     static let usvfsBinaries = "Update ModOrganizer USVFS"
     static let logTitle = "Setup log"
     static let logAction = "Save"
 
     static var installGPTK4Binaries: String {
         "Install GPTK4 D3DMetal binaries"
+    }
+
+    static var installDXMTBinaries: String {
+        dxmtBinaries
     }
 
     static var installUSVFSBinaries: String {

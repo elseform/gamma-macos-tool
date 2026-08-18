@@ -720,6 +720,28 @@ final class SetupEngineCoreTests {
         try? FileManager.default.removeItem(at: temp)
     }
 
+    func testDXMTPayloadInstallationAndReplacement() throws {
+        let temp = try makeTempDir("gamma-dxmt-payload")
+        let resourceRoot = temp.appendingPathComponent("resources")
+        let source = resourceRoot.appendingPathComponent("dxmt")
+        try makeDXMTPayload(at: source, version: "v0.40-test")
+        let app = temp.appendingPathComponent("stalker-gamma.app")
+        let target = app.appendingPathComponent("Contents/Frameworks/renderer/dxmt")
+
+        let request = SetupRequest(
+            outputApp: app.path,
+            installDXMTBinaries: true,
+            resourceRoot: resourceRoot.path
+        )
+        let engine = GAMMASetupEngine(executablePath: temp.appendingPathComponent("gamma-setup-engine").path, reporter: JSONEventReporter(streamEvents: false))
+        try engine.installDXMTForTesting(request: request)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("wine/x86_64-windows/d3d11.dll").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("wine/x86_64-unix/winemetal.so").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: target.appendingPathComponent("version").path))
+        try? FileManager.default.removeItem(at: temp)
+    }
+
     func testConfigureAliasCreationAndCollisionHandling() throws {
         let temp = try makeTempDir("gamma-configure-alias")
         let template = try makeWrapperTemplate(root: temp)
@@ -818,6 +840,20 @@ final class SetupEngineCoreTests {
         let data = try PropertyListSerialization.data(fromPropertyList: values, format: .xml, options: 0)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
+    }
+
+    private func makeDXMTPayload(at root: URL, version: String) throws {
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("wine/x86_64-windows"),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("wine/x86_64-unix"),
+            withIntermediateDirectories: true
+        )
+        try "d3d11".write(to: root.appendingPathComponent("wine/x86_64-windows/d3d11.dll"), atomically: true, encoding: .utf8)
+        try "winemetal".write(to: root.appendingPathComponent("wine/x86_64-unix/winemetal.so"), atomically: true, encoding: .utf8)
+        try version.write(to: root.appendingPathComponent("version"), atomically: true, encoding: .utf8)
     }
 
     private func bookmarkTarget(_ alias: URL) -> URL? {

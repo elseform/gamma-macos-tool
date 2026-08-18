@@ -16,6 +16,7 @@ struct SetupConfiguration {
     var renderer = "d3dmetal"
     var updateUSVFS = true
     var installGPTK4Binaries = true
+    var installDXMTBinaries = false
     var installDirectXBinaries = false
     var compatibilityProfile: SetupCompatibilityProfile = .standard
     var programBatch = "/mo2.bat"
@@ -145,6 +146,7 @@ struct SetupConfiguration {
             renderer: renderer,
             updateUSVFS: updateUSVFS,
             installGPTK4Binaries: installGPTK4Binaries,
+            installDXMTBinaries: installDXMTBinaries,
             installDirectXBinaries: installDirectXBinaries,
             compatibilityProfile: compatibilityProfile,
             mo2Path: modOrganizerPath,

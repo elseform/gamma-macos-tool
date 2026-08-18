@@ -86,6 +86,7 @@ extension AppModel {
         renderer = "d3dmetal"
         updateUSVFS = true
         installGPTK4Binaries = true
+        installDXMTBinaries = false
         installDirectXBinaries = false
         compatibilityProfile = .xrayD3DMetal
         driveMappingMode = "preserve"
