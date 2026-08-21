@@ -14,7 +14,13 @@ extension AppModel {
     }
 
     func loadSettings() {
-        manualModOrganizerPath = AppSettingsStore.loadManualModOrganizerPath(from: settingsURL)
+        AppSettingsStore.ensureSettingsFileExists(at: settingsURL)
+        let settings = AppSettingsStore.loadSettings(from: settingsURL)
+        if let gammaPath = settings.gammaPath?.trimmingCharacters(in: .whitespacesAndNewlines), !gammaPath.isEmpty {
+            manualModOrganizerPath = URL(fileURLWithPath: gammaPath).appendingPathComponent("ModOrganizer.exe").path
+        }
+        recommendedSettings = settings.recommended ?? AppSettingsStore.loadBundledRecommendedSettings()
+        useXRayD3DMetalPreset()
     }
 
     func saveSettings(gammaPath: String) {
@@ -23,6 +29,12 @@ extension AppModel {
         } catch {
             preflightError = "Could not save settings: \(error.localizedDescription)"
         }
+    }
+
+    func showConfigFile() {
+        guard let settingsURL else { return }
+        AppSettingsStore.ensureSettingsFileExists(at: settingsURL)
+        NSWorkspace.shared.activateFileViewerSelecting([settingsURL])
     }
 
     // MARK: - Selection
@@ -75,22 +87,24 @@ extension AppModel {
     func prepareNewWrapperFlow() {
         appName = "stalker-gamma"
         installDirectory = SetupConfiguration.defaultInstallDirectory
-        driveMappingMode = "preserve"
+        driveMappingMode = recommendedSettings.driveMappingMode
         compatibilityProfile = .standard
         useDefaultLaunchConfiguration()
         modOrganizerSelectionError = ""
     }
 
     func useXRayD3DMetalPreset() {
-        engine = SetupConfiguration.sikarugir10Engine
-        renderer = "d3dmetal"
-        updateUSVFS = true
-        installGPTK4Binaries = true
-        installDXMTBinaries = false
-        installDirectXBinaries = false
-        compatibilityProfile = .xrayD3DMetal
-        driveMappingMode = "preserve"
-        displayMode = "retinaOff"
+        engine = recommendedSettings.engine
+        renderer = recommendedSettings.renderer
+        updateUSVFS = recommendedSettings.updateUSVFS
+        installGPTK4Binaries = recommendedSettings.installGPTK4Binaries
+        installDXMTBinaries = recommendedSettings.installDXMTBinaries
+        installDirectXBinaries = recommendedSettings.installDirectXBinaries
+        compatibilityProfile = recommendedSettings.compatibilityProfile
+        driveMappingMode = recommendedSettings.driveMappingMode
+        displayMode = recommendedSettings.displayMode
+        winetricks = recommendedSettings.winetricks
+        additionalWinetricks = recommendedSettings.additionalWinetricks
     }
 
     func chooseLaunchExecutable() {

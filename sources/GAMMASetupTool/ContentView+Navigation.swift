@@ -116,12 +116,20 @@ extension ContentView {
             Link("GitHub", destination: sourceURL)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            .help("GitHub repository")
+                .help("GitHub repository")
 
             Link("Discord support", destination: supportURL)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .help("Discord support thread")
+
+            Button("Config") {
+                model.showConfigFile()
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .help("Show settings.json in Finder")
         }
     }
 

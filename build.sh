@@ -91,6 +91,9 @@ if [[ -d "$SOURCE_RESOURCES_DIR/gptk4" ]]; then
 fi
 cp "$SOURCE_RESOURCES_DIR/github.svg" "$RESOURCES_DIR/github.svg"
 cp "$SOURCE_RESOURCES_DIR/discord.svg" "$RESOURCES_DIR/discord.svg"
+if [[ -f "$SOURCE_RESOURCES_DIR/recommended-settings.json" ]]; then
+  cp "$SOURCE_RESOURCES_DIR/recommended-settings.json" "$RESOURCES_DIR/recommended-settings.json"
+fi
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>

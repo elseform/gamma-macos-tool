@@ -69,10 +69,12 @@ final class AppModel: ObservableObject {
     var receivedInstallStageEvents = false
     var pendingEngineEventText = ""
 
+    @Published var winetricks: [String] = SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs
     @Published var additionalWinetricks = ""
+    @Published var recommendedSettings = RecommendedSettings()
 
     var requiredWinetricks: [String] {
-        let base = compatibilityProfile.requiredVerbs
+        let base = winetricks
         let extra = additionalWinetricks.split(separator: " ").map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         return base + extra
     }

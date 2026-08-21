@@ -999,7 +999,7 @@ public final class GAMMASetupEngine {
 
     private func installWinetricksDependencies(context: SetupContext) throws {
         let profile = context.request.compatibilityProfile ?? .standard
-        var requiredVerbs = profile.requiredVerbs
+        var requiredVerbs = context.request.winetricks ?? profile.requiredVerbs
         if context.request.installDirectXBinaries {
             requiredVerbs.removeAll { ["d3dx9_43", "d3dx11_43", "d3dcompiler_47"].contains($0) }
         }

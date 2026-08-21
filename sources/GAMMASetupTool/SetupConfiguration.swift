@@ -26,6 +26,7 @@ struct SetupConfiguration {
     var driveMappingMode = "preserve"
     var displayMode = "defaultWine"
     var manualModOrganizerPath = ""
+    var winetricks: [String] = SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs
     var additionalWinetricks = ""
     var preflight: Preflight?
 
@@ -157,6 +158,7 @@ struct SetupConfiguration {
             forceRetinaOff: displayMode == "retinaOff",
             writeLog: saveVerboseLog,
             verbose: saveVerboseLog,
+            winetricks: winetricks,
             additionalWinetricks: additionalWinetricks.isEmpty ? nil : additionalWinetricks
         )
     }
