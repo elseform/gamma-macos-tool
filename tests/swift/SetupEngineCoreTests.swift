@@ -403,10 +403,8 @@ final class SetupEngineCoreTests {
         let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
 
         XCTAssertEqual(plist?["D3DMETAL"] as? String, "1")
-        XCTAssertEqual(plist?["WINEESYNC"] as? String, "0")
+        XCTAssertEqual(plist?["WINEESYNC"] as? String, "1")
         XCTAssertEqual(plist?["WINEMSYNC"] as? String, "1")
-        XCTAssertEqual(plist?["ADVERTISE_AVX"] as? Int, 1)
-        XCTAssertEqual(plist?["METAL_HUD"] as? Int, 1)
         XCTAssertEqual(plist?["WINEDEBUG"] as? String, "-all")
         try? FileManager.default.removeItem(at: temp)
     }

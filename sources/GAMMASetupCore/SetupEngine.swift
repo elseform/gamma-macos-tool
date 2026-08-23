@@ -613,7 +613,7 @@ public final class GAMMASetupEngine {
         plist["Program Name and Path"] = context.request.programBatch
         plist["Program Flags"] = ""
         plist["D3DMETAL"] = renderer == "d3dmetal" ? "1" : "0"
-        plist["WINEESYNC"] = "0"
+        plist["WINEESYNC"] = "1"
         plist["WINEMSYNC"] = "1"
         plist["DXVK"] = renderer == "dxvk" ? "1" : "0"
         plist["DXMT"] = renderer == "dxmt" ? "1" : "0"
@@ -622,12 +622,6 @@ public final class GAMMASetupEngine {
         plist["Winetricks silent"] = "1"
         plist["Winetricks disable logging"] = "1"
         plist["WINEDEBUG"] = "-all"
-        if context.request.compatibilityProfile == .xrayD3DMetal {
-            plist["ADVERTISE_AVX"] = 1
-            plist["METAL_HUD"] = 1
-            plist["FASTMATH"] = 0
-            plist["Try To Use GPU Info"] = 0
-        }
         let out = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
         try out.write(to: plistURL, options: .atomic)
     }
