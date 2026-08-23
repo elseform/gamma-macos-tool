@@ -20,7 +20,7 @@ extension AppModel {
             manualModOrganizerPath = URL(fileURLWithPath: gammaPath).appendingPathComponent("ModOrganizer.exe").path
         }
         recommendedSettings = settings.recommended ?? AppSettingsStore.loadBundledRecommendedSettings()
-        useXRayD3DMetalPreset()
+        useRecommendedD3DMetalPreset()
     }
 
     func saveSettings(gammaPath: String) {
@@ -93,7 +93,7 @@ extension AppModel {
         modOrganizerSelectionError = ""
     }
 
-    func useXRayD3DMetalPreset() {
+    func useRecommendedD3DMetalPreset() {
         engine = recommendedSettings.engine
         renderer = recommendedSettings.renderer
         updateUSVFS = recommendedSettings.updateUSVFS

@@ -18,12 +18,12 @@ struct SetupConfiguration {
     var installGPTK4Binaries = true
     var installDXMTBinaries = false
     var installDirectXBinaries = false
-    var compatibilityProfile: SetupCompatibilityProfile = .standard
+    var compatibilityProfile: SetupCompatibilityProfile = .xrayD3DMetal
     var programBatch = "/mo2.bat"
     var launchBatches: [LaunchBatch] = []
     var launchArguments = ""
-    var saveVerboseLog = false
-    var driveMappingMode = "preserve"
+    var saveVerboseLog = true
+    var driveMappingMode = "shorten"
     var displayMode = "defaultWine"
     var manualModOrganizerPath = ""
     var winetricks: [String] = SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs

@@ -19,16 +19,16 @@ struct RecommendedSettings: Codable, Equatable {
     var additionalWinetricks: String
 
     init(
-        engine: String = SetupConfiguration.sikarugir10Engine,
+        engine: String = SetupConfiguration.crossOverEngine,
         renderer: String = "d3dmetal",
-        displayMode: String = "retinaOff",
-        driveMappingMode: String = "preserve",
+        displayMode: String = "defaultWine",
+        driveMappingMode: String = "shorten",
         compatibilityProfile: SetupCompatibilityProfile = .xrayD3DMetal,
         updateUSVFS: Bool = true,
         installGPTK4Binaries: Bool = true,
         installDXMTBinaries: Bool = false,
         installDirectXBinaries: Bool = false,
-        saveVerboseLog: Bool = false,
+        saveVerboseLog: Bool = true,
         winetricks: [String] = SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs,
         additionalWinetricks: String = ""
     ) {
@@ -63,16 +63,16 @@ struct RecommendedSettings: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.engine = try container.decodeIfPresent(String.self, forKey: .engine) ?? SetupConfiguration.sikarugir10Engine
+        self.engine = try container.decodeIfPresent(String.self, forKey: .engine) ?? SetupConfiguration.crossOverEngine
         self.renderer = try container.decodeIfPresent(String.self, forKey: .renderer) ?? "d3dmetal"
-        self.displayMode = try container.decodeIfPresent(String.self, forKey: .displayMode) ?? "retinaOff"
-        self.driveMappingMode = try container.decodeIfPresent(String.self, forKey: .driveMappingMode) ?? "preserve"
+        self.displayMode = try container.decodeIfPresent(String.self, forKey: .displayMode) ?? "defaultWine"
+        self.driveMappingMode = try container.decodeIfPresent(String.self, forKey: .driveMappingMode) ?? "shorten"
         self.compatibilityProfile = try container.decodeIfPresent(SetupCompatibilityProfile.self, forKey: .compatibilityProfile) ?? .xrayD3DMetal
         self.updateUSVFS = try container.decodeIfPresent(Bool.self, forKey: .updateUSVFS) ?? true
         self.installGPTK4Binaries = try container.decodeIfPresent(Bool.self, forKey: .installGPTK4Binaries) ?? true
         self.installDXMTBinaries = try container.decodeIfPresent(Bool.self, forKey: .installDXMTBinaries) ?? false
         self.installDirectXBinaries = try container.decodeIfPresent(Bool.self, forKey: .installDirectXBinaries) ?? false
-        self.saveVerboseLog = try container.decodeIfPresent(Bool.self, forKey: .saveVerboseLog) ?? false
+        self.saveVerboseLog = try container.decodeIfPresent(Bool.self, forKey: .saveVerboseLog) ?? true
         self.winetricks = try container.decodeIfPresent([String].self, forKey: .winetricks) ?? SetupCompatibilityProfile.xrayD3DMetal.requiredVerbs
         self.additionalWinetricks = try container.decodeIfPresent(String.self, forKey: .additionalWinetricks) ?? ""
     }

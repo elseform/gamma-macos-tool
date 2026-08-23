@@ -45,12 +45,12 @@ final class AppModel: ObservableObject {
     @Published var installGPTK4Binaries = true
     @Published var installDXMTBinaries = false
     @Published var installDirectXBinaries = false
-    @Published var compatibilityProfile: SetupCompatibilityProfile = .standard
+    @Published var compatibilityProfile: SetupCompatibilityProfile = .xrayD3DMetal
     @Published var programBatch = "/mo2.bat"
     @Published var launchBatches: [LaunchBatch] = []
     @Published var launchArguments = ""
-    @Published var saveVerboseLog = false
-    @Published var driveMappingMode = "preserve"
+    @Published var saveVerboseLog = true
+    @Published var driveMappingMode = "shorten"
     @Published var displayMode = "defaultWine"
     @Published var manualModOrganizerPath = ""
     @Published var modOrganizerSelectionError = ""

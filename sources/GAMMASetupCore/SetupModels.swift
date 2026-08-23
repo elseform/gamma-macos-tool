@@ -28,7 +28,7 @@ public enum SetupCompatibilityProfile: String, Codable {
         case .standard:
             return ["corefonts", "d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026"]
         case .xrayD3DMetal:
-            return ["d3dx9_43", "d3dx11_43", "d3dcompiler_47", "vcrun2026", "win10", "sound=coreaudio"]
+            return ["d3dx9_43", "d3dx11_43", "d3dcompiler_43", "d3dcompiler_47", "vcrun2026", "win10", "sound=coreaudio"]
         }
     }
 }
@@ -56,6 +56,7 @@ public enum SetupRegistryDefaults {
 
     public static let xrayD3DMetalDllOverrides: [String: String] = [
         "*concrt140": "native,builtin",
+        "*d3dcompiler_43": "native,builtin",
         "*d3dcompiler_47": "native,builtin",
         "*d3dx9_43": "native,builtin",
         "*d3dx11_43": "native,builtin",
@@ -249,17 +250,17 @@ public struct SetupRequest: Codable {
         installGPTK4Binaries: Bool = true,
         installDXMTBinaries: Bool? = false,
         installDirectXBinaries: Bool = false,
-        compatibilityProfile: SetupCompatibilityProfile? = nil,
+        compatibilityProfile: SetupCompatibilityProfile? = .xrayD3DMetal,
         mo2Path: String = "",
         gammaPath: String = "",
         anomalyPath: String = "",
         programBatch: String = "/mo2.bat",
         launchBatches: [LaunchBatch] = [],
         launchArguments: String? = nil,
-        driveMappingMode: String = "preserve",
+        driveMappingMode: String = "shorten",
         forceRetinaOff: Bool? = false,
-        writeLog: Bool = false,
-        verbose: Bool = false,
+        writeLog: Bool = true,
+        verbose: Bool = true,
         dryRun: Bool = false,
         forceDownload: Bool = false,
         replace: Bool = false,
@@ -324,7 +325,7 @@ public struct LaunchBatch: Codable, Identifiable, Equatable {
 public enum SetupDefaults {
     public static let crossOverEngine = "WS12WineCX24.0.7_7"
     public static let sikarugir10Engine = "WS12WineSikarugir10.0_6"
-    public static let defaultEngine = sikarugir10Engine
+    public static let defaultEngine = crossOverEngine
     public static let supportedEngines = [defaultEngine, crossOverEngine]
     public static let defaultUSVFSSource = ""
     public static let defaultSettingsFile = NSString(
